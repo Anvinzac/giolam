@@ -66,7 +66,13 @@ export default function Login() {
           return;
         }
 
-        navigate("/");
+        // Check if admin → redirect to admin dashboard
+        const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', data.session.user.id);
+        if (roles?.some(r => r.role === 'admin')) {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
       }
     } catch {
       setError("Lỗi kết nối");
