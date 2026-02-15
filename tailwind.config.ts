@@ -67,9 +67,17 @@ export default {
           navy: "hsl(var(--lunar-navy))",
           deep: "hsl(var(--lunar-deep))",
         },
+        saturday: {
+          DEFAULT: "hsl(var(--saturday))",
+          foreground: "hsl(var(--saturday-foreground))",
+        },
+        sunday: {
+          DEFAULT: "hsl(var(--sunday))",
+          foreground: "hsl(var(--sunday-foreground))",
+        },
         weekend: {
-          DEFAULT: "hsl(var(--weekend-accent))",
-          foreground: "hsl(var(--weekend-accent-foreground))",
+          DEFAULT: "hsl(var(--saturday))",
+          foreground: "hsl(var(--saturday-foreground))",
         },
         fullmoon: "hsl(var(--fullmoon-glow))",
         newmoon: "hsl(var(--newmoon-glow))",

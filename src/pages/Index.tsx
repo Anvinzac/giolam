@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import LunarHeader from "@/components/LunarHeader";
 import WeekView from "@/components/WeekView";
-import { Check, LogOut, Shield } from "lucide-react";
+import { Check, LogOut, Shield, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface ShiftData {
@@ -29,6 +29,7 @@ export default function Index() {
   const [period, setPeriod] = useState<any>(null);
   const [shifts, setShifts] = useState<ShiftData[]>([]);
   const [saving, setSaving] = useState(false);
+  const [useDefaultTime, setUseDefaultTime] = useState(true);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -168,8 +169,8 @@ export default function Index() {
             shifts={shifts}
             offDays={period.off_days || []}
             shiftType={profile?.shift_type || 'basic'}
-            defaultClockIn={profile?.default_clock_in}
-            defaultClockOut={profile?.default_clock_out}
+            defaultClockIn={useDefaultTime ? profile?.default_clock_in : null}
+            defaultClockOut={useDefaultTime ? profile?.default_clock_out : null}
             periodStart={period.start_date}
             periodEnd={period.end_date}
             onShiftUpdate={handleShiftUpdate}
@@ -184,7 +185,7 @@ export default function Index() {
 
       {/* Bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-xl border-t border-border">
-        <div className="flex gap-3 max-w-sm mx-auto">
+        <div className="flex gap-2 max-w-sm mx-auto">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleLogout}
@@ -192,6 +193,16 @@ export default function Index() {
           >
             <LogOut size={20} />
           </motion.button>
+          {profile?.default_clock_in && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setUseDefaultTime(!useDefaultTime)}
+              className={`p-3 rounded-xl transition-colors ${useDefaultTime ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+              title={useDefaultTime ? 'Đang dùng giờ mặc định' : 'Nhập giờ thủ công'}
+            >
+              <Clock size={20} />
+            </motion.button>
+          )}
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleSave}
@@ -199,7 +210,7 @@ export default function Index() {
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-display font-semibold gradient-gold text-primary-foreground disabled:opacity-50"
           >
             <Check size={18} />
-            {saving ? "Saving..." : "Done"}
+            {saving ? "Đang lưu..." : "Xong"}
           </motion.button>
         </div>
       </div>
