@@ -134,7 +134,7 @@ export default function DayCard({
           {/* Day toggle - generous width */}
           <button
             onClick={onToggle}
-            className={`w-16 flex flex-col items-center justify-center py-1 ${divider} transition-all ${
+            className={`w-16 flex flex-col items-center justify-center py-1 rounded-l-xl ${divider} transition-all ${
               isActive
                 ? isWeekend ? weekendActiveBg : 'gradient-gold text-primary-foreground'
                 : 'bg-muted text-muted-foreground'
