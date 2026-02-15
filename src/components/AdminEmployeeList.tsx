@@ -260,8 +260,12 @@ export default function AdminEmployeeList({ periodId, periodStart, periodEnd, of
             const isNewMoon = moonLabel === 'New Moon';
             const isMoonEve = moonLabel?.startsWith('Chay');
 
+            const hasWork = shift?.is_active && hours;
+            const noActivity = !isOff && !shift?.is_active && !shift?.notice;
+
             const bgClass = isOff
               ? "bg-off-day/30 opacity-50"
+              : noActivity ? "bg-card border border-border/50 opacity-40"
               : isFullMoon ? "bg-fullmoon/10 border border-fullmoon/30"
               : isNewMoon ? "bg-newmoon/10 border border-newmoon/30"
               : isMoonEve ? "bg-primary/5 border border-primary/20"
