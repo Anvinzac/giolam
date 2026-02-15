@@ -50,7 +50,14 @@ export default function Index() {
 
       // Check admin
       const { data: role } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id).single();
-      setIsAdmin(role?.role === 'admin');
+      const userIsAdmin = role?.role === 'admin';
+      setIsAdmin(userIsAdmin);
+
+      // Admin goes directly to admin dashboard
+      if (userIsAdmin) {
+        navigate("/admin");
+        return;
+      }
 
       // Get current period
       const today = new Date().toISOString().split('T')[0];
