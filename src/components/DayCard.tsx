@@ -130,8 +130,8 @@ export default function DayCard({
       } ${isFullMoon ? 'lunar-glow' : ''} ${isNewMoon ? 'newmoon-glow' : ''} ${
         isMoonEve ? 'border-primary/30' : ''
       }`}>
-        <div className="flex items-stretch min-h-[44px]">
-          {/* Day toggle - generous width */}
+        <div className="flex items-stretch min-h-[36px]">
+          {/* Day toggle */}
           <button
             onClick={onToggle}
             className={`w-16 flex flex-col items-center justify-center py-1 rounded-l-xl ${divider} transition-all ${
@@ -164,40 +164,46 @@ export default function DayCard({
             </div>
           )}
 
-          {/* Clock in/out - tighter */}
+          {/* Clock in/out */}
           {isActive ? (
             <>
               <button
                 onClick={() => handleTimeClick('clockIn', clockIn)}
-                className={`w-14 flex items-center justify-center ${divider} text-xs font-semibold ${timeColor(clockIn)} hover:bg-success/5 transition-colors`}
+                className={`flex-1 flex items-center justify-center ${divider} text-sm font-semibold ${timeColor(clockIn)} hover:bg-success/5 transition-colors`}
               >
                 {formatTime(clockIn)}
               </button>
               <button
                 onClick={() => handleTimeClick('clockOut', clockOut)}
-                className={`w-14 flex items-center justify-center ${divider} text-xs font-semibold ${timeColor(clockOut)} hover:bg-accent/5 transition-colors`}
+                className={`flex-1 flex items-center justify-center ${divider} text-sm font-semibold ${timeColor(clockOut)} hover:bg-accent/5 transition-colors`}
               >
                 {formatTime(clockOut)}
               </button>
             </>
           ) : (
-            <div className={`w-28 flex items-center justify-center text-[10px] text-muted-foreground ${divider}`}>
+            <div className={`flex-1 flex items-center justify-center text-[10px] text-muted-foreground ${divider}`}>
               Chạm ngày để bật
             </div>
           )}
 
-          {/* Notice cell - always interactive */}
+          {/* Note trigger — small icon */}
           <button
             onClick={() => setExpandedNote(!expandedNote)}
-            className="flex-1 flex items-center px-2 text-left hover:bg-muted/30 transition-colors min-w-0"
+            className={`w-8 flex items-center justify-center rounded-r-xl transition-colors ${
+              notice ? 'text-primary' : 'text-muted-foreground'
+            } hover:bg-muted/30`}
+            title={isActive ? 'Ghi chú' : 'Lý do nghỉ'}
           >
-            {notice ? (
-              <span className="text-[11px] text-foreground truncate w-full">{notice}</span>
-            ) : (
-              <span className="text-[11px] text-muted-foreground">{isActive ? 'Ghi chú' : 'Lý do nghỉ'}</span>
-            )}
+            <span className="text-xs">📝</span>
           </button>
         </div>
+
+        {/* Notice text row — spans full width */}
+        {notice && !expandedNote && (
+          <div className="px-2 py-1 border-t border-border">
+            <p className="text-[11px] text-muted-foreground leading-snug">{notice}</p>
+          </div>
+        )}
 
         {/* Expanded note input */}
         <AnimatePresence>
