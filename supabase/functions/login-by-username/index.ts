@@ -3,11 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -26,8 +26,10 @@ serve(async (req) => {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("user_id, username")
-    .ilike("username", username)
-    .single();
+    .ilike("username", username.trim())
+    .maybeSingle();
+
+  console.log("Username lookup:", username.trim(), "Found:", !!profile, "Error:", profileError?.message);
 
   if (profileError || !profile) {
     return new Response(JSON.stringify({ error: "Không tìm thấy tài khoản" }), {

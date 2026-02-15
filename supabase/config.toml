@@ -1,1 +1,7 @@
 project_id = "nnvfcvpoldufojsxcfzo"
+
+[functions.login-by-username]
+verify_jwt = false
+
+[functions.seed-employees]
+verify_jwt = false
