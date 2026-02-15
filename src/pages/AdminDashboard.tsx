@@ -24,8 +24,8 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/login"); return; }
 
-      const { data: role } = await supabase.from('user_roles').select('role').eq('user_id', user.id).single();
-      if (role?.role !== 'admin') { navigate("/"); return; }
+      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
+      if (!roles?.some(r => r.role === 'admin')) { navigate("/"); return; }
       setIsAdmin(true);
 
       // Fetch periods
