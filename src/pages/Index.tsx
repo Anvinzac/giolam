@@ -49,8 +49,8 @@ export default function Index() {
       setUserName(prof?.full_name || session.user.email || 'Employee');
 
       // Check admin
-      const { data: role } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id).single();
-      const userIsAdmin = role?.role === 'admin';
+      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+      const userIsAdmin = roles?.some(r => r.role === 'admin') ?? false;
       setIsAdmin(userIsAdmin);
 
       // Admin goes directly to admin dashboard
