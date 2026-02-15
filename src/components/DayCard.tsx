@@ -78,10 +78,6 @@ export default function DayCard({
   const weekendText = isSunday ? 'text-sunday' : 'text-saturday';
   const weekendActiveBg = isSunday ? 'bg-sunday text-sunday-foreground' : 'bg-saturday text-saturday-foreground';
 
-  // Moon badge shown below the date number, not crammed beside it
-  const moonBadge = moonEmoji ? (
-    <span className={`text-xs mt-0.5 block ${isFullMoon || isNewMoon ? 'animate-glow-pulse' : ''}`}>{moonEmoji}</span>
-  ) : null;
 
   const moonLabelEl = moonLabel ? (
     <span className={`text-[7px] font-semibold leading-none mt-0.5 block ${
@@ -95,7 +91,6 @@ export default function DayCard({
         <div className={`flex flex-col items-center justify-center w-16 py-1 ${divider}`}>
           <span className="text-xs font-medium text-off-day-foreground">{DAYS[dayIndex]}</span>
           <span className="text-[10px] text-off-day-foreground">{dateNum}</span>
-          {moonBadge}
         </div>
         <div className="flex-1 flex items-center justify-center text-xs text-off-day-foreground">Nghỉ</div>
       </div>
@@ -110,8 +105,6 @@ export default function DayCard({
         <div className={`flex flex-col items-center justify-center w-16 py-1 ${divider}`}>
           <span className={`text-xs font-semibold ${isWeekend ? weekendText : 'text-foreground'}`}>{DAYS[dayIndex]}</span>
           <span className="text-[10px] text-muted-foreground">{dateNum}</span>
-          {moonBadge}
-          {moonLabelEl}
         </div>
         <input
           type="text"
@@ -145,7 +138,7 @@ export default function DayCard({
             >
               <span className="text-sm font-bold leading-none">{DAYS[dayIndex]}</span>
               <span className="text-xs opacity-80">{dateNum}</span>
-              {moonBadge}
+              
             </button>
 
             {/* Overtime main shift column */}
