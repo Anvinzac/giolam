@@ -41,8 +41,10 @@
     --lunar-gold-glow: 42 100% 70%;
     --lunar-navy: 225 35% 12%;
     --lunar-deep: 225 40% 8%;
-    --weekend-accent: 15 85% 60%;
-    --weekend-accent-foreground: 15 90% 95%;
+    --saturday: 175 70% 45%;
+    --saturday-foreground: 175 70% 95%;
+    --sunday: 280 60% 55%;
+    --sunday-foreground: 280 60% 95%;
     --fullmoon-glow: 42 100% 75%;
     --newmoon-glow: 260 80% 65%;
     --off-day: 225 10% 20%;
