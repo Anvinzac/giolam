@@ -185,17 +185,15 @@ export default function DayCard({
 
               {/* Notice / moon label bar */}
               {(notice || moonLabel) && !expandedNote && (
-                <div className={`px-2 py-0.5 flex items-center gap-1 ${
-                  moonLabel && !notice ? (isFullMoon ? 'bg-fullmoon/10' : isNewMoon ? 'bg-newmoon/10' : 'bg-primary/10') : 'bg-muted/40'
-                }`}>
+                <div className="px-2 py-0.5 flex items-center justify-center gap-1">
                   {moonLabel && (
-                    <span className={`text-[10px] font-medium shrink-0 ${
+                    <span className={`text-xs font-medium shrink-0 ${
                       isFullMoon ? 'text-fullmoon' : isNewMoon ? 'text-newmoon' : 'text-primary'
                     }`}>{moonLabel}</span>
                   )}
-                  {notice && moonLabel && <span className="text-muted-foreground/30 text-[10px]">·</span>}
+                  {notice && moonLabel && <span className="text-muted-foreground/30 text-xs">·</span>}
                   {notice && (
-                    <span className="text-[10px] text-muted-foreground truncate leading-tight flex-1">{notice}</span>
+                    <span className="text-xs text-muted-foreground truncate leading-tight">{notice}</span>
                   )}
                 </div>
               )}
