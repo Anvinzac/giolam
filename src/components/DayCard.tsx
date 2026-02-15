@@ -74,7 +74,7 @@ export default function DayCard({
   if (isOffDay) {
     return (
       <div className="flex items-stretch rounded-xl bg-off-day/50 opacity-60 overflow-hidden h-10">
-        <div className={`flex items-center justify-center w-12 ${divider}`}>
+        <div className={`flex items-center justify-center w-14 ${divider}`}>
           <div className="text-[11px] font-medium text-off-day-foreground leading-tight text-center">
             <div>{DAYS[dayIndex]}</div>
             <div className="text-[10px]">{dateNum}</div>
@@ -90,12 +90,14 @@ export default function DayCard({
       <div className={`flex items-stretch rounded-xl overflow-hidden h-10 ${
         isWeekend ? 'bg-weekend/10 border border-weekend/20' : 'bg-card/60 border border-glass-border'
       }`}>
-        <div className={`flex items-center justify-center w-12 ${divider} relative`}>
+        <div className={`flex items-center justify-center w-14 ${divider}`}>
           <div className={`text-[11px] font-semibold leading-tight text-center ${isWeekend ? 'text-weekend' : 'text-foreground'}`}>
             <div>{DAYS[dayIndex]}</div>
-            <div className="text-[10px] text-muted-foreground">{dateNum}</div>
+            <div className="flex items-center gap-0.5 justify-center">
+              <span className="text-[10px] text-muted-foreground">{dateNum}</span>
+              {moonEmoji && <span className="text-[10px]">{moonEmoji}</span>}
+            </div>
           </div>
-          {moonEmoji && <MoonBadge emoji={moonEmoji} isFullMoon={isFullMoon} isNewMoon={isNewMoon} />}
         </div>
         <input
           type="text"
@@ -120,15 +122,22 @@ export default function DayCard({
           {/* Day toggle */}
           <button
             onClick={onToggle}
-            className={`w-12 flex flex-col items-center justify-center ${divider} transition-all relative ${
+            className={`w-14 flex flex-col items-center justify-center ${divider} transition-all overflow-visible relative ${
               isActive
                 ? isWeekend ? 'bg-weekend text-weekend-foreground' : 'gradient-gold text-primary-foreground'
                 : 'bg-muted text-muted-foreground'
             }`}
           >
             <span className="text-[11px] font-bold">{DAYS[dayIndex]}</span>
-            <span className="text-[10px] opacity-80">{dateNum}</span>
-            {moonEmoji && <MoonBadge emoji={moonEmoji} isFullMoon={isFullMoon} isNewMoon={isNewMoon} />}
+            <span className="flex items-center gap-0.5">
+              <span className="text-[10px] opacity-80">{dateNum}</span>
+              {moonEmoji && <span className={`text-[10px] ${isFullMoon || isNewMoon ? 'animate-glow-pulse' : ''}`}>{moonEmoji}</span>}
+            </span>
+            {moonLabel && (
+              <span className={`text-[7px] font-medium leading-none ${
+                isFullMoon ? 'text-fullmoon' : isNewMoon ? 'text-newmoon' : isActive ? 'opacity-80' : 'text-primary'
+              }`}>{moonLabel}</span>
+            )}
           </button>
 
           {/* Overtime main shift column */}
@@ -188,14 +197,6 @@ export default function DayCard({
           )}
         </div>
 
-        {/* Moon label bar */}
-        {moonLabel && (
-          <div className={`px-2 py-0.5 text-[10px] font-medium border-t border-border ${
-            isFullMoon ? 'text-fullmoon bg-fullmoon/5' : isNewMoon ? 'text-newmoon bg-newmoon/5' : 'text-primary bg-primary/5'
-          }`}>
-            {moonLabel}
-          </div>
-        )}
 
         {/* Expanded note input */}
         <AnimatePresence>
@@ -242,10 +243,3 @@ export default function DayCard({
   );
 }
 
-function MoonBadge({ emoji, isFullMoon, isNewMoon }: { emoji: string; isFullMoon: boolean; isNewMoon: boolean }) {
-  return (
-    <span className={`absolute -top-1 -right-1 text-[10px] leading-none ${isFullMoon || isNewMoon ? 'animate-glow-pulse' : ''}`}>
-      {emoji}
-    </span>
-  );
-}
