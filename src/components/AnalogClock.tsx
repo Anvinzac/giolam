@@ -74,9 +74,21 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
   // Rotate CCW 15deg so numbers land at exact clock positions
   const rotateOffset = -15;
 
-  const periodLabel = selectedHour !== null
-    ? (selectedHour < 12 ? 'Sáng' : selectedHour < 18 ? 'Chiều' : 'Tối')
-    : null;
+  const getPeriodLabel = (h: number | null): string | null => {
+    if (h === null) return null;
+    if (h >= 7 && h <= 10) return 'Sáng';
+    if (h >= 11 && h <= 12) return 'Trưa';
+    if (h >= 13 && h <= 17) return 'Chiều';
+    if (h >= 18 && h <= 22) return 'Tối';
+    return null;
+  };
+
+  const periodLabel = getPeriodLabel(selectedHour);
+
+  const formatDisplay = (h: number, m: number): string => {
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${m.toString().padStart(2, '0')}`;
+  };
 
   return (
     <AnimatePresence>
@@ -210,7 +222,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               fill="hsl(var(--foreground))"
             >
               {selectedHour !== null
-                ? `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`
+                ? formatDisplay(selectedHour, selectedMinute)
                 : '--:--'}
             </text>
             {periodLabel && (
