@@ -57,6 +57,24 @@ function calcHours(shift: ShiftData | undefined, shiftType: string): string {
   return "";
 }
 
+const DEPT_COLORS = [
+  "175 70% 45%",   // teal
+  "280 60% 55%",   // purple
+  "42 90% 55%",    // gold
+  "195 85% 50%",   // cyan
+  "340 70% 55%",   // pink
+  "155 70% 45%",   // green
+  "25 85% 55%",    // orange
+  "210 70% 55%",   // blue
+];
+const deptColorMap = new Map<string, string>();
+function getDeptColor(dept: string): string {
+  if (!deptColorMap.has(dept)) {
+    deptColorMap.set(dept, DEPT_COLORS[deptColorMap.size % DEPT_COLORS.length]);
+  }
+  return deptColorMap.get(dept)!;
+}
+
 interface Props {
   periodId: string;
   periodStart: string;
@@ -359,8 +377,8 @@ export default function AdminEmployeeList({ periodId, periodStart, periodEnd, of
         </button>
       </div>
 
-      {/* Employee cards */}
-      <div className="space-y-2">
+      {/* Employee cards - 2 column grid */}
+      <div className="grid grid-cols-2 gap-2">
         {employees.map(emp => {
           const stats = getEmpStats(emp);
           return (
@@ -368,19 +386,23 @@ export default function AdminEmployeeList({ periodId, periodStart, periodEnd, of
               key={emp.user_id}
               whileTap={{ scale: 0.98 }}
               onClick={() => setSelectedEmp(emp)}
-              className="w-full glass-card p-4 flex items-center justify-between text-left active:bg-muted/50 transition-colors"
+              className="w-full glass-card p-3 flex flex-col items-start text-left active:bg-muted/50 transition-colors"
             >
-              <div>
-                <div className="text-sm font-semibold text-foreground">{emp.full_name}</div>
-                <div className="flex gap-2 mt-0.5 text-xs text-muted-foreground">
-                  <span>{emp.department_name}</span>
-                  <span>•</span>
-                  <span>{stats.worked}/{dates.length} ngày</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold text-foreground leading-tight truncate w-full">{emp.full_name}</div>
+              <span
+                className="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold truncate max-w-full"
+                style={{
+                  backgroundColor: `hsl(${getDeptColor(emp.department_name)} / 0.15)`,
+                  color: `hsl(${getDeptColor(emp.department_name)})`,
+                  borderWidth: '1px',
+                  borderColor: `hsl(${getDeptColor(emp.department_name)} / 0.3)`,
+                }}
+              >
+                {emp.department_name}
+              </span>
+              <div className="flex items-center justify-between w-full mt-2">
+                <span className="text-[11px] text-muted-foreground">{stats.worked}/{dates.length} ngày</span>
                 <span className="text-sm font-bold text-primary">{stats.total}</span>
-                <ChevronRight size={16} className="text-muted-foreground/50" />
               </div>
             </motion.button>
           );
