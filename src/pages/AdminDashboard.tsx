@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2 } from "lucide-react";
 import { toast } from "sonner";
-import AdminEmployeeTable from "@/components/AdminEmployeeTable";
+import AdminEmployeeList from "@/components/AdminEmployeeList";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -116,7 +116,7 @@ export default function AdminDashboard() {
         {tab === 'shifts' && (
           <>
             {periods.length > 0 ? (
-              <AdminEmployeeTable
+              <AdminEmployeeList
                 periodId={periods[0].id}
                 periodStart={periods[0].start_date}
                 periodEnd={periods[0].end_date}
