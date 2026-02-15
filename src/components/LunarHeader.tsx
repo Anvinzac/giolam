@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getLunarPhase, formatTime, isAM } from "@/lib/lunarUtils";
-import { Moon, Sun, Clock, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Moon, Sun, Clock, ChevronDown, ChevronUp, Check, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnalogClock from "./AnalogClock";
 
@@ -39,7 +39,12 @@ export default function LunarHeader({
           )}
         </div>
 
-        <div className="relative z-10 flex items-start justify-between">
+        {/* Settings button — top right */}
+        <button className="absolute top-3 right-4 z-20 p-1.5 rounded-lg bg-card/40 border border-glass-border text-muted-foreground hover:text-primary hover:bg-card/70 transition-colors">
+          <Settings size={14} />
+        </button>
+
+        <div className="relative z-10 flex items-end justify-between">
           {/* Left side */}
           <div>
             <h1 className="font-display text-xl font-bold text-gradient-gold">LunarFlow</h1>
