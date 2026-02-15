@@ -108,7 +108,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
         >
           <h3 className="font-display text-lg text-foreground text-center">{label}</h3>
 
-          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto block">
+          <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto block w-full max-w-[280px] h-auto">
             {/* Outer ring — PM */}
             {CLOCK_POSITIONS.map((pos, i) => {
               const startA = i * segAngle + gap / 2 + rotateOffset;
