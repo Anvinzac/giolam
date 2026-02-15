@@ -41,6 +41,10 @@ export default function Index() {
 
       // Fetch profile
       const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).single();
+      if (prof?.must_change_password) {
+        navigate("/login");
+        return;
+      }
       setProfile(prof);
       setUserName(prof?.full_name || session.user.email || 'Employee');
 

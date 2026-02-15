@@ -14,41 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      branches: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      departments: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           default_clock_in: string | null
           default_clock_out: string | null
+          department_id: string | null
           full_name: string
           id: string
+          must_change_password: boolean
           shift_type: Database["public"]["Enums"]["shift_type"]
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           default_clock_in?: string | null
           default_clock_out?: string | null
+          department_id?: string | null
           full_name?: string
           id?: string
+          must_change_password?: boolean
           shift_type?: Database["public"]["Enums"]["shift_type"]
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           default_clock_in?: string | null
           default_clock_out?: string | null
+          department_id?: string | null
           full_name?: string
           id?: string
+          must_change_password?: boolean
           shift_type?: Database["public"]["Enums"]["shift_type"]
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shifts: {
         Row: {
