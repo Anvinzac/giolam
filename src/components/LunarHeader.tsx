@@ -77,7 +77,7 @@ export default function LunarHeader({
             <button
               onClick={() => setExpanded(!expanded)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors hover:bg-card/80 border border-glass-border ${
-                defaultClockIn ? 'rounded-b-xl rounded-tr-xl bg-card/60' : 'rounded-xl bg-card/60'
+                defaultClockIn ? 'rounded-b-xl rounded-tl-xl bg-card/60' : 'rounded-xl bg-card/60'
               }`}
             >
               <Clock size={14} className="text-primary" />
