@@ -41,8 +41,8 @@ export function getMoonEmoji(date: Date): string | null {
 export function getMoonLabel(date: Date): string | null {
   if (isFullMoon(date)) return 'Full Moon';
   if (isNewMoon(date)) return 'New Moon';
-  if (isDayBeforeFullMoon(date)) return 'Eve of Full Moon';
-  if (isDayBeforeNewMoon(date)) return 'Eve of New Moon';
+  if (isDayBeforeFullMoon(date)) return 'Chay (Rằm)';
+  if (isDayBeforeNewMoon(date)) return 'Chay (Mùng 1)';
   return null;
 }
 
@@ -66,9 +66,14 @@ export function formatTime(time: string | null | undefined): string {
   if (!time) return '--:--';
   const [h, m] = time.split(':');
   const hour = parseInt(h);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
   const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  return `${h12}:${m} ${ampm}`;
+  return `${h12}:${m}`;
+}
+
+export function isAM(time: string | null | undefined): boolean {
+  if (!time) return true;
+  const hour = parseInt(time.split(':')[0]);
+  return hour < 12;
 }
 
 export function timeToString(hours: number, minutes: number): string {
