@@ -10,22 +10,20 @@ interface AnalogClockProps {
 
 const MINUTES = [0, 30];
 
-// All 12 positions on a clock face (12,1,2,...,11)
+// 12 clock positions in order: 12,1,2,...,11
 const CLOCK_POSITIONS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
-// Inner ring = AM: only 7-12 are active
+// Inner ring = AM: only 7-12 active
 const AM_ACTIVE = new Set([7, 8, 9, 10, 11, 12]);
-// Outer ring = PM: 1PM(13)-10PM(22) active, 11PM(23) and 12PM(12 noon) — 12 on outer is noon
-// Actually let's think: outer PM positions: 12=12(noon),1=13,2=14,...10=22,11=23
-// Active: 12(noon)=12, 1-10 = 13-22. Disabled: 11=23
-const PM_DISABLED = new Set([11]); // position 11 on outer = 23:00
+// Outer ring = PM: 1-10 active (13-22), 11(23) disabled, 12(noon) disabled (it's 12AM not PM)
+const PM_DISABLED = new Set([11, 12]);
 
 function clockPosToAM(pos: number): number {
-  return pos; // 12->12, 1->1, ... 11->11 — but only 7-12 interactive
+  return pos; // 7->7, 8->8, ..., 12->12
 }
 
 function clockPosToPM(pos: number): number {
-  if (pos === 12) return 12; // noon
+  if (pos === 12) return 0; // 12 on outer = midnight = 0, but disabled anyway
   return pos + 12; // 1->13, 2->14, ...11->23
 }
 
@@ -53,26 +51,28 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [selectedMinute, setSelectedMinute] = useState<number>(0);
 
-  const handleHourSelect = (h24: number, ring: 'am' | 'pm') => {
-    setSelectedHour(h24);
-  };
-
   const handleConfirm = () => {
     if (selectedHour === null) return;
     onTimeSelect(timeToString(selectedHour, selectedMinute));
     onClose();
   };
 
-  const size = 300;
+  const size = 320;
   const cx = size / 2;
   const cy = size / 2;
 
-  const outerR = 142;
-  const outerInnerR = 110;
-  const innerR = 106;
-  const innerInnerR = 72;
+  // Outer ring — bigger, more space
+  const outerR = 155;
+  const outerInnerR = 118;
+  // Gap between rings
+  // Inner ring
+  const innerR = 108;
+  const innerInnerR = 76;
+
   const gap = 1.5;
   const segAngle = 360 / 12;
+  // Rotate CCW 15deg so numbers land at exact clock positions
+  const rotateOffset = -15;
 
   const periodLabel = selectedHour !== null
     ? (selectedHour < 12 ? 'Sáng' : selectedHour < 18 ? 'Chiều' : 'Tối')
@@ -92,19 +92,20 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="glass-card p-5 w-full max-w-[340px] space-y-3"
+          className="glass-card p-5 w-full max-w-[360px] space-y-3"
         >
           <h3 className="font-display text-lg text-foreground text-center">{label}</h3>
 
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto block">
-            {/* Outer ring — PM (12 segments at clock positions) */}
+            {/* Outer ring — PM */}
             {CLOCK_POSITIONS.map((pos, i) => {
-              const startA = i * segAngle + gap / 2;
-              const endA = (i + 1) * segAngle - gap / 2;
+              const startA = i * segAngle + gap / 2 + rotateOffset;
+              const endA = (i + 1) * segAngle - gap / 2 + rotateOffset;
               const h24 = clockPosToPM(pos);
               const disabled = PM_DISABLED.has(pos);
               const active = !disabled;
               const selected = selectedHour === h24;
+              // Label at the center of the segment arc
               const midAngle = (startA + endA) / 2;
               const labelR = (outerR + outerInnerR) / 2;
               const labelPos = polarToCartesian(cx, cy, labelR, midAngle);
@@ -112,8 +113,8 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               return (
                 <g
                   key={`pm-${pos}`}
-                  onClick={() => active && handleHourSelect(h24, 'pm')}
-                  style={{ cursor: active ? 'pointer' : 'not-allowed' }}
+                  onClick={() => active && setSelectedHour(h24)}
+                  style={{ cursor: active ? 'pointer' : 'default' }}
                 >
                   <path
                     d={arcSegmentPath(cx, cy, outerInnerR, outerR, startA, endA)}
@@ -125,9 +126,9 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                           : 'hsl(var(--secondary))'
                     }
                     stroke="hsl(var(--background))"
-                    strokeWidth="1"
+                    strokeWidth="1.5"
                     className="transition-colors"
-                    opacity={disabled ? 0.3 : 1}
+                    opacity={disabled ? 0.2 : 1}
                   />
                   {active && (
                     <text
@@ -135,8 +136,8 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                       y={labelPos.y}
                       textAnchor="middle"
                       dominantBaseline="central"
-                      fontSize="10"
-                      fontWeight={selected ? '700' : '400'}
+                      fontSize="13"
+                      fontWeight={selected ? '700' : '500'}
                       fontFamily="Space Grotesk"
                       fill={selected ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))'}
                     >
@@ -147,10 +148,10 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               );
             })}
 
-            {/* Inner ring — AM (12 segments at clock positions, only 7-12 active) */}
+            {/* Inner ring — AM */}
             {CLOCK_POSITIONS.map((pos, i) => {
-              const startA = i * segAngle + gap / 2;
-              const endA = (i + 1) * segAngle - gap / 2;
+              const startA = i * segAngle + gap / 2 + rotateOffset;
+              const endA = (i + 1) * segAngle - gap / 2 + rotateOffset;
               const h24 = clockPosToAM(pos);
               const active = AM_ACTIVE.has(pos);
               const selected = selectedHour === h24;
@@ -161,7 +162,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               return (
                 <g
                   key={`am-${pos}`}
-                  onClick={() => active && handleHourSelect(h24, 'am')}
+                  onClick={() => active && setSelectedHour(h24)}
                   style={{ cursor: active ? 'pointer' : 'default' }}
                 >
                   <path
@@ -174,9 +175,9 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                           : 'hsl(var(--off-day))'
                     }
                     stroke="hsl(var(--background))"
-                    strokeWidth="1"
+                    strokeWidth="1.5"
                     className="transition-colors"
-                    opacity={active ? 1 : 0.2}
+                    opacity={active ? 1 : 0.15}
                   />
                   {active && (
                     <text
@@ -196,14 +197,14 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               );
             })}
 
-            {/* Center display */}
+            {/* Center */}
             <circle cx={cx} cy={cy} r={innerInnerR - 4} fill="hsl(var(--background))" opacity={0.9} />
             <text
               x={cx}
               y={selectedHour !== null ? cy - 8 : cy}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="24"
+              fontSize="26"
               fontWeight="700"
               fontFamily="Space Grotesk"
               fill="hsl(var(--foreground))"
@@ -215,7 +216,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
             {periodLabel && (
               <text
                 x={cx}
-                y={cy + 14}
+                y={cy + 16}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize="11"
@@ -243,7 +244,6 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
             ))}
           </div>
 
-          {/* Confirm */}
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleConfirm}
