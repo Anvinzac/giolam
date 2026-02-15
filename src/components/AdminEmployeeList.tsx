@@ -5,6 +5,7 @@ import { vi } from "date-fns/locale";
 import { ArrowLeft, ChevronRight, Copy, Download, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { getMoonEmoji, getMoonLabel, formatTime } from "@/lib/lunarUtils";
 
 interface ShiftData {
   is_active: boolean;
@@ -242,39 +243,88 @@ export default function AdminEmployeeList({ periodId, periodStart, periodEnd, of
         </div>
 
         {/* Shift list */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {dates.map(d => {
             const isOff = offDays.includes(d);
             const shift = selectedEmp.shifts[d];
             const hours = calcHours(shift, selectedEmp.shift_type);
             const date = parseISO(d);
             const dayName = format(date, "EEE", { locale: vi });
-            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            const isSunday = date.getDay() === 0;
+            const isSaturday = date.getDay() === 6;
+            const isWeekend = isSaturday || isSunday;
+
+            const moonEmoji = getMoonEmoji(date);
+            const moonLabel = getMoonLabel(date);
+            const isFullMoon = moonLabel === 'Full Moon';
+            const isNewMoon = moonLabel === 'New Moon';
+            const isMoonEve = moonLabel?.startsWith('Chay');
+
+            const bgClass = isOff
+              ? "bg-off-day/30 opacity-50"
+              : isFullMoon ? "bg-fullmoon/10 border border-fullmoon/30"
+              : isNewMoon ? "bg-newmoon/10 border border-newmoon/30"
+              : isMoonEve ? "bg-primary/5 border border-primary/20"
+              : isSunday ? "bg-sunday/10 border border-sunday/20"
+              : isSaturday ? "bg-saturday/10 border border-saturday/20"
+              : "bg-card border border-border/50";
 
             return (
               <div
                 key={d}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
-                  isOff ? "bg-destructive/5 text-muted-foreground/50" :
-                  isWeekend ? "bg-accent/5" : "bg-card"
-                }`}
+                className={`rounded-xl overflow-hidden ${bgClass}`}
               >
-                <div className="flex items-center gap-3">
-                  <span className={`w-8 text-xs font-medium ${isWeekend ? "text-accent" : "text-muted-foreground"}`}>
-                    {dayName}
-                  </span>
-                  <span className="text-foreground font-medium">{format(date, "dd/MM")}</span>
-                </div>
-                <div>
-                  {isOff ? (
-                    <span className="text-xs text-destructive/60">Nghỉ</span>
-                  ) : shift?.notice && !shift.is_active ? (
-                    <span className="text-xs text-accent" title={shift.notice}>📝 {shift.notice}</span>
-                  ) : hours ? (
-                    <span className="font-semibold text-primary">{hours}</span>
-                  ) : (
-                    <span className="text-muted-foreground/30">·</span>
-                  )}
+                <div className="flex items-stretch min-h-[44px]">
+                  {/* Day label */}
+                  <div className={`w-14 flex flex-col items-center justify-center py-1.5 border-r border-border/30 ${
+                    isOff ? "text-muted-foreground" :
+                    isSunday ? "text-sunday" :
+                    isSaturday ? "text-saturday" :
+                    "text-foreground"
+                  }`}>
+                    <span className="text-xs font-semibold leading-none">{dayName}</span>
+                    <span className="text-[10px] opacity-70">{format(date, "dd/MM")}</span>
+                    {moonEmoji && <span className="text-xs mt-0.5">{moonEmoji}</span>}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 flex flex-col justify-center px-3 py-1.5">
+                    {isOff ? (
+                      <span className="text-xs text-muted-foreground">Nghỉ</span>
+                    ) : shift?.is_active ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-success font-medium">{formatTime(shift.clock_in)}</span>
+                          <span className="text-muted-foreground/50">→</span>
+                          <span className="text-accent font-medium">{formatTime(shift.clock_out)}</span>
+                        </div>
+                        <span className="text-sm font-bold text-primary">{hours || "—"}</span>
+                      </div>
+                    ) : shift?.notice ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs">📝</span>
+                        <span className="text-xs text-muted-foreground truncate">{shift.notice}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground/30 text-xs">·</span>
+                    )}
+
+                    {/* Notice line (when active and has notice) */}
+                    {shift?.is_active && shift.notice && (
+                      <div className="mt-0.5">
+                        <span className="text-[10px] text-muted-foreground truncate block">📝 {shift.notice}</span>
+                      </div>
+                    )}
+
+                    {/* Moon label */}
+                    {moonLabel && !isOff && (
+                      <div className="mt-0.5">
+                        <span className={`text-[10px] font-semibold ${
+                          isFullMoon ? "text-fullmoon" : isNewMoon ? "text-newmoon" : "text-primary"
+                        }`}>{moonLabel}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
