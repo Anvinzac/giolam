@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getLunarPhase, formatTime, isAM } from "@/lib/lunarUtils";
-import { Moon, Sun, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Moon, Sun, Clock, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AnalogClock from "./AnalogClock";
 
@@ -53,10 +53,32 @@ export default function LunarHeader({
           </div>
 
           {/* Right side — clock settings */}
-          <div className="flex flex-col items-end gap-1.5">
+          <div className="flex flex-col items-end">
+            {/* Autofill toggle — on top, overlapping with time */}
+            {defaultClockIn && (
+              <button
+                onClick={onToggleDefault}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-t-xl text-xs font-semibold transition-colors border border-b-0 ${
+                  useDefaultTime
+                    ? 'bg-primary/20 text-primary border-primary/25'
+                    : 'bg-muted/60 text-muted-foreground border-glass-border'
+                }`}
+              >
+                <div className={`w-3 h-3 rounded border-2 flex items-center justify-center transition-colors ${
+                  useDefaultTime ? 'border-primary bg-primary' : 'border-muted-foreground bg-transparent'
+                }`}>
+                  {useDefaultTime && <Check size={8} className="text-primary-foreground" strokeWidth={3} />}
+                </div>
+                {useDefaultTime ? 'Tự điền' : 'Thủ công'}
+              </button>
+            )}
+
+            {/* Time display button — connected below */}
             <button
               onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card/60 border border-glass-border text-xs transition-colors hover:bg-card/80"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors hover:bg-card/80 border border-glass-border ${
+                defaultClockIn ? 'rounded-b-xl rounded-tr-xl bg-card/60' : 'rounded-xl bg-card/60'
+              }`}
             >
               <Clock size={14} className="text-primary" />
               {defaultClockIn && defaultClockOut ? (
@@ -70,21 +92,6 @@ export default function LunarHeader({
               )}
               {expanded ? <ChevronUp size={12} className="text-muted-foreground" /> : <ChevronDown size={12} className="text-muted-foreground" />}
             </button>
-
-            {/* Autofill toggle */}
-            {defaultClockIn && (
-              <button
-                onClick={onToggleDefault}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-medium transition-colors ${
-                  useDefaultTime
-                    ? 'bg-primary/15 text-primary border border-primary/20'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                <div className={`w-1.5 h-1.5 rounded-full ${useDefaultTime ? 'gradient-gold' : 'bg-muted-foreground'}`} />
-                {useDefaultTime ? 'Tự điền' : 'Thủ công'}
-              </button>
-            )}
           </div>
         </div>
 
