@@ -133,7 +133,7 @@ export default function DayCard({
       }`}>
         <div className="relative overflow-hidden">
           {/* Main row */}
-          <div className={`flex items-stretch ${notice && !expandedNote ? 'min-h-[52px]' : 'min-h-[36px]'}`}>
+          <div className={`flex items-stretch ${(notice || moonLabel) && !expandedNote ? 'min-h-[52px]' : 'min-h-[36px]'}`}>
             {/* Day toggle */}
             <button
               onClick={onToggle}
@@ -146,7 +146,6 @@ export default function DayCard({
               <span className="text-sm font-bold leading-none">{DAYS[dayIndex]}</span>
               <span className="text-xs opacity-80">{dateNum}</span>
               {moonBadge}
-              {moonLabelEl}
             </button>
 
             {/* Overtime main shift column */}
@@ -191,10 +190,20 @@ export default function DayCard({
                 </div>
               )}
 
-              {/* Notice bar — bottom half, own container */}
-              {notice && !expandedNote && (
-                <div className="bg-muted/40 px-2 py-0.5 flex items-center">
-                  <p className="text-[10px] text-muted-foreground truncate leading-tight flex-1">{notice}</p>
+              {/* Notice / moon label bar */}
+              {(notice || moonLabel) && !expandedNote && (
+                <div className={`px-2 py-0.5 flex items-center gap-1 ${
+                  moonLabel && !notice ? (isFullMoon ? 'bg-fullmoon/10' : isNewMoon ? 'bg-newmoon/10' : 'bg-primary/10') : 'bg-muted/40'
+                }`}>
+                  {moonLabel && (
+                    <span className={`text-[10px] font-medium shrink-0 ${
+                      isFullMoon ? 'text-fullmoon' : isNewMoon ? 'text-newmoon' : 'text-primary'
+                    }`}>{moonLabel}</span>
+                  )}
+                  {notice && moonLabel && <span className="text-muted-foreground/30 text-[10px]">·</span>}
+                  {notice && (
+                    <span className="text-[10px] text-muted-foreground truncate leading-tight flex-1">{notice}</span>
+                  )}
                 </div>
               )}
             </div>
