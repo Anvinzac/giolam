@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Users, Calendar, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2 } from "lucide-react";
 import { toast } from "sonner";
+import AdminEmployeeTable from "@/components/AdminEmployeeTable";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [periods, setPeriods] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [tab, setTab] = useState<'periods' | 'employees'>('periods');
+  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts'>('shifts');
 
   // New period form
   const [startDate, setStartDate] = useState("");
@@ -91,10 +92,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {[
-            { key: 'periods' as const, label: 'Periods', icon: Calendar },
-            { key: 'employees' as const, label: 'Employees', icon: Users },
+            { key: 'shifts' as const, label: 'Bảng công', icon: Table2 },
+            { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar },
+            { key: 'employees' as const, label: 'Nhân viên', icon: Users },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -111,6 +113,23 @@ export default function AdminDashboard() {
       </header>
 
       <div className="px-4 space-y-4">
+        {tab === 'shifts' && (
+          <>
+            {periods.length > 0 ? (
+              <AdminEmployeeTable
+                periodId={periods[0].id}
+                periodStart={periods[0].start_date}
+                periodEnd={periods[0].end_date}
+                offDays={periods[0].off_days || []}
+              />
+            ) : (
+              <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+                Chưa có kỳ làm việc nào
+              </div>
+            )}
+          </>
+        )}
+
         {tab === 'periods' && (
           <>
             {/* Create period */}
