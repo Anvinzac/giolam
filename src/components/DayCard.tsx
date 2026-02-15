@@ -131,12 +131,13 @@ export default function DayCard({
       } ${isFullMoon ? 'lunar-glow' : ''} ${isNewMoon ? 'newmoon-glow' : ''} ${
         isMoonEve ? 'border-primary/30' : ''
       }`}>
-        <div className="relative">
-          <div className="flex items-stretch min-h-[36px]">
+        <div className="relative overflow-hidden">
+          {/* Main row */}
+          <div className={`flex items-stretch ${notice && !expandedNote ? 'min-h-[52px]' : 'min-h-[36px]'}`}>
             {/* Day toggle */}
             <button
               onClick={onToggle}
-              className={`w-16 flex flex-col items-center justify-center ${notice ? 'pt-1 pb-3' : 'py-1'} rounded-l-xl ${divider} transition-all ${
+              className={`w-16 flex flex-col items-center justify-center py-1 rounded-l-xl ${divider} transition-all ${
                 isActive
                   ? isWeekend ? weekendActiveBg : 'gradient-gold text-primary-foreground'
                   : 'bg-muted text-muted-foreground'
@@ -150,7 +151,7 @@ export default function DayCard({
 
             {/* Overtime main shift column */}
             {showOvertimeColumn && isActive && (
-              <div className={`flex flex-col items-center justify-center w-12 ${divider} gap-0.5 ${notice ? 'pt-1 pb-3' : 'py-1'}`}>
+              <div className={`flex flex-col items-center justify-center w-12 ${divider} gap-0.5 py-1`}>
                 <button
                   onClick={() => handleTimeClick('mainClockIn', mainClockIn)}
                   className={`text-[10px] font-medium ${timeColor(mainClockIn)}`}
@@ -166,32 +167,42 @@ export default function DayCard({
               </div>
             )}
 
-            {/* Clock in/out */}
-            {isActive ? (
-              <>
-                <button
-                  onClick={() => handleTimeClick('clockIn', clockIn)}
-                  className={`flex-1 flex items-center justify-center ${notice ? 'pb-2' : ''} ${divider} text-sm font-semibold ${timeColor(clockIn)} hover:bg-success/5 transition-colors`}
-                >
-                  {formatTime(clockIn)}
-                </button>
-                <button
-                  onClick={() => handleTimeClick('clockOut', clockOut)}
-                  className={`flex-1 flex items-center justify-center ${notice ? 'pb-2' : ''} ${divider} text-sm font-semibold ${timeColor(clockOut)} hover:bg-accent/5 transition-colors`}
-                >
-                  {formatTime(clockOut)}
-                </button>
-              </>
-            ) : (
-              <div className={`flex-1 flex items-center justify-center ${notice ? 'pb-2' : ''} text-[10px] text-muted-foreground ${divider}`}>
-                Chạm ngày để bật
-              </div>
-            )}
+            {/* Time + notice stacked area */}
+            <div className="flex-1 flex flex-col relative">
+              {/* Time row */}
+              {isActive ? (
+                <div className="flex flex-1 items-center">
+                  <button
+                    onClick={() => handleTimeClick('clockIn', clockIn)}
+                    className={`flex-1 flex items-center justify-center ${divider} text-sm font-semibold ${timeColor(clockIn)} hover:bg-success/5 transition-colors h-full`}
+                  >
+                    {formatTime(clockIn)}
+                  </button>
+                  <button
+                    onClick={() => handleTimeClick('clockOut', clockOut)}
+                    className={`flex-1 flex items-center justify-center text-sm font-semibold ${timeColor(clockOut)} hover:bg-accent/5 transition-colors h-full`}
+                  >
+                    {formatTime(clockOut)}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground">
+                  Chạm ngày để bật
+                </div>
+              )}
+
+              {/* Notice bar — bottom half, own container */}
+              {notice && !expandedNote && (
+                <div className="bg-muted/40 px-2 py-0.5 flex items-center">
+                  <p className="text-[10px] text-muted-foreground truncate leading-tight flex-1">{notice}</p>
+                </div>
+              )}
+            </div>
 
             {/* Note trigger */}
             <button
               onClick={() => setExpandedNote(!expandedNote)}
-              className={`w-8 flex items-center justify-center rounded-r-xl transition-colors ${
+              className={`w-8 flex items-center justify-center rounded-r-xl ${divider} transition-colors ${
                 notice ? 'text-primary' : 'text-muted-foreground'
               } hover:bg-muted/30`}
               title={isActive ? 'Ghi chú' : 'Lý do nghỉ'}
@@ -199,13 +210,6 @@ export default function DayCard({
               <MessageSquareText size={14} />
             </button>
           </div>
-
-          {/* Notice overlay — subtle text spanning below time cells */}
-          {notice && !expandedNote && (
-            <div className="absolute bottom-0 left-16 right-0 px-1.5 pb-0.5 pointer-events-none">
-              <p className="text-[9px] text-muted-foreground/60 truncate leading-none">{notice}</p>
-            </div>
-          )}
         </div>
 
         {/* Expanded note input */}
