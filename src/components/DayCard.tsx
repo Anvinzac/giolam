@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getMoonEmoji, getMoonLabel, formatTime } from "@/lib/lunarUtils";
+import { getMoonEmoji, getMoonLabel, formatTime, isAM } from "@/lib/lunarUtils";
 import TimeSlider from "./TimeSlider";
 import AnalogClock from "./AnalogClock";
 
@@ -25,8 +25,7 @@ interface DayCardProps {
   onNoticeChange: (notice: string) => void;
 }
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 export default function DayCard({
   date, isActive, isOffDay, clockIn, clockOut, mainClockIn, mainClockOut,
@@ -34,14 +33,15 @@ export default function DayCard({
   onToggle, onClockInChange, onClockOutChange, onMainClockInChange, onMainClockOutChange, onNoticeChange
 }: DayCardProps) {
   const [editingTime, setEditingTime] = useState<{ field: string; current: string } | null>(null);
+  const [expandedNote, setExpandedNote] = useState(false);
 
-  const dayIndex = (date.getDay() + 6) % 7; // Monday = 0
+  const dayIndex = (date.getDay() + 6) % 7;
   const isWeekend = dayIndex >= 5;
   const moonEmoji = getMoonEmoji(date);
   const moonLabel = getMoonLabel(date);
   const isFullMoon = moonLabel === 'Full Moon';
   const isNewMoon = moonLabel === 'New Moon';
-  const isMoonEve = moonLabel?.startsWith('Eve');
+  const isMoonEve = moonLabel?.startsWith('Chay');
 
   const hasDefaultTime = !!defaultClockIn && !!defaultClockOut;
 
@@ -65,37 +65,44 @@ export default function DayCard({
     setEditingTime(null);
   };
 
-  const dateStr = `${date.getDate()}/${date.getMonth() + 1}`;
+  const dateNum = date.getDate();
+  const divider = "border-r border-border";
+
+  // Time color: bright for AM, dim for PM
+  const timeColor = (t: string | null) => isAM(t) ? 'text-success' : 'text-weekend';
 
   if (isOffDay) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-off-day/50 opacity-60">
-        <div className="w-16 text-center">
-          <div className="text-xs font-medium text-off-day-foreground">{DAYS[dayIndex]}</div>
-          <div className="text-xs text-off-day-foreground">{dateStr}</div>
+      <div className="flex items-stretch rounded-xl bg-off-day/50 opacity-60 overflow-hidden h-10">
+        <div className={`flex items-center justify-center w-12 ${divider}`}>
+          <div className="text-[11px] font-medium text-off-day-foreground leading-tight text-center">
+            <div>{DAYS[dayIndex]}</div>
+            <div className="text-[10px]">{dateNum}</div>
+          </div>
         </div>
-        <div className="flex-1 text-center text-xs text-off-day-foreground">Off Day</div>
-        {moonEmoji && <span className="text-lg opacity-50">{moonEmoji}</span>}
+        <div className="flex-1 flex items-center justify-center text-xs text-off-day-foreground">Nghỉ</div>
       </div>
     );
   }
 
   if (shiftType === 'notice_only') {
     return (
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
-        isWeekend ? 'bg-weekend/10 border border-weekend/20' : 'glass-card'
-      } ${isFullMoon ? 'lunar-glow' : ''} ${isNewMoon ? 'newmoon-glow' : ''}`}>
-        <div className="w-16 text-center">
-          <div className={`text-xs font-semibold ${isWeekend ? 'text-weekend' : 'text-foreground'}`}>{DAYS[dayIndex]}</div>
-          <div className="text-xs text-muted-foreground">{dateStr}</div>
-          {moonEmoji && <span className="text-sm">{moonEmoji}</span>}
+      <div className={`flex items-stretch rounded-xl overflow-hidden h-10 ${
+        isWeekend ? 'bg-weekend/10 border border-weekend/20' : 'bg-card/60 border border-glass-border'
+      }`}>
+        <div className={`flex items-center justify-center w-12 ${divider} relative`}>
+          <div className={`text-[11px] font-semibold leading-tight text-center ${isWeekend ? 'text-weekend' : 'text-foreground'}`}>
+            <div>{DAYS[dayIndex]}</div>
+            <div className="text-[10px] text-muted-foreground">{dateNum}</div>
+          </div>
+          {moonEmoji && <MoonBadge emoji={moonEmoji} isFullMoon={isFullMoon} isNewMoon={isNewMoon} />}
         </div>
         <input
           type="text"
           value={notice}
           onChange={(e) => onNoticeChange(e.target.value)}
-          placeholder="Notice..."
-          className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
+          placeholder="Ghi chú..."
+          className="flex-1 bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground px-2"
         />
       </div>
     );
@@ -103,49 +110,39 @@ export default function DayCard({
 
   return (
     <>
-      <motion.div
-        layout
-        className={`rounded-2xl transition-all overflow-hidden ${
-          isWeekend ? 'bg-weekend/10 border border-weekend/20' : 'glass-card'
-        } ${isFullMoon ? 'lunar-glow' : ''} ${isNewMoon ? 'newmoon-glow' : ''} ${
-          isMoonEve ? 'border-primary/20' : ''
-        }`}
-      >
+      <div className={`rounded-xl overflow-hidden transition-all ${
+        isWeekend ? 'bg-weekend/10 border border-weekend/20' : 'bg-card/60 border border-glass-border'
+      } ${isFullMoon ? 'lunar-glow' : ''} ${isNewMoon ? 'newmoon-glow' : ''} ${
+        isMoonEve ? 'border-primary/30' : ''
+      }`}>
         {/* Main row */}
-        <div className="flex items-center gap-2 px-4 py-3">
+        <div className="flex items-stretch min-h-[40px]">
           {/* Day toggle */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={onToggle}
-            className={`w-16 text-center rounded-xl py-1.5 transition-all ${
+            className={`w-12 flex flex-col items-center justify-center ${divider} transition-all relative ${
               isActive
                 ? isWeekend ? 'bg-weekend text-weekend-foreground' : 'gradient-gold text-primary-foreground'
                 : 'bg-muted text-muted-foreground'
             }`}
           >
-            <div className="text-xs font-semibold">{DAYS[dayIndex]}</div>
-            <div className="text-[10px] opacity-80">{dateStr}</div>
-          </motion.button>
-
-          {/* Moon indicator */}
-          {moonEmoji && (
-            <div className="flex flex-col items-center w-8">
-              <span className={`text-base ${isFullMoon || isNewMoon ? 'animate-glow-pulse' : ''}`}>{moonEmoji}</span>
-            </div>
-          )}
+            <span className="text-[11px] font-bold">{DAYS[dayIndex]}</span>
+            <span className="text-[10px] opacity-80">{dateNum}</span>
+            {moonEmoji && <MoonBadge emoji={moonEmoji} isFullMoon={isFullMoon} isNewMoon={isNewMoon} />}
+          </button>
 
           {/* Overtime main shift column */}
           {showOvertimeColumn && isActive && (
-            <div className="flex flex-col items-center gap-0.5 min-w-[52px]">
+            <div className={`flex flex-col items-center justify-center w-14 ${divider} gap-0.5 py-1`}>
               <button
                 onClick={() => handleTimeClick('mainClockIn', mainClockIn)}
-                className="text-[10px] font-medium text-accent px-1.5 py-0.5 rounded bg-accent/10 hover:bg-accent/20 transition-colors"
+                className={`text-[10px] font-medium px-1 ${timeColor(mainClockIn)}`}
               >
                 {formatTime(mainClockIn)}
               </button>
               <button
                 onClick={() => handleTimeClick('mainClockOut', mainClockOut)}
-                className="text-[10px] font-medium text-accent px-1.5 py-0.5 rounded bg-accent/10 hover:bg-accent/20 transition-colors"
+                className={`text-[10px] font-medium px-1 ${timeColor(mainClockOut)}`}
               >
                 {formatTime(mainClockOut)}
               </button>
@@ -154,46 +151,76 @@ export default function DayCard({
 
           {/* Clock in/out */}
           {isActive ? (
-            <div className="flex-1 flex items-center gap-2 justify-center">
+            <>
               <button
                 onClick={() => handleTimeClick('clockIn', clockIn)}
-                className="text-sm font-medium text-success px-2 py-1 rounded-lg bg-success/10 hover:bg-success/20 transition-colors"
+                className={`flex-1 flex items-center justify-center ${divider} text-sm font-semibold ${timeColor(clockIn)} hover:bg-success/5 transition-colors`}
               >
                 {formatTime(clockIn)}
               </button>
-              <span className="text-muted-foreground text-xs">→</span>
               <button
                 onClick={() => handleTimeClick('clockOut', clockOut)}
-                className="text-sm font-medium text-weekend px-2 py-1 rounded-lg bg-weekend/10 hover:bg-weekend/20 transition-colors"
+                className={`flex-1 flex items-center justify-center ${divider} text-sm font-semibold ${timeColor(clockOut)} hover:bg-weekend/5 transition-colors`}
               >
                 {formatTime(clockOut)}
               </button>
-            </div>
+            </>
           ) : (
-            <div className="flex-1 text-center text-xs text-muted-foreground">Tap day to activate</div>
+            <div className={`flex-1 flex items-center justify-center text-xs text-muted-foreground ${divider}`}>
+              Chạm để bật
+            </div>
           )}
 
-          {/* Notice */}
-          {isActive && (
-            <input
-              type="text"
-              value={notice}
-              onChange={(e) => onNoticeChange(e.target.value)}
-              placeholder="Note"
-              className="w-20 bg-muted/50 rounded-lg px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground border-none outline-none focus:ring-1 focus:ring-primary/30"
-            />
+          {/* Notice cell */}
+          {isActive ? (
+            <button
+              onClick={() => notice ? setExpandedNote(!expandedNote) : setExpandedNote(true)}
+              className="w-20 flex items-center px-1.5 text-left hover:bg-muted/30 transition-colors"
+            >
+              {notice ? (
+                <span className="text-[11px] text-foreground truncate w-full">{notice}</span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground">Ghi chú</span>
+              )}
+            </button>
+          ) : (
+            <div className="w-20" />
           )}
         </div>
 
-        {/* Moon label */}
+        {/* Moon label bar */}
         {moonLabel && (
-          <div className={`px-4 pb-2 text-[10px] font-medium ${
-            isFullMoon ? 'text-fullmoon' : isNewMoon ? 'text-newmoon' : 'text-muted-foreground'
+          <div className={`px-2 py-0.5 text-[10px] font-medium border-t border-border ${
+            isFullMoon ? 'text-fullmoon bg-fullmoon/5' : isNewMoon ? 'text-newmoon bg-newmoon/5' : 'text-primary bg-primary/5'
           }`}>
             {moonLabel}
           </div>
         )}
-      </motion.div>
+
+        {/* Expanded note input */}
+        <AnimatePresence>
+          {expandedNote && isActive && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-border"
+            >
+              <div className="p-2">
+                <input
+                  type="text"
+                  value={notice}
+                  onChange={(e) => onNoticeChange(e.target.value)}
+                  placeholder="Nhập ghi chú..."
+                  autoFocus
+                  onBlur={() => setExpandedNote(false)}
+                  className="w-full bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground border-none outline-none focus:ring-1 focus:ring-primary/30"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Time picker modals */}
       {editingTime && hasDefaultTime && (
@@ -201,16 +228,24 @@ export default function DayCard({
           currentTime={editingTime.current}
           onTimeChange={handleTimeChange}
           onClose={() => setEditingTime(null)}
-          label={editingTime.field.includes('In') ? 'Clock In' : 'Clock Out'}
+          label={editingTime.field.includes('In') ? 'Giờ vào' : 'Giờ ra'}
         />
       )}
       {editingTime && !hasDefaultTime && (
         <AnalogClock
           onTimeSelect={handleTimeChange}
           onClose={() => setEditingTime(null)}
-          label={editingTime.field.includes('In') ? 'Clock In' : 'Clock Out'}
+          label={editingTime.field.includes('In') ? 'Giờ vào' : 'Giờ ra'}
         />
       )}
     </>
+  );
+}
+
+function MoonBadge({ emoji, isFullMoon, isNewMoon }: { emoji: string; isFullMoon: boolean; isNewMoon: boolean }) {
+  return (
+    <span className={`absolute -top-1 -right-1 text-[10px] leading-none ${isFullMoon || isNewMoon ? 'animate-glow-pulse' : ''}`}>
+      {emoji}
+    </span>
   );
 }

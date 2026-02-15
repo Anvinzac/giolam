@@ -82,7 +82,9 @@ export default function TimeSlider({ currentTime, onTimeChange, onClose, label }
                     }
                   `}
                 >
-                  {formatTime(timeToString(seg.hours, seg.minutes))}
+                  <span className={seg.hours < 12 ? 'text-success' : 'text-weekend'}>
+                    {formatTime(timeToString(seg.hours, seg.minutes))}
+                  </span>
                   {isCenter && !isSelected && (
                     <span className="absolute right-3 text-xs text-muted-foreground">current</span>
                   )}
