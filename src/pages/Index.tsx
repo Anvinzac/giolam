@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import LunarHeader from "@/components/LunarHeader";
 import WeekView from "@/components/WeekView";
-import { Check, LogOut, Shield, Clock } from "lucide-react";
+import { Check, LogOut, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 interface ShiftData {
@@ -149,7 +149,24 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <LunarHeader userName={userName} periodLabel={periodLabel} />
+      <LunarHeader
+        userName={userName}
+        periodLabel={periodLabel}
+        defaultClockIn={profile?.default_clock_in || null}
+        defaultClockOut={profile?.default_clock_out || null}
+        useDefaultTime={useDefaultTime}
+        onToggleDefault={() => setUseDefaultTime(!useDefaultTime)}
+        onDefaultClockInChange={async (time) => {
+          if (!userId) return;
+          await supabase.from('profiles').update({ default_clock_in: time }).eq('user_id', userId);
+          setProfile((p: any) => ({ ...p, default_clock_in: time }));
+        }}
+        onDefaultClockOutChange={async (time) => {
+          if (!userId) return;
+          await supabase.from('profiles').update({ default_clock_out: time }).eq('user_id', userId);
+          setProfile((p: any) => ({ ...p, default_clock_out: time }));
+        }}
+      />
 
       <div className="px-4 space-y-4">
         {/* Admin link */}
@@ -193,16 +210,6 @@ export default function Index() {
           >
             <LogOut size={20} />
           </motion.button>
-          {profile?.default_clock_in && (
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setUseDefaultTime(!useDefaultTime)}
-              className={`p-3 rounded-xl transition-colors ${useDefaultTime ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-              title={useDefaultTime ? 'Đang dùng giờ mặc định' : 'Nhập giờ thủ công'}
-            >
-              <Clock size={20} />
-            </motion.button>
-          )}
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleSave}
