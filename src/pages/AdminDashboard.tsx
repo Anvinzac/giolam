@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2 } from "lucide-react";
+import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell } from "lucide-react";
 import { toast } from "sonner";
 import AdminEmployeeList from "@/components/AdminEmployeeList";
+import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -12,7 +13,8 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [periods, setPeriods] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts'>('shifts');
+  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes'>('shifts');
+  const [changesBadge, setChangesBadge] = useState(0);
 
   // New period form
   const [startDate, setStartDate] = useState("");
@@ -31,6 +33,19 @@ export default function AdminDashboard() {
       // Fetch periods
       const { data: p } = await supabase.from('working_periods').select('*').order('start_date', { ascending: false });
       setPeriods(p || []);
+
+      // Compute initial badge count for changes tab
+      if (p && p.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: recentShifts } = await supabase
+          .from('shifts')
+          .select('updated_at')
+          .eq('period_id', p[0].id)
+          .gte('shift_date', today);
+        const lastViewed = getLastViewedTime();
+        const unseen = (recentShifts || []).filter(s => s.updated_at > lastViewed).length;
+        setChangesBadge(unseen);
+      }
 
       // Fetch employees  
       const { data: profiles } = await supabase.from('profiles').select('*');
@@ -84,29 +99,42 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-background pb-8">
       {/* Header */}
       <header className="px-6 pt-12 pb-6">
-        <div className="flex items-center gap-3 mb-4">
+       <div className="flex items-center gap-3 mb-4">
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate("/")} className="p-2 rounded-xl bg-muted text-muted-foreground">
             <ArrowLeft size={18} />
           </motion.button>
-          <h1 className="font-display text-xl font-bold text-gradient-gold">Admin Dashboard</h1>
+          <h1 className="font-display text-xl font-bold text-gradient-gold flex-1">Admin Dashboard</h1>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={async () => { await supabase.auth.signOut(); navigate("/login"); }}
+            className="p-2 rounded-xl bg-muted text-muted-foreground"
+          >
+            <LogOut size={18} />
+          </motion.button>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-2 flex-wrap">
           {[
-            { key: 'shifts' as const, label: 'Bảng công', icon: Table2 },
-            { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar },
-            { key: 'employees' as const, label: 'Nhân viên', icon: Users },
-          ].map(({ key, label, icon: Icon }) => (
+            { key: 'shifts' as const, label: 'Bảng công', icon: Table2, badge: 0 },
+            { key: 'changes' as const, label: 'Thay đổi', icon: Bell, badge: changesBadge },
+            { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar, badge: 0 },
+            { key: 'employees' as const, label: 'Nhân viên', icon: Users, badge: 0 },
+          ].map(({ key, label, icon: Icon, badge }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 tab === key ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
               }`}
             >
               <Icon size={16} />
               {label}
+              {badge > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+                  {badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -121,6 +149,21 @@ export default function AdminDashboard() {
                 periodStart={periods[0].start_date}
                 periodEnd={periods[0].end_date}
                 offDays={periods[0].off_days || []}
+              />
+            ) : (
+              <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+                Chưa có kỳ làm việc nào
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'changes' && (
+          <>
+            {periods.length > 0 ? (
+              <AdminChangesList
+                periodId={periods[0].id}
+                onBadgeCount={setChangesBadge}
               />
             ) : (
               <div className="glass-card p-8 text-center text-muted-foreground text-sm">
