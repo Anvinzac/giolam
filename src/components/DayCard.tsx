@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { MessageSquareText } from "lucide-react";
 import { getMoonEmoji, getMoonLabel, formatTime, isAM } from "@/lib/lunarUtils";
 import TimeSlider from "./TimeSlider";
 import AnalogClock from "./AnalogClock";
@@ -194,7 +195,7 @@ export default function DayCard({
             } hover:bg-muted/30`}
             title={isActive ? 'Ghi chú' : 'Lý do nghỉ'}
           >
-            <span className="text-xs">📝</span>
+            <MessageSquareText size={14} />
           </button>
         </div>
 
