@@ -54,7 +54,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
   const handleConfirm = () => {
     if (selectedHour === null) return;
     onTimeSelect(timeToString(selectedHour, selectedMinute));
-    onClose();
+    // Don't call onClose here - let the parent handle closing/chaining
   };
 
   const size = 320;
@@ -209,34 +209,26 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               );
             })}
 
-            {/* Sun icon at 6AM position (top of the ring, clock 12 = index 0) */}
+            {/* Sun icon inside inner ring at 6 o'clock position */}
             {(() => {
-              // 6 is at clock position index 6 (180° on clock face)
-              // But 6AM is inactive, we want to put it on top of the 6 position visually
-              // 6 on a clock = bottom center. With rotateOffset=-15, 6 is at angle 180-15=165°
-              // Actually the arc for pos=6 is at index=6 in CLOCK_POSITIONS which starts at 12
-              // index 6 → center angle = 6*30 + rotateOffset + 15 = 180 - 15 + 15 = 180°
               const sunAngle = 180; // 6 o'clock position
-              const sunR = innerR + 10; // just outside the inner ring
+              const sunR = (innerInnerR + innerR) / 2; // center of inner ring
               const sunPos = polarToCartesian(cx, cy, sunR, sunAngle);
               return (
                 <g transform={`translate(${sunPos.x}, ${sunPos.y})`}>
-                  {/* Sun glow */}
-                  <circle r="9" fill="hsl(45, 95%, 60%)" opacity="0.3" />
-                  {/* Sun body */}
-                  <circle r="5" fill="hsl(45, 95%, 55%)" />
-                  {/* Sun rays */}
+                  <circle r="7" fill="hsl(45, 95%, 60%)" opacity="0.3" />
+                  <circle r="4" fill="hsl(45, 95%, 55%)" />
                   {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => {
                     const rad = (angle * Math.PI) / 180;
                     return (
                       <line
                         key={angle}
-                        x1={Math.cos(rad) * 6.5}
-                        y1={Math.sin(rad) * 6.5}
-                        x2={Math.cos(rad) * 9}
-                        y2={Math.sin(rad) * 9}
+                        x1={Math.cos(rad) * 5}
+                        y1={Math.sin(rad) * 5}
+                        x2={Math.cos(rad) * 7.5}
+                        y2={Math.sin(rad) * 7.5}
                         stroke="hsl(45, 95%, 55%)"
-                        strokeWidth="1.2"
+                        strokeWidth="1"
                         strokeLinecap="round"
                       />
                     );
