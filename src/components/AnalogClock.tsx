@@ -183,13 +183,13 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                       selected
                         ? 'hsl(45, 90%, 50%)'
                         : active
-                          ? 'hsl(45, 60%, 85%)'
+                          ? 'hsl(45, 40%, 75%)'
                           : 'hsl(var(--off-day))'
                     }
                     stroke="hsl(var(--background))"
                     strokeWidth="1.5"
                     className="transition-colors"
-                    opacity={active ? 1 : 0.15}
+                    opacity={active ? 0.55 : 0.15}
                   />
                   {active && (
                     <text
