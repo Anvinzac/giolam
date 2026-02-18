@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import LunarHeader from "@/components/LunarHeader";
 import WeekView from "@/components/WeekView";
 import { Check, LogOut, Shield } from "lucide-react";
+import RegistrationResult from "@/components/RegistrationResult";
 import { toast } from "sonner";
 
 interface ShiftData {
@@ -202,6 +203,7 @@ export default function Index() {
             periodStart={period.start_date}
             periodEnd={period.end_date}
             onShiftUpdate={handleShiftUpdate}
+            userId={userId!}
           />
         ) : (
           <div className="glass-card p-8 text-center">
@@ -213,23 +215,28 @@ export default function Index() {
 
       {/* Bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-xl border-t border-border">
-        <div className="flex gap-2 max-w-sm mx-auto">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleLogout}
-            className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <LogOut size={20} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleSave}
-            disabled={saving || !period}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-display font-semibold gradient-gold text-primary-foreground disabled:opacity-50"
-          >
-            <Check size={18} />
-            {saving ? "Đang lưu..." : "Xong"}
-          </motion.button>
+        <div className="flex flex-col gap-2 max-w-sm mx-auto">
+          {/* Registration Results */}
+          {userId && <RegistrationResult userId={userId} />}
+
+          <div className="flex gap-2">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <LogOut size={20} />
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleSave}
+              disabled={saving || !period}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-display font-semibold gradient-gold text-primary-foreground disabled:opacity-50"
+            >
+              <Check size={18} />
+              {saving ? "Đang lưu..." : "Xong"}
+            </motion.button>
+          </div>
         </div>
       </div>
     </div>
