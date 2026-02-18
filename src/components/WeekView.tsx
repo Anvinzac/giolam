@@ -70,11 +70,16 @@ export default function WeekView({
     const dateStr = date.toISOString().split('T')[0];
     const existing = getShiftForDate(date);
     const newActive = !existing?.is_active;
-    onShiftUpdate(dateStr, {
-      is_active: newActive,
-      clock_in: newActive && defaultClockIn ? defaultClockIn : existing?.clock_in || null,
-      clock_out: newActive && defaultClockOut ? defaultClockOut : existing?.clock_out || null,
-    });
+    if (newActive) {
+      // When re-activating, clear times if no defaults so clock auto-opens
+      onShiftUpdate(dateStr, {
+        is_active: true,
+        clock_in: defaultClockIn || null,
+        clock_out: defaultClockOut || null,
+      });
+    } else {
+      onShiftUpdate(dateStr, { is_active: false });
+    }
   };
 
   const weekLabel = useMemo(() => {

@@ -160,7 +160,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               );
             })}
 
-            {/* Inner ring — AM */}
+            {/* Inner ring — AM (warm yellow-ish shade) */}
             {CLOCK_POSITIONS.map((pos, i) => {
               const startA = i * segAngle + gap / 2 + rotateOffset;
               const endA = (i + 1) * segAngle - gap / 2 + rotateOffset;
@@ -181,9 +181,9 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                     d={arcSegmentPath(cx, cy, innerInnerR, innerR, startA, endA)}
                     fill={
                       selected
-                        ? 'hsl(var(--success))'
+                        ? 'hsl(45, 90%, 50%)'
                         : active
-                          ? 'hsl(var(--muted))'
+                          ? 'hsl(45, 60%, 85%)'
                           : 'hsl(var(--off-day))'
                     }
                     stroke="hsl(var(--background))"
@@ -200,7 +200,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                       fontSize="12"
                       fontWeight={selected ? '700' : '500'}
                       fontFamily="Space Grotesk"
-                      fill={selected ? 'hsl(var(--success-foreground))' : 'hsl(var(--foreground))'}
+                      fill={selected ? 'hsl(var(--background))' : 'hsl(30, 50%, 30%)'}
                     >
                       {pos}
                     </text>
@@ -208,6 +208,42 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                 </g>
               );
             })}
+
+            {/* Sun icon at 6AM position (top of the ring, clock 12 = index 0) */}
+            {(() => {
+              // 6 is at clock position index 6 (180° on clock face)
+              // But 6AM is inactive, we want to put it on top of the 6 position visually
+              // 6 on a clock = bottom center. With rotateOffset=-15, 6 is at angle 180-15=165°
+              // Actually the arc for pos=6 is at index=6 in CLOCK_POSITIONS which starts at 12
+              // index 6 → center angle = 6*30 + rotateOffset + 15 = 180 - 15 + 15 = 180°
+              const sunAngle = 180; // 6 o'clock position
+              const sunR = innerR + 10; // just outside the inner ring
+              const sunPos = polarToCartesian(cx, cy, sunR, sunAngle);
+              return (
+                <g transform={`translate(${sunPos.x}, ${sunPos.y})`}>
+                  {/* Sun glow */}
+                  <circle r="9" fill="hsl(45, 95%, 60%)" opacity="0.3" />
+                  {/* Sun body */}
+                  <circle r="5" fill="hsl(45, 95%, 55%)" />
+                  {/* Sun rays */}
+                  {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => {
+                    const rad = (angle * Math.PI) / 180;
+                    return (
+                      <line
+                        key={angle}
+                        x1={Math.cos(rad) * 6.5}
+                        y1={Math.sin(rad) * 6.5}
+                        x2={Math.cos(rad) * 9}
+                        y2={Math.sin(rad) * 9}
+                        stroke="hsl(45, 95%, 55%)"
+                        strokeWidth="1.2"
+                        strokeLinecap="round"
+                      />
+                    );
+                  })}
+                </g>
+              );
+            })()}
 
             {/* Center */}
             <circle cx={cx} cy={cy} r={innerInnerR - 4} fill="hsl(var(--background))" opacity={0.9} />

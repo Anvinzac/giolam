@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquareText } from "lucide-react";
 import { getMoonEmoji, getMoonLabel, formatTime, isAM } from "@/lib/lunarUtils";
@@ -35,18 +35,36 @@ export default function DayCard({
 }: DayCardProps) {
   const [editingTime, setEditingTime] = useState<{ field: string; current: string } | null>(null);
   const [expandedNote, setExpandedNote] = useState(false);
+  const [autoClockPhase, setAutoClockPhase] = useState<'clockIn' | 'clockOut' | null>(null);
+  const prevActiveRef = useRef(isActive);
+
+  const hasDefaultTime = !!defaultClockIn && !!defaultClockOut;
+
+  // When toggling from inactive→active without defaults, auto-open clock for clockIn
+  useEffect(() => {
+    if (isActive && !prevActiveRef.current && !hasDefaultTime && !isOffDay) {
+      setAutoClockPhase('clockIn');
+    }
+    prevActiveRef.current = isActive;
+  }, [isActive, hasDefaultTime, isOffDay]);
+
+  // Show clock based on autoClockPhase
+  useEffect(() => {
+    if (autoClockPhase === 'clockIn') {
+      setEditingTime({ field: 'clockIn', current: '08:00' });
+    } else if (autoClockPhase === 'clockOut') {
+      setEditingTime({ field: 'clockOut', current: '17:00' });
+    }
+  }, [autoClockPhase]);
 
   const dayIndex = (date.getDay() + 6) % 7;
   const isSaturday = dayIndex === 5;
   const isSunday = dayIndex === 6;
   const isWeekend = isSaturday || isSunday;
-  const moonEmoji = getMoonEmoji(date);
   const moonLabel = getMoonLabel(date);
   const isFullMoon = moonLabel === 'Full Moon';
   const isNewMoon = moonLabel === 'New Moon';
   const isMoonEve = moonLabel?.startsWith('Chay');
-
-  const hasDefaultTime = !!defaultClockIn && !!defaultClockOut;
 
   const handleTimeClick = (field: string, current: string | null) => {
     if (isOffDay || !isActive) return;
@@ -59,31 +77,39 @@ export default function DayCard({
 
   const handleTimeChange = (time: string) => {
     if (!editingTime) return;
-    switch (editingTime.field) {
+    const field = editingTime.field;
+    switch (field) {
       case 'clockIn': onClockInChange(time); break;
       case 'clockOut': onClockOutChange(time); break;
       case 'mainClockIn': onMainClockInChange?.(time); break;
       case 'mainClockOut': onMainClockOutChange?.(time); break;
     }
+
+    // If we're in auto-chain mode and just finished clockIn, move to clockOut
+    if (autoClockPhase === 'clockIn' && field === 'clockIn') {
+      setAutoClockPhase('clockOut');
+      return; // Don't close - useEffect will open clockOut
+    }
+
+    // Done
+    setAutoClockPhase(null);
+    setEditingTime(null);
+  };
+
+  const handleClockClose = () => {
+    setAutoClockPhase(null);
     setEditingTime(null);
   };
 
   const dateNum = date.getDate();
   const divider = "border-r border-border";
-
   const timeColor = (t: string | null) => isAM(t) ? 'text-success' : 'text-accent';
 
-  // Weekend-aware colors
   const weekendBg = isSunday ? 'bg-sunday/10 border border-sunday/20' : 'bg-saturday/10 border border-saturday/20';
   const weekendText = isSunday ? 'text-sunday' : 'text-saturday';
   const weekendActiveBg = isSunday ? 'bg-sunday text-sunday-foreground' : 'bg-saturday text-saturday-foreground';
 
-
-  const moonLabelEl = moonLabel ? (
-    <span className={`text-[7px] font-semibold leading-none mt-0.5 block ${
-      isFullMoon ? 'text-fullmoon' : isNewMoon ? 'text-newmoon' : 'text-primary'
-    }`}>{moonLabel}</span>
-  ) : null;
+  const clockLabel = editingTime?.field.includes('In') ? 'Giờ vào' : 'Giờ ra';
 
   if (isOffDay) {
     return (
@@ -125,9 +151,7 @@ export default function DayCard({
         isMoonEve ? 'border-primary/30' : ''
       }`}>
         <div className="relative overflow-hidden">
-          {/* Main row */}
           <div className={`flex items-stretch ${(notice || moonLabel) && !expandedNote ? 'min-h-[52px]' : 'min-h-[36px]'}`}>
-            {/* Day toggle */}
             <button
               onClick={onToggle}
               className={`w-16 flex flex-col items-center justify-center py-1 rounded-l-xl ${divider} transition-all ${
@@ -138,10 +162,8 @@ export default function DayCard({
             >
               <span className="text-sm font-bold leading-none">{DAYS[dayIndex]}</span>
               <span className="text-xs opacity-80">{dateNum}</span>
-              
             </button>
 
-            {/* Overtime main shift column */}
             {showOvertimeColumn && isActive && (
               <div className={`flex flex-col items-center justify-center w-12 ${divider} gap-0.5 py-1`}>
                 <button
@@ -159,9 +181,7 @@ export default function DayCard({
               </div>
             )}
 
-            {/* Time + notice stacked area */}
             <div className="flex-1 flex flex-col relative">
-              {/* Time row */}
               {isActive ? (
                 <div className="flex flex-1 items-center">
                   <button
@@ -183,7 +203,6 @@ export default function DayCard({
                 </div>
               )}
 
-              {/* Notice / moon label bar */}
               {(notice || moonLabel) && !expandedNote && (
                 <div className="px-2 py-0.5 flex items-center justify-center gap-1">
                   {moonLabel && (
@@ -199,7 +218,6 @@ export default function DayCard({
               )}
             </div>
 
-            {/* Note trigger */}
             <button
               onClick={() => setExpandedNote(!expandedNote)}
               className={`w-8 flex items-center justify-center rounded-r-xl ${divider} transition-colors ${
@@ -212,7 +230,6 @@ export default function DayCard({
           </div>
         </div>
 
-        {/* Expanded note input */}
         <AnimatePresence>
           {expandedNote && (
             <motion.div
@@ -242,15 +259,15 @@ export default function DayCard({
         <TimeSlider
           currentTime={editingTime.current}
           onTimeChange={handleTimeChange}
-          onClose={() => setEditingTime(null)}
-          label={editingTime.field.includes('In') ? 'Giờ vào' : 'Giờ ra'}
+          onClose={handleClockClose}
+          label={clockLabel}
         />
       )}
       {editingTime && !hasDefaultTime && (
         <AnalogClock
           onTimeSelect={handleTimeChange}
-          onClose={() => setEditingTime(null)}
-          label={editingTime.field.includes('In') ? 'Giờ vào' : 'Giờ ra'}
+          onClose={handleClockClose}
+          label={clockLabel}
         />
       )}
     </>
