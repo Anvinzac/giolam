@@ -265,6 +265,7 @@ export default function DayCard({
       )}
       {editingTime && !hasDefaultTime && (
         <AnalogClock
+          key={editingTime.field}
           onTimeSelect={handleTimeChange}
           onClose={handleClockClose}
           label={clockLabel}
