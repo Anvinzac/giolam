@@ -114,6 +114,54 @@ export type Database = {
           },
         ]
       }
+      shift_registrations: {
+        Row: {
+          admin_clock_in: string | null
+          admin_clock_out: string | null
+          admin_note: string | null
+          clock_in: string | null
+          clock_out: string | null
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shift_date: string
+          status: Database["public"]["Enums"]["registration_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_clock_in?: string | null
+          admin_clock_out?: string | null
+          admin_note?: string | null
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shift_date: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_clock_in?: string | null
+          admin_clock_out?: string | null
+          admin_note?: string | null
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shift_date?: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       shifts: {
         Row: {
           clock_in: string | null
@@ -233,6 +281,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "employee"
+      registration_status: "pending" | "approved" | "rejected" | "modified"
       shift_type: "basic" | "overtime" | "notice_only"
     }
     CompositeTypes: {
@@ -362,6 +411,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "employee"],
+      registration_status: ["pending", "approved", "rejected", "modified"],
       shift_type: ["basic", "overtime", "notice_only"],
     },
   },

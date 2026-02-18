@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell } from "
 import { toast } from "sonner";
 import AdminEmployeeList from "@/components/AdminEmployeeList";
 import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
+import AdminRegistrations from "@/components/AdminRegistrations";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -13,8 +14,9 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [periods, setPeriods] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes'>('shifts');
+  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations'>('shifts');
   const [changesBadge, setChangesBadge] = useState(0);
+  const [regBadge, setRegBadge] = useState(0);
 
   // New period form
   const [startDate, setStartDate] = useState("");
@@ -117,6 +119,7 @@ export default function AdminDashboard() {
         <div className="flex gap-2 flex-wrap">
           {[
             { key: 'shifts' as const, label: 'Bảng công', icon: Table2, badge: 0 },
+            { key: 'registrations' as const, label: 'Đăng ký', icon: Calendar, badge: regBadge },
             { key: 'changes' as const, label: 'Thay đổi', icon: Bell, badge: changesBadge },
             { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar, badge: 0 },
             { key: 'employees' as const, label: 'Nhân viên', icon: Users, badge: 0 },
@@ -156,6 +159,10 @@ export default function AdminDashboard() {
               </div>
             )}
           </>
+        )}
+
+        {tab === 'registrations' && (
+          <AdminRegistrations onBadgeCount={setRegBadge} />
         )}
 
         {tab === 'changes' && (
