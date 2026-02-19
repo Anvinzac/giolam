@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import AdminEmployeeList from "@/components/AdminEmployeeList";
 import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
 import AdminRegistrations from "@/components/AdminRegistrations";
+import AdminEmployeeManager from "@/components/AdminEmployeeManager";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -245,25 +246,7 @@ export default function AdminDashboard() {
         )}
 
         {tab === 'employees' && (
-          <>
-            {employees.map((emp) => (
-              <div key={emp.id} className="glass-card p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-foreground">{emp.full_name || 'Unnamed'}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Type: {emp.shift_type} | Default: {emp.default_clock_in || 'None'} – {emp.default_clock_out || 'None'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {employees.length === 0 && (
-              <div className="glass-card p-8 text-center text-muted-foreground text-sm">
-                No employees registered yet
-              </div>
-            )}
-          </>
+          <AdminEmployeeManager />
         )}
       </div>
     </div>
