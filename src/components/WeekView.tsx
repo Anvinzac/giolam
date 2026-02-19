@@ -240,7 +240,7 @@ export default function WeekView({
   const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pb-32">
       {/* Week navigation */}
       <div className="flex items-center justify-between px-2">
         <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigateWeek(-1)} className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors">
