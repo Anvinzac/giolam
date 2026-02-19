@@ -199,8 +199,19 @@ export default function WeekView({
 
     setSubmittingReg(true);
     try {
-      // Batch upsert all at once instead of one-by-one
-      const rows = valid.map(reg => ({
+      // Filter out dates that already have non-pending registrations (RLS blocks updates on those)
+      const nonPendingDates = new Set(
+        existingRegs.filter(r => r.status !== 'pending').map(r => r.shift_date)
+      );
+      const submittable = valid.filter(r => !nonPendingDates.has(r.date));
+
+      if (submittable.length === 0) {
+        toast.error("Các ngày đã chọn đều đã được duyệt/từ chối");
+        setSubmittingReg(false);
+        return;
+      }
+
+      const rows = submittable.map(reg => ({
         user_id: userId,
         shift_date: reg.date,
         clock_in: reg.clockIn,
@@ -215,7 +226,8 @@ export default function WeekView({
 
       if (error) throw error;
 
-      toast.success(`Đã đăng ký ${valid.length} ngày`);
+      const skipped = valid.length - submittable.length;
+      toast.success(`Đã đăng ký ${submittable.length} ngày${skipped > 0 ? ` (${skipped} ngày đã xử lý, bỏ qua)` : ''}`);
       setRegDays([]);
       // Refresh existing regs
       const dates = weekDates.map(d => d.toISOString().split('T')[0]);
