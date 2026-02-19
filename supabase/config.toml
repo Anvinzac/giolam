@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.seed-shifts]
 verify_jwt = false
+
+[functions.manage-employee]
+verify_jwt = false
