@@ -24,6 +24,7 @@ const STATUS_CONFIG: Record<string, { icon: typeof Clock; label: string; color: 
   approved: { icon: CheckCircle2, label: 'Đã duyệt', color: 'text-success', bg: 'bg-success/10' },
   rejected: { icon: XCircle, label: 'Từ chối', color: 'text-destructive', bg: 'bg-destructive/10' },
   modified: { icon: PenLine, label: 'Đã sửa', color: 'text-accent', bg: 'bg-accent/10' },
+  unapproved: { icon: XCircle, label: 'Hết hạn', color: 'text-muted-foreground', bg: 'bg-muted/30' },
 };
 
 const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];

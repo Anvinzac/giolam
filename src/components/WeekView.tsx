@@ -53,6 +53,7 @@ const STATUS_ICON: Record<string, { icon: React.ReactNode; label: string; color:
   approved: { icon: <Check size={12} />, label: 'Đã duyệt', color: 'text-success bg-success/10 border-success/30' },
   rejected: { icon: <X size={12} />, label: 'Từ chối', color: 'text-destructive bg-destructive/10 border-destructive/30' },
   modified: { icon: <Pencil size={12} />, label: 'Đã sửa', color: 'text-accent bg-accent/10 border-accent/30' },
+  unapproved: { icon: <X size={12} />, label: 'Hết hạn', color: 'text-muted-foreground bg-muted/30 border-muted-foreground/20' },
 };
 
 export default function WeekView({
@@ -199,11 +200,11 @@ export default function WeekView({
 
     setSubmittingReg(true);
     try {
-      // Filter out dates that already have non-pending registrations (RLS blocks updates on those)
-      const nonPendingDates = new Set(
-        existingRegs.filter(r => r.status !== 'pending').map(r => r.shift_date)
+      // Filter out dates that already have non-pending/non-unapproved registrations (RLS blocks updates on those)
+      const nonResubmittableDates = new Set(
+        existingRegs.filter(r => r.status !== 'pending' && r.status !== 'unapproved').map(r => r.shift_date)
       );
-      const submittable = valid.filter(r => !nonPendingDates.has(r.date));
+      const submittable = valid.filter(r => !nonResubmittableDates.has(r.date));
 
       if (submittable.length === 0) {
         toast.error("Các ngày đã chọn đều đã được duyệt/từ chối");
@@ -295,7 +296,8 @@ export default function WeekView({
             const regDay = regDays.find(r => r.date === dateStr);
             const isWeekend = dayIndex >= 5;
             const existingReg = existingRegs.find(r => r.shift_date === dateStr);
-            const statusInfo = existingReg ? STATUS_ICON[existingReg.status] : null;
+            const visibleReg = existingReg && existingReg.status !== 'unapproved' ? existingReg : null;
+            const statusInfo = visibleReg ? STATUS_ICON[visibleReg.status] : null;
 
             if (off) {
               return (
@@ -355,9 +357,9 @@ export default function WeekView({
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusInfo.color}`}>
                           {statusInfo.icon}
                           {statusInfo.label}
-                          {existingReg && existingReg.clock_in && (
+                          {visibleReg && visibleReg.clock_in && (
                             <span className="ml-1 opacity-70">
-                              {existingReg.clock_in.slice(0, 5)}–{existingReg.clock_out?.slice(0, 5)}
+                              {visibleReg.clock_in.slice(0, 5)}–{visibleReg.clock_out?.slice(0, 5)}
                             </span>
                           )}
                         </span>
