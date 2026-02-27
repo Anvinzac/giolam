@@ -271,6 +271,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_past_pending_registrations: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
