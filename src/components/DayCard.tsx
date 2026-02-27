@@ -198,9 +198,9 @@ export default function DayCard({
                   </button>
                 </div>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground">
+              <button onClick={onToggle} className="flex-1 flex items-center justify-center text-[10px] text-muted-foreground cursor-pointer">
                   Chạm ngày để bật
-                </div>
+                </button>
               )}
 
               {(notice || moonLabel) && !expandedNote && (
