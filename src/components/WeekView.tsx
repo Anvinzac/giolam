@@ -373,10 +373,11 @@ export default function WeekView({
                   {!regDay && (
                     <button
                       onClick={() => toggleRegOffDay(dateStr)}
-                      className="w-10 flex items-center justify-center border-l border-border text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+                      className="min-w-[72px] px-2 flex items-center justify-center gap-1 border-l border-border text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
                       title="Đăng ký nghỉ"
                     >
                       <CalendarOff size={14} />
+                      <span className="text-[10px] font-medium">Báo nghỉ</span>
                     </button>
                   )}
                 </div>
