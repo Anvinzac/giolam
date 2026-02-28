@@ -198,9 +198,9 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                       textAnchor="middle"
                       dominantBaseline="central"
                       fontSize="12"
-                      fontWeight={selected ? '700' : '500'}
+                      fontWeight={selected ? '700' : '600'}
                       fontFamily="Space Grotesk"
-                      fill={selected ? 'hsl(var(--background))' : 'hsl(30, 40%, 18%)'}
+                      fill={selected ? 'hsl(var(--background))' : 'hsl(0, 0%, 30%)'}
                     >
                       {pos}
                     </text>
@@ -259,9 +259,9 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                 y={cy + 16}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize="11"
-                fontWeight="500"
-                fill="hsl(var(--muted-foreground))"
+                fontSize="12"
+                fontWeight="700"
+                fill="hsl(var(--foreground))"
                 fontFamily="Inter"
               >
                 {periodLabel}
