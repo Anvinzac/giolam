@@ -151,7 +151,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                       fontSize="13"
                       fontWeight={selected ? '700' : '500'}
                       fontFamily="Space Grotesk"
-                      fill={selected ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))'}
+                      fill={selected ? 'hsl(var(--primary-foreground))' : 'hsl(220, 20%, 85%)'}
                     >
                       {pos}
                     </text>
@@ -200,7 +200,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
                       fontSize="12"
                       fontWeight={selected ? '700' : '500'}
                       fontFamily="Space Grotesk"
-                      fill={selected ? 'hsl(var(--background))' : 'hsl(30, 50%, 30%)'}
+                      fill={selected ? 'hsl(var(--background))' : 'hsl(30, 40%, 18%)'}
                     >
                       {pos}
                     </text>
