@@ -36,6 +36,7 @@ interface RegistrationDay {
   clockIn: string | null;
   clockOut: string | null;
   registered: boolean;
+  reason?: string;
 }
 
 interface ExistingReg {
@@ -346,9 +347,21 @@ export default function WeekView({
                         </button>
                       </div>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground">
-                        <CalendarOff size={14} className="mr-1" />
-                        Đăng ký nghỉ
+                      <div className="flex-1 flex items-center gap-2 px-2">
+                        <CalendarOff size={14} className="text-destructive shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Lý do nghỉ..."
+                          value={regDay.reason || ''}
+                          onChange={(e) => setRegDays(prev => prev.map(r => r.date === dateStr ? { ...r, reason: e.target.value } : r))}
+                          className="flex-1 min-w-0 bg-transparent border-b border-muted-foreground/30 text-xs py-1 placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent"
+                        />
+                        <button
+                          onClick={() => setRegDays(prev => prev.filter(r => r.date !== dateStr))}
+                          className="shrink-0 px-2 py-1 rounded-md text-[10px] font-semibold text-warning hover:bg-warning/10 transition-colors"
+                        >
+                          Hoàn tác
+                        </button>
                       </div>
                     )
                   ) : (
