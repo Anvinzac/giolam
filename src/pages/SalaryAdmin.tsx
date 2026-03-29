@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -94,6 +94,7 @@ export default function SalaryAdmin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<'rates' | 'employees'>('employees');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [lightMode, setLightMode] = useState(false);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -280,6 +281,11 @@ export default function SalaryAdmin() {
                  />
               )}
             </div>
+            <motion.button whileTap={{ scale: 0.9 }}
+              onClick={() => setLightMode(!lightMode)}
+              className={`p-2 rounded-xl ml-2 ${lightMode ? 'bg-amber-500/20 text-amber-400' : 'bg-muted text-muted-foreground'}`}>
+              {lightMode ? <Sun size={20} /> : <Moon size={20} />}
+            </motion.button>
             {!selectedEmployee && (
               <motion.button whileTap={{ scale: 0.9 }}
                 onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
@@ -396,6 +402,7 @@ export default function SalaryAdmin() {
                 onAllowanceUpdate={updateAllowance}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
+                lightMode={lightMode}
               />
             )}
 
@@ -418,6 +425,7 @@ export default function SalaryAdmin() {
                 onHourlyRateChange={handleHourlyRateChange}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
+                lightMode={lightMode}
               />
             )}
 
@@ -438,6 +446,7 @@ export default function SalaryAdmin() {
                 onCustomDateChange={() => {}} // TODO: store custom dates
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
+                lightMode={lightMode}
               />
             )}
 

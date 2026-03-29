@@ -28,6 +28,7 @@ interface SalaryTableTypeBProps {
   onGlobalClockInChange: (time: string) => void;
   breakdown: SalaryBreakdown | null;
   isPreview?: boolean;
+  lightMode?: boolean;
 }
 
 export default function SalaryTableTypeB({
@@ -38,6 +39,7 @@ export default function SalaryTableTypeB({
   globalClockIn, onGlobalClockInChange,
   breakdown,
   isPreview = false,
+  lightMode = false,
 }: SalaryTableTypeBProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);
@@ -95,16 +97,26 @@ export default function SalaryTableTypeB({
     setEditingCell(null);
   };
 
+  const tableCardClass = lightMode
+    ? 'bg-white/50 border border-gray-200/50 backdrop-blur-sm'
+    : 'glass-card';
+  const headerBgClass = lightMode
+    ? 'bg-gray-100/40 text-gray-600'
+    : 'bg-muted/30 text-muted-foreground';
+  const rowBgClass = (isOdd: boolean) => lightMode
+    ? (isOdd ? 'bg-blue-50/30' : 'bg-white/20')
+    : (isOdd ? 'bg-muted/30' : '');
+
   const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
-    <div className="glass-card overflow-hidden">
-      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold">
+    <div className={tableCardClass + ' overflow-hidden'}>
+      <div className={`px-3 py-2 ${lightMode ? 'bg-gray-100/40 text-gray-600' : 'bg-muted/20 text-muted-foreground'} text-[11px] font-semibold`}>
         {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
       </div>
 
       <div className="overflow-x-auto w-full">
         <div className="min-w-[550px]">
           {/* Column headers */}
-          <div className="grid grid-cols-[80px_1fr_65px_50px_50px_85px_95px] gap-2 px-3 py-3.5 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className={`grid grid-cols-[80px_1fr_65px_50px_50px_85px_95px] gap-2 px-3 py-3.5 ${headerBgClass} text-xs font-semibold uppercase tracking-wider`}>
             <span>Ngày</span>
             <span>Ghi chú</span>
             <span className="text-right">Ra</span>
@@ -124,8 +136,8 @@ export default function SalaryTableTypeB({
 
           return (
             <div key={cellKey} className={`grid grid-cols-[80px_1fr_65px_50px_50px_85px_95px] gap-2 px-3 py-4 items-center text-sm ${
-              e.is_day_off ? 'opacity-50 bg-muted/10' : ''
-            } ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}>
+              e.is_day_off ? (lightMode ? 'opacity-60 bg-red-50/30' : 'opacity-50 bg-muted/10') : ''
+            } ${rowBgClass(idx % 2 !== 0)}`}>
               {/* Date */}
               <div className="flex items-center gap-1">
                 {!isPreview && (
