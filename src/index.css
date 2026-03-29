@@ -66,24 +66,24 @@
   }
 
   html.light {
-    /* Light mode */
-    --background: 0 0% 98%;
+    /* Light mode - Cyan to Lime gradient palette */
+    --background: 165 60% 92%;
     --foreground: 225 25% 18%;
 
-    --card: 0 0% 100%;
+    --card: 170 65% 95%;
     --card-foreground: 225 25% 18%;
 
-    --popover: 0 0% 100%;
+    --popover: 165 60% 94%;
     --popover-foreground: 225 25% 18%;
 
     --primary: 42 90% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 225 18% 90%;
+    --secondary: 90 70% 80%;
     --secondary-foreground: 225 25% 18%;
 
-    --muted: 225 15% 88%;
-    --muted-foreground: 225 10% 45%;
+    --muted: 160 40% 75%;
+    --muted-foreground: 225 25% 28%;
 
     --accent: 195 85% 50%;
     --accent-foreground: 0 0% 100%;
@@ -91,35 +91,35 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 225 15% 92%;
-    --input: 225 15% 92%;
+    --border: 165 50% 85%;
+    --input: 165 50% 85%;
     --ring: 42 90% 55%;
 
     /* Custom LunarFlow tokens for light */
     --lunar-gold: 42 90% 55%;
     --lunar-gold-glow: 42 100% 70%;
-    --lunar-navy: 225 35% 35%;
-    --lunar-deep: 225 40% 45%;
+    --lunar-navy: 180 35% 35%;
+    --lunar-deep: 180 40% 45%;
     --saturday: 175 70% 40%;
     --saturday-foreground: 175 70% 8%;
     --sunday: 280 60% 50%;
     --sunday-foreground: 280 60% 8%;
     --fullmoon-glow: 42 100% 60%;
-    --newmoon-glow: 260 80% 55%;
-    --off-day: 225 10% 85%;
-    --off-day-foreground: 225 10% 20%;
-    --glass: 0 0% 100%;
-    --glass-border: 225 15% 88%;
-    --success: 155 70% 40%;
-    --success-foreground: 155 70% 5%;
+    --newmoon-glow: 90 80% 55%;
+    --off-day: 10 70% 80%;
+    --off-day-foreground: 0 80% 25%;
+    --glass: 170 65% 95%;
+    --glass-border: 165 50% 85%;
+    --success: 90 70% 45%;
+    --success-foreground: 90 70% 8%;
 
-    --sidebar-background: 225 25% 96%;
+    --sidebar-background: 170 50% 90%;
     --sidebar-foreground: 225 25% 18%;
     --sidebar-primary: 42 90% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 225 18% 90%;
+    --sidebar-accent: 90 70% 80%;
     --sidebar-accent-foreground: 225 25% 18%;
-    --sidebar-border: 225 15% 92%;
+    --sidebar-border: 165 50% 85%;
     --sidebar-ring: 42 90% 55%;
   }
 }
@@ -145,7 +145,7 @@
   }
 
   html.light .glass-card {
-    @apply bg-white/70 border border-gray-200 shadow-sm;
+    @apply bg-gradient-to-br from-cyan-100/60 to-lime-100/40 border border-cyan-200/50 shadow-sm backdrop-blur-sm;
   }
 
   .glass-card-hover {
@@ -153,7 +153,7 @@
   }
 
   html.light .glass-card-hover {
-    @apply glass-card hover:bg-white/90 hover:border-primary/30 hover:shadow-md hover:shadow-primary/10;
+    @apply glass-card hover:from-cyan-100/80 hover:to-lime-100/60 hover:border-cyan-300/70 hover:shadow-md hover:shadow-cyan-200/50;
   }
 
   .lunar-glow {
