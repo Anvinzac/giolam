@@ -95,7 +95,7 @@ export default function SalaryTableTypeA({
         <div className="overflow-x-auto w-full">
           <div className="min-w-[500px]">
             {/* Column headers */}
-            <div className="grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-4 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="grid grid-cols-[85px_2.5fr_65px_95px_100px] gap-1.5 px-3 py-4 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <span>Ngày</span>
               <span>Ghi chú</span>
               <span className="text-right">Tỷ lệ</span>
@@ -113,7 +113,7 @@ export default function SalaryTableTypeA({
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-4 items-center text-base ${
+                  className={`grid grid-cols-[85px_2.5fr_65px_95px_100px] gap-1.5 px-3 py-4 items-center text-base ${
                     isOff ? 'bg-muted/15 opacity-75' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8' : ''} ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}
                 >
@@ -127,13 +127,13 @@ export default function SalaryTableTypeA({
                     <input
                       value={editNote}
                       onChange={ev => setEditNote(ev.target.value)}
-                      className="px-2 py-1 rounded bg-background border border-border text-sm min-w-0"
+                      className="px-2 py-1 rounded bg-background border border-border text-sm min-w-0 w-full"
                       autoFocus
                     />
                   ) : (
                     <button
                       onClick={() => !isPreview && startEditRow(e)}
-                      className={`text-left text-sm text-muted-foreground truncate transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
+                      className={`text-left text-sm text-muted-foreground break-words transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
                       {e.note || rateDesc || (isOff ? 'Nghỉ' : '—')}
                     </button>

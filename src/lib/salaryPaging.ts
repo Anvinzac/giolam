@@ -1,11 +1,8 @@
 import { SalaryEntry, SalaryPage } from '@/types/salary';
 
 /**
- * Split entries into pages following these rules:
- * - If start date is Friday(5)-Sunday(0): first page extends to next Sunday (7-10 days)
- * - If start date is Monday(1)-Thursday(4): first page to nearest Sunday (<7 days)
- * - Middle pages: Monday to Sunday (7 days)
- * - Last page absorbs remainder if it would be less than 7 days
+ * Split entries into fixed 10-day pages for balance across the month.
+ * For a 30-day month: 3 pages of 10 days each
  */
 export function splitIntoPages(
   startDate: string,
@@ -24,62 +21,16 @@ export function splitIntoPages(
 
   if (allDates.length === 0) return pages;
 
-  // Determine first page boundary
-  const startDay = start.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  let firstPageEndIdx: number;
-
-  if (startDay === 5 || startDay === 6 || startDay === 0) {
-    // Friday-Sunday: extend to NEXT Sunday
-    // Find next Sunday after at least 7 days
-    const daysToNextSunday = startDay === 0 ? 7 : (7 - startDay + 7);
-    firstPageEndIdx = Math.min(daysToNextSunday, allDates.length - 1);
-  } else {
-    // Monday-Thursday: end at nearest Sunday (< 7 days)
-    const daysToSunday = startDay === 0 ? 0 : (7 - startDay);
-    firstPageEndIdx = Math.min(daysToSunday, allDates.length - 1);
-  }
-
-  // Build pages
-  let currentIdx = 0;
-
-  // First page
-  const firstPageDates = allDates.slice(0, firstPageEndIdx + 1);
-  if (firstPageDates.length > 0) {
-    pages.push({
-      pageIndex: pages.length,
-      startDate: firstPageDates[0],
-      endDate: firstPageDates[firstPageDates.length - 1],
-      entries: getEntriesForDates(firstPageDates, entries),
-    });
-    currentIdx = firstPageEndIdx + 1;
-  }
-
-  // Middle + last pages (7-day chunks, Mon-Sun)
-  while (currentIdx < allDates.length) {
-    const remaining = allDates.length - currentIdx;
-
-    // If remaining is <= 11 days and we already have pages, make it the last page
-    if (remaining <= 11 && pages.length > 0) {
-      const lastPageDates = allDates.slice(currentIdx);
-      pages.push({
-        pageIndex: pages.length,
-        startDate: lastPageDates[0],
-        endDate: lastPageDates[lastPageDates.length - 1],
-        entries: getEntriesForDates(lastPageDates, entries),
-      });
-      break;
-    }
-
-    // Standard 7-day page
-    const pageEndIdx = Math.min(currentIdx + 6, allDates.length - 1);
-    const pageDates = allDates.slice(currentIdx, pageEndIdx + 1);
+  // Split into 10-day pages
+  const DAYS_PER_PAGE = 10;
+  for (let i = 0; i < allDates.length; i += DAYS_PER_PAGE) {
+    const pageDates = allDates.slice(i, i + DAYS_PER_PAGE);
     pages.push({
       pageIndex: pages.length,
       startDate: pageDates[0],
       endDate: pageDates[pageDates.length - 1],
       entries: getEntriesForDates(pageDates, entries),
     });
-    currentIdx = pageEndIdx + 1;
   }
 
   return pages;
