@@ -14,8 +14,8 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
 
     const fetch = async () => {
       setLoading(true);
-      const { data, error } = await (supabase
-        .from('salary_entries' as any) as any)
+      const { data, error } = await supabase
+        .from('salary_entries')
         .select('*')
         .eq('user_id', userId)
         .eq('period_id', periodId)
@@ -41,8 +41,8 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
       const sortOrder = parseInt(sortOrderStr);
 
       // Try upsert
-      const { error } = await (supabase
-        .from('salary_entries' as any) as any)
+      const { error } = await supabase
+        .from('salary_entries')
         .upsert(
           {
             user_id: userId!,
@@ -123,8 +123,8 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
       total_daily_wage: 0,
     };
 
-    const { data, error } = await (supabase
-      .from('salary_entries' as any) as any)
+    const { data, error } = await supabase
+      .from('salary_entries')
       .insert(newEntry)
       .select()
       .single();
@@ -140,7 +140,7 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
 
   const removeEntry = useCallback(async (id: string) => {
     setEntries(prev => prev.filter(e => e.id !== id));
-    const { error } = await (supabase.from('salary_entries' as any) as any).delete().eq('id', id);
+    const { error } = await supabase.from('salary_entries').delete().eq('id', id);
     if (error) console.error('Failed to remove entry:', error);
   }, []);
 

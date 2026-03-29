@@ -11,8 +11,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
 
     const fetch = async () => {
       setLoading(true);
-      const { data } = await (supabase
-        .from('salary_records' as any) as any)
+      const { data } = await supabase
+        .from('salary_records')
         .select('*')
         .eq('user_id', userId)
         .eq('period_id', periodId)
@@ -22,8 +22,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
         setRecord(data as unknown as SalaryRecord);
       } else {
         // Create draft
-        const { data: created } = await (supabase
-          .from('salary_records' as any) as any)
+        const { data: created } = await supabase
+          .from('salary_records')
           .insert({
             user_id: userId,
             period_id: periodId,
@@ -45,8 +45,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     breakdown: SalaryBreakdown
   ) => {
     if (!userId || !periodId) return;
-    const { data } = await (supabase
-      .from('salary_records' as any) as any)
+    const { data } = await supabase
+      .from('salary_records')
       .upsert(
         {
           user_id: userId,
@@ -67,8 +67,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     breakdown: SalaryBreakdown
   ) => {
     if (!userId || !periodId) return;
-    const { data } = await (supabase
-      .from('salary_records' as any) as any)
+    const { data } = await supabase
+      .from('salary_records')
       .upsert(
         {
           user_id: userId,
