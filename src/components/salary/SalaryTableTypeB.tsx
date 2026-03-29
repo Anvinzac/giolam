@@ -83,12 +83,12 @@ export default function SalaryTableTypeB({
 
   const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
     <div className="glass-card overflow-hidden">
-      <div className="px-2 py-1.5 bg-muted/20 text-[10px] text-muted-foreground font-medium">
+      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold">
         {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
       </div>
 
       {/* Column headers */}
-      <div className="grid grid-cols-[62px_minmax(40px,1fr)_48px_36px_36px_56px_68px] gap-0.5 px-1.5 py-1.5 bg-muted/30 text-[8px] font-semibold text-muted-foreground uppercase">
+      <div className="grid grid-cols-[80px_1fr_65px_50px_50px_85px_95px] gap-2 px-3 py-2.5 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
         <span>Ngày</span>
         <span>Ghi chú</span>
         <span className="text-right">Ra</span>
@@ -106,22 +106,22 @@ export default function SalaryTableTypeB({
           const isDupe = e.sort_order > 0;
 
           return (
-            <div key={cellKey} className={`grid grid-cols-[62px_minmax(40px,1fr)_48px_36px_36px_56px_68px] gap-0.5 px-1.5 py-1.5 items-center text-[10px] ${
-              e.is_day_off ? 'opacity-40' : ''
+            <div key={cellKey} className={`grid grid-cols-[80px_1fr_65px_50px_50px_85px_95px] gap-2 px-3 py-2.5 items-center text-[11px] ${
+              e.is_day_off ? 'opacity-50 bg-muted/10' : ''
             }`}>
               {/* Date */}
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-1">
                 {isDupe ? (
-                  <button onClick={() => e.id && onRemoveEntry(e.id)} className="text-destructive/60">
-                    <Trash2 size={8} />
+                  <button onClick={() => e.id && onRemoveEntry(e.id)} className="text-destructive/60 hover:text-destructive">
+                    <Trash2 size={10} />
                   </button>
                 ) : (
-                  <button onClick={() => onAddDuplicateRow(e.entry_date)} className="text-muted-foreground hover:text-primary">
-                    <Plus size={8} />
+                  <button onClick={() => onAddDuplicateRow(e.entry_date)} className="text-muted-foreground hover:text-primary transition-colors">
+                    <Plus size={10} />
                   </button>
                 )}
-                <span className={`font-medium ${getDayColor(e.entry_date)}`}>
-                  {moon && <span className="mr-0.5">{moon}</span>}
+                <span className={`font-semibold text-[12px] ${getDayColor(e.entry_date)}`}>
+                  {moon && <span className="mr-1">{moon}</span>}
                   {isDupe ? '↳' : formatDateViet(e.entry_date).split(' ')[0]}
                 </span>
               </div>
@@ -133,13 +133,13 @@ export default function SalaryTableTypeB({
                   onChange={ev => setCellValue(ev.target.value)}
                   onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
                   onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                  className="px-0.5 py-0 rounded bg-background border border-border text-[10px] min-w-0"
+                  className="px-2 py-1 rounded bg-background border border-border text-[11px] min-w-0"
                   autoFocus
                 />
               ) : (
                 <button
                   onClick={() => startCellEdit(`${cellKey}-note`, e.note || '')}
-                  className="text-left truncate text-muted-foreground hover:text-foreground"
+                  className="text-left truncate text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {e.note || '—'}
                 </button>
@@ -152,35 +152,35 @@ export default function SalaryTableTypeB({
                   value={cellValue}
                   onChange={ev => setCellValue(ev.target.value)}
                   onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_out')}
-                  className="px-0 py-0 rounded bg-background border border-border text-[9px] w-full"
+                  className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-right"
                   autoFocus
                 />
               ) : (
                 <button
                   onClick={() => startCellEdit(`${cellKey}-clock_out`, e.clock_out || '')}
-                  className="text-right text-accent hover:underline"
+                  className="text-right text-accent hover:underline text-[11px] font-medium"
                 >
                   {e.clock_out?.slice(0, 5) || '—'}
                 </button>
               )}
 
               {/* Hours */}
-              <span className="text-right font-medium">
+              <span className="text-right font-semibold text-[11px]">
                 {hours > 0 ? hours.toFixed(1) : '—'}
               </span>
 
               {/* Rate */}
-              <span className={`text-right ${e.allowance_rate_override !== null ? 'text-accent' : ''}`}>
+              <span className={`text-right text-[11px] font-medium ${e.allowance_rate_override !== null ? 'text-accent' : ''}`}>
                 {rate > 0 ? `${rate}%` : '—'}
               </span>
 
               {/* Extra wage */}
-              <span className="text-right text-emerald-400 font-medium">
+              <span className="text-right text-emerald-400 font-semibold text-[11px]">
                 {extraWage > 0 ? formatVND(extraWage).replace(' đ', '') : '—'}
               </span>
 
               {/* Total */}
-              <span className={`text-right font-semibold ${total === 0 ? 'text-muted-foreground' : ''}`}>
+              <span className={`text-right font-bold text-[12px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                 {formatVND(total).replace(' đ', '')}
               </span>
             </div>

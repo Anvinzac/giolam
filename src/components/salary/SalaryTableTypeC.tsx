@@ -107,15 +107,15 @@ export default function SalaryTableTypeC({
     const cellKey = `${e.entry_date}-${e.sort_order}`;
 
     return (
-      <div key={cellKey} className={`grid grid-cols-[58px_minmax(30px,1fr)_44px_44px_30px_30px_50px_60px] gap-0.5 px-1 py-1.5 items-center text-[9px] ${
-        e.is_day_off ? 'opacity-35' : ''
+      <div key={cellKey} className={`grid grid-cols-[80px_1fr_65px_65px_50px_50px_80px_100px] gap-2 px-3 py-2.5 items-center text-[11px] ${
+        e.is_day_off ? 'opacity-50 bg-muted/10' : ''
       }`}>
         {/* Date + toggle */}
-        <div className="flex items-center gap-0.5">
-          <button onClick={() => toggleDayOff(e)} className={`flex-shrink-0 ${e.is_day_off ? 'text-destructive/60' : 'text-emerald-400/60'}`}>
-            {e.is_day_off ? <EyeOff size={8} /> : <Eye size={8} />}
+        <div className="flex items-center gap-1">
+          <button onClick={() => toggleDayOff(e)} className={`flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+            {e.is_day_off ? <EyeOff size={11} /> : <Eye size={11} />}
           </button>
-          <span className={`font-medium truncate ${getDayColor(e.entry_date)}`}>
+          <span className={`font-semibold text-[12px] truncate ${getDayColor(e.entry_date)}`}>
             {moon}{formatDateViet(e.entry_date).split(' ')[0]}
           </span>
         </div>
@@ -124,10 +124,10 @@ export default function SalaryTableTypeC({
         {editingCell === `${cellKey}-note` ? (
           <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
             onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-            className="px-0.5 py-0 rounded bg-background border border-border text-[9px] min-w-0" autoFocus />
+            className="px-2 py-1 rounded bg-background border border-border text-[11px] min-w-0" autoFocus />
         ) : (
           <button onClick={() => startCellEdit(`${cellKey}-note`, e.note || '')}
-            className="text-left truncate text-muted-foreground hover:text-foreground">
+            className="text-left truncate text-muted-foreground hover:text-foreground transition-colors">
             {e.note || '—'}
           </button>
         )}
@@ -136,10 +136,10 @@ export default function SalaryTableTypeC({
         {editingCell === `${cellKey}-clock_in` ? (
           <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
             onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_in')}
-            className="px-0 py-0 rounded bg-background border border-border text-[8px] w-full" autoFocus />
+            className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-right" autoFocus />
         ) : (
           <button onClick={() => startCellEdit(`${cellKey}-clock_in`, e.clock_in || '')}
-            className="text-right text-emerald-400 hover:underline">
+            className="text-right text-emerald-400 hover:underline font-medium">
             {e.clock_in?.slice(0, 5) || '—'}
           </button>
         )}
@@ -148,33 +148,33 @@ export default function SalaryTableTypeC({
         {editingCell === `${cellKey}-clock_out` ? (
           <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
             onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_out')}
-            className="px-0 py-0 rounded bg-background border border-border text-[8px] w-full" autoFocus />
+            className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-right" autoFocus />
         ) : (
           <button onClick={() => startCellEdit(`${cellKey}-clock_out`, e.clock_out || '')}
-            className="text-right text-accent hover:underline">
+            className="text-right text-accent hover:underline font-medium">
             {e.clock_out?.slice(0, 5) || '—'}
           </button>
         )}
 
         {/* Hours */}
-        <span className="text-right font-medium">{hours > 0 ? hours.toFixed(1) : '—'}</span>
+        <span className="text-right font-semibold text-[11px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
 
         {/* Rate */}
-        <span className="text-right">{rate > 0 ? `${rate}%` : '—'}</span>
+        <span className="text-right font-medium text-[11px]">{rate > 0 ? `${rate}%` : '—'}</span>
 
         {/* Extra wage */}
-        <span className="text-right text-emerald-400 font-medium">
+        <span className="text-right text-emerald-400 font-semibold text-[11px]">
           {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
         </span>
 
         {/* Total */}
-        <span className="text-right font-semibold">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        <span className="text-right font-bold text-[12px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
       </div>
     );
   };
 
   const renderTableHeader = () => (
-    <div className="grid grid-cols-[58px_minmax(30px,1fr)_44px_44px_30px_30px_50px_60px] gap-0.5 px-1 py-1 bg-muted/30 text-[7px] font-semibold text-muted-foreground uppercase">
+    <div className="grid grid-cols-[80px_1fr_65px_65px_50px_50px_80px_100px] gap-2 px-3 py-2.5 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
       <span>Ngày</span>
       <span>Ghi chú</span>
       <span className="text-right">Vào</span>
@@ -188,7 +188,7 @@ export default function SalaryTableTypeC({
 
   const renderCompact = () => (
     <div className="glass-card overflow-hidden">
-      <div className="px-2 py-1.5 bg-muted/20 text-[10px] text-muted-foreground font-medium flex items-center justify-between">
+      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold flex items-center justify-between">
         <span>Chế độ gọn · {workingEntries.length} ngày làm</span>
       </div>
       {renderTableHeader()}
@@ -196,14 +196,14 @@ export default function SalaryTableTypeC({
         {workingEntries.map(renderRow)}
       </div>
       {workingEntries.length === 0 && (
-        <div className="p-4 text-center text-muted-foreground text-xs">Chưa có ngày làm</div>
+        <div className="p-6 text-center text-muted-foreground text-sm">Chưa có ngày làm</div>
       )}
     </div>
   );
 
   const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
     <div className="glass-card overflow-hidden">
-      <div className="px-2 py-1.5 bg-muted/20 text-[10px] text-muted-foreground font-medium">
+      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold">
         {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
       </div>
       {renderTableHeader()}
