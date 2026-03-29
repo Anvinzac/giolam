@@ -25,14 +25,13 @@ interface SalaryTableTypeCProps {
   onHourlyRateChange: (rate: number) => void;
   onCustomDateChange: (start: string | null, end: string | null) => void;
   breakdown: SalaryBreakdown | null;
-  lightMode?: boolean;
 }
 
 export default function SalaryTableTypeC({
   entries, rates, allowances, hourlyRate,
   periodStart, periodEnd, customStartDate, customEndDate,
   onEntryUpdate, onAllowanceToggle, onAllowanceUpdate,
-  onHourlyRateChange, onCustomDateChange, breakdown, lightMode = false,
+  onHourlyRateChange, onCustomDateChange, breakdown,
 }: SalaryTableTypeCProps) {
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -106,14 +105,11 @@ export default function SalaryTableTypeC({
     const { rate, hours, baseWage, allowanceAmt, total } = computeRow(e);
     const moon = getMoonEmoji(new Date(e.entry_date + 'T00:00:00'));
     const cellKey = `${e.entry_date}-${e.sort_order}`;
-    const rowBgClass = lightMode
-      ? (idx && idx % 2 !== 0 ? 'bg-blue-50/30' : 'bg-white/20')
-      : (idx && idx % 2 !== 0 ? 'bg-muted/30' : '');
 
     return (
       <div key={cellKey} className={`grid grid-cols-[70px_1fr_50px_50px_40px_40px_55px_65px] gap-1.5 px-2 py-2.5 items-center text-[11px] ${
-        e.is_day_off ? (lightMode ? 'opacity-60 bg-red-50/30' : 'opacity-50 bg-muted/10') : ''
-      } ${rowBgClass}`}>
+        e.is_day_off ? 'opacity-50 bg-muted/10' : ''
+      } ${idx && idx % 2 !== 0 ? 'bg-muted/30' : ''}`}>
         {/* Date + toggle */}
         <div className="flex items-center gap-1">
           <button onClick={() => toggleDayOff(e)} className={`flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
@@ -177,15 +173,8 @@ export default function SalaryTableTypeC({
     );
   };
 
-  const tableCardClass = lightMode
-    ? 'bg-white/50 border border-gray-200/50 backdrop-blur-sm'
-    : 'glass-card';
-  const headerBgClass = lightMode
-    ? 'bg-gray-100/40 text-gray-600'
-    : 'bg-muted/30 text-muted-foreground';
-
   const renderTableHeader = () => (
-    <div className={`grid grid-cols-[70px_1fr_50px_50px_40px_40px_55px_65px] gap-1.5 px-2 py-2.5 ${headerBgClass} text-[9px] font-semibold uppercase tracking-wider`}>
+    <div className="grid grid-cols-[70px_1fr_50px_50px_40px_40px_55px_65px] gap-1.5 px-2 py-2.5 bg-muted/30 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
       <span>Ngày</span>
       <span>Ghi chú</span>
       <span className="text-right">Vào</span>
@@ -198,8 +187,8 @@ export default function SalaryTableTypeC({
   );
 
   const renderCompact = () => (
-    <div className={tableCardClass + ' overflow-hidden'}>
-      <div className={`px-3 py-2 ${lightMode ? 'bg-gray-100/40 text-gray-600' : 'bg-muted/20 text-muted-foreground'} text-[11px] font-semibold flex items-center justify-between`}>
+    <div className="glass-card overflow-hidden">
+      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold flex items-center justify-between">
         <span>Chế độ gọn · {workingEntries.length} ngày làm</span>
       </div>
       {renderTableHeader()}
@@ -213,8 +202,8 @@ export default function SalaryTableTypeC({
   );
 
   const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
-    <div className={tableCardClass + ' overflow-hidden'}>
-      <div className={`px-3 py-2 ${lightMode ? 'bg-gray-100/40 text-gray-600' : 'bg-muted/20 text-muted-foreground'} text-[11px] font-semibold`}>
+    <div className="glass-card overflow-hidden">
+      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold">
         {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
       </div>
       {renderTableHeader()}

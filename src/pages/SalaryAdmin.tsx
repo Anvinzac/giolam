@@ -129,6 +129,15 @@ export default function SalaryAdmin() {
     }
   }, [selectedEmployee]);
 
+  // Sync light mode with HTML element
+  useEffect(() => {
+    if (lightMode) {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }, [lightMode]);
+
   // Compute breakdown
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
     if (!selectedEmployee || entries.length === 0) return null;
@@ -402,7 +411,6 @@ export default function SalaryAdmin() {
                 onAllowanceUpdate={updateAllowance}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
-                lightMode={lightMode}
               />
             )}
 
@@ -425,7 +433,6 @@ export default function SalaryAdmin() {
                 onHourlyRateChange={handleHourlyRateChange}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
-                lightMode={lightMode}
               />
             )}
 
@@ -446,7 +453,6 @@ export default function SalaryAdmin() {
                 onCustomDateChange={() => {}} // TODO: store custom dates
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
-                lightMode={lightMode}
               />
             )}
 

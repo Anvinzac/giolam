@@ -19,12 +19,11 @@ interface SalaryTableTypeAProps {
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
   breakdown: SalaryBreakdown | null;
   isPreview?: boolean;
-  lightMode?: boolean;
 }
 
 export default function SalaryTableTypeA({
   entries, rates, allowances, baseSalary,
-  onEntryUpdate, onAllowanceToggle, onAllowanceUpdate, breakdown, isPreview = false, lightMode = false,
+  onEntryUpdate, onAllowanceToggle, onAllowanceUpdate, breakdown, isPreview = false,
 }: SalaryTableTypeAProps) {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
@@ -84,29 +83,19 @@ export default function SalaryTableTypeA({
     return '';
   };
 
-  const tableCardClass = lightMode
-    ? 'bg-white/50 border border-gray-200/50 backdrop-blur-sm'
-    : 'glass-card';
-  const headerBgClass = lightMode
-    ? 'bg-gray-100/40 text-gray-600'
-    : 'bg-muted/30 text-muted-foreground';
-  const rowBgClass = (isOdd: boolean) => lightMode
-    ? (isOdd ? 'bg-blue-50/30' : 'bg-white/20')
-    : (isOdd ? 'bg-muted/30' : '');
-
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className={tableCardClass + ' p-3'}>
+      <div className="glass-card p-3">
         <h3 className="font-display font-semibold text-[15px] text-foreground">Bảng lương - Loại A</h3>
       </div>
 
       {/* Table */}
-      <div className={tableCardClass + ' overflow-hidden'}>
+      <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto w-full">
           <div className="min-w-[500px]">
             {/* Column headers */}
-            <div className={`grid grid-cols-[85px_2.5fr_65px_95px_100px] gap-1.5 px-3 py-4 ${headerBgClass} text-xs font-semibold uppercase tracking-wider`}>
+            <div className="grid grid-cols-[85px_2.5fr_65px_95px_100px] gap-1.5 px-3 py-4 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <span>Ngày</span>
               <span>Ghi chú</span>
               <span className="text-right">Tỷ lệ</span>
@@ -125,8 +114,8 @@ export default function SalaryTableTypeA({
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
                   className={`grid grid-cols-[85px_2.5fr_65px_95px_100px] gap-1.5 px-3 py-4 items-center text-base ${
-                    isOff ? (lightMode ? 'bg-red-50/30 opacity-80' : 'bg-muted/15 opacity-75') : ''
-                  } ${isEditing ? (lightMode ? 'ring-1 ring-blue-300 bg-blue-50/20' : 'ring-1 ring-primary/30 bg-primary/8') : ''} ${rowBgClass(idx % 2 !== 0)}`}
+                    isOff ? 'bg-muted/15 opacity-75' : ''
+                  } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8' : ''} ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}
                 >
                   {/* Date */}
                   <span className={`font-semibold text-sm ${getDayColor(e.entry_date)}`}>
