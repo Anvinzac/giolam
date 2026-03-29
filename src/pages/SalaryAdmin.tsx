@@ -437,7 +437,6 @@ export default function SalaryAdmin() {
                 onHourlyRateChange={handleHourlyRateChange}
                 onCustomDateChange={() => {}} // TODO: store custom dates
                 breakdown={breakdown}
-                isPreview={isPreviewMode}
               />
             )}
 
