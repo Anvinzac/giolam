@@ -45,8 +45,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     breakdown: SalaryBreakdown
   ) => {
     if (!userId || !periodId) return;
-    const { data } = await supabase
-      .from('salary_records')
+    const { data } = await (supabase
+      .from('salary_records') as any)
       .upsert(
         {
           user_id: userId,
@@ -67,8 +67,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     breakdown: SalaryBreakdown
   ) => {
     if (!userId || !periodId) return;
-    const { data } = await supabase
-      .from('salary_records')
+    const { data } = await (supabase
+      .from('salary_records') as any)
       .upsert(
         {
           user_id: userId,

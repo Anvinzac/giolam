@@ -25,13 +25,14 @@ interface SalaryTableTypeCProps {
   onHourlyRateChange: (rate: number) => void;
   onCustomDateChange: (start: string | null, end: string | null) => void;
   breakdown: SalaryBreakdown | null;
+  isPreview?: boolean;
 }
 
 export default function SalaryTableTypeC({
   entries, rates, allowances, hourlyRate,
   periodStart, periodEnd, customStartDate, customEndDate,
   onEntryUpdate, onAllowanceToggle, onAllowanceUpdate,
-  onHourlyRateChange, onCustomDateChange, breakdown,
+  onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
