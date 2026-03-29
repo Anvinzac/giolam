@@ -15,8 +15,8 @@ export function useEmployeeAllowances(userId: string | null, periodId: string | 
       setLoading(true);
 
       // Try to fetch existing allowances for this period
-      const { data } = await supabase
-        .from('employee_allowances')
+      const { data } = await (supabase
+        .from('employee_allowances' as any) as any)
         .select('*')
         .eq('user_id', userId)
         .eq('period_id', periodId);
@@ -37,8 +37,8 @@ export function useEmployeeAllowances(userId: string | null, periodId: string | 
 
       let prevAllowances: EmployeeAllowance[] = [];
       if (periods && periods.length > 0) {
-        const { data: prev } = await supabase
-          .from('employee_allowances')
+        const { data: prev } = await (supabase
+          .from('employee_allowances' as any) as any)
           .select('*')
           .eq('user_id', userId)
           .eq('period_id', periods[0].id);
@@ -60,8 +60,8 @@ export function useEmployeeAllowances(userId: string | null, periodId: string | 
         };
       });
 
-      const { data: inserted } = await supabase
-        .from('employee_allowances')
+      const { data: inserted } = await (supabase
+        .from('employee_allowances' as any) as any)
         .insert(newAllowances)
         .select();
 
@@ -79,7 +79,7 @@ export function useEmployeeAllowances(userId: string | null, periodId: string | 
     setAllowances(prev => prev.map(a =>
       a.allowance_key === key ? { ...a, is_enabled: newEnabled } : a
     ));
-    await supabase.from('employee_allowances').update({ is_enabled: newEnabled }).eq('id', current.id);
+    await (supabase.from('employee_allowances' as any) as any).update({ is_enabled: newEnabled }).eq('id', current.id);
   }, [allowances]);
 
   const updateAllowance = useCallback(async (
@@ -91,7 +91,7 @@ export function useEmployeeAllowances(userId: string | null, periodId: string | 
     setAllowances(prev => prev.map(a =>
       a.allowance_key === key ? { ...a, ...updates } : a
     ));
-    await supabase.from('employee_allowances').update(updates).eq('id', current.id);
+    await (supabase.from('employee_allowances' as any) as any).update(updates).eq('id', current.id);
   }, [allowances]);
 
   return { allowances, loading, toggleAllowance, updateAllowance };

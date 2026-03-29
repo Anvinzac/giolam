@@ -24,8 +24,8 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     const fetchRecords = async () => {
       setLoading(true);
       // Fetch published salary records with period info
-      const { data: salaryRecords } = await supabase
-        .from('salary_records')
+      const { data: salaryRecords } = await (supabase
+        .from('salary_records' as any) as any)
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'published')
