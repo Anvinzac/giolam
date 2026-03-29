@@ -24,8 +24,8 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     const fetchRecords = async () => {
       setLoading(true);
       // Fetch published salary records with period info
-      const { data: salaryRecords } = await supabase
-        .from('salary_records')
+      const { data: salaryRecords } = await (supabase
+        .from('salary_records' as any) as any)
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'published')
@@ -37,7 +37,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
       }
 
       // Fetch period dates for each record
-      const periodIds = [...new Set(salaryRecords.map(r => r.period_id))];
+      const periodIds = [...new Set(salaryRecords.map((r: any) => r.period_id))] as string[];
       const { data: periods } = await supabase
         .from('working_periods')
         .select('id, start_date, end_date')
