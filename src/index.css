@@ -146,7 +146,12 @@
 
   html.light .glass-card {
     background: linear-gradient(to bottom right, rgb(165 240 254 / 0.6), rgb(184 255 178 / 0.4));
-    @apply border-cyan-200/50 shadow-sm backdrop-blur-sm rounded-2xl transition-all duration-300;
+    border: 1px solid rgb(165 230 250 / 0.5);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    backdrop-filter: blur(4px);
+    border-radius: 1rem;
+    transition-property: all;
+    transition-duration: 300ms;
   }
 
   .glass-card-hover {
@@ -155,12 +160,17 @@
 
   html.light .glass-card-hover {
     background: linear-gradient(to bottom right, rgb(165 240 254 / 0.6), rgb(184 255 178 / 0.4));
-    @apply border-cyan-200/50 shadow-sm backdrop-blur-sm rounded-2xl transition-all duration-300;
+    border: 1px solid rgb(165 230 250 / 0.5);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    backdrop-filter: blur(4px);
+    border-radius: 1rem;
+    transition-property: all;
+    transition-duration: 300ms;
   }
 
   html.light .glass-card-hover:hover {
     background: linear-gradient(to bottom right, rgb(165 240 254 / 0.8), rgb(184 255 178 / 0.6));
-    @apply border-cyan-300/70 shadow-md;
+    border-color: rgb(165 230 250 / 0.7);
     box-shadow: 0 4px 6px rgb(165 240 254 / 0.3);
   }
 
