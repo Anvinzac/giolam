@@ -145,7 +145,8 @@
   }
 
   html.light .glass-card {
-    @apply bg-gradient-to-br from-cyan-100/60 to-lime-100/40 border border-cyan-200/50 shadow-sm backdrop-blur-sm;
+    background: linear-gradient(to bottom right, rgb(165 240 254 / 0.6), rgb(184 255 178 / 0.4));
+    @apply border-cyan-200/50 shadow-sm backdrop-blur-sm rounded-2xl transition-all duration-300;
   }
 
   .glass-card-hover {
@@ -153,7 +154,14 @@
   }
 
   html.light .glass-card-hover {
-    @apply glass-card hover:from-cyan-100/80 hover:to-lime-100/60 hover:border-cyan-300/70 hover:shadow-md hover:shadow-cyan-200/50;
+    background: linear-gradient(to bottom right, rgb(165 240 254 / 0.6), rgb(184 255 178 / 0.4));
+    @apply border-cyan-200/50 shadow-sm backdrop-blur-sm rounded-2xl transition-all duration-300;
+  }
+
+  html.light .glass-card-hover:hover {
+    background: linear-gradient(to bottom right, rgb(165 240 254 / 0.8), rgb(184 255 178 / 0.6));
+    @apply border-cyan-300/70 shadow-md;
+    box-shadow: 0 4px 6px rgb(165 240 254 / 0.3);
   }
 
   .lunar-glow {
