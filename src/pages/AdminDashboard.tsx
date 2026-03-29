@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign } from "lucide-react";
+import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign, Database, Terminal, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import AdminEmployeeList from "@/components/AdminEmployeeList";
 import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
@@ -17,6 +17,22 @@ export default function AdminDashboard() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations'>('shifts');
   const [changesBadge, setChangesBadge] = useState(0);
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    setIsSeeding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('seed-salary-test');
+      if (error) throw error;
+      toast.success("Successfully seeded test data! Refreshing...");
+      window.location.reload();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(`Failed to seed data: ${error.message}`);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
   const [regBadge, setRegBadge] = useState(0);
 
   // New period form
@@ -192,7 +208,27 @@ export default function AdminDashboard() {
           <>
             {/* Create period */}
             <div className="glass-card p-4 space-y-3">
-              <h3 className="font-display font-semibold text-sm text-foreground">New Working Period</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-semibold text-sm text-foreground">New Working Period</h3>
+                <button 
+                  onClick={() => {
+                    setStartDate("2026-02-25");
+                    setEndDate("2026-03-25");
+                    setOffDays("2026-03-23");
+                  }}
+                  className="text-[10px] px-2 py-1 rounded-md bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                >
+                  Quick Fill (Feb-Mar)
+                </button>
+                <button 
+                  onClick={handleSeed}
+                  disabled={isSeeding}
+                  className="text-[10px] px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1"
+                >
+                  <Wand2 className="w-3 h-3" />
+                  {isSeeding ? 'Seeding...' : 'Seed Test Data'}
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-muted-foreground">Start Date</label>

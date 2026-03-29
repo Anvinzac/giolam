@@ -18,11 +18,12 @@ interface SalaryTableTypeAProps {
   onAllowanceToggle: (key: AllowanceKey) => void;
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
   breakdown: SalaryBreakdown | null;
+  isPreview?: boolean;
 }
 
 export default function SalaryTableTypeA({
   entries, rates, allowances, baseSalary,
-  onEntryUpdate, onAllowanceToggle, onAllowanceUpdate, breakdown,
+  onEntryUpdate, onAllowanceToggle, onAllowanceUpdate, breakdown, isPreview = false,
 }: SalaryTableTypeAProps) {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
@@ -86,40 +87,38 @@ export default function SalaryTableTypeA({
     <div className="space-y-3">
       {/* Header */}
       <div className="glass-card p-3">
-        <h3 className="font-display font-semibold text-sm text-foreground">Bảng lương - Loại A</h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          Lương cơ bản: {formatVND(baseSalary)} / 28 ngày = {formatVND(dailyBase)}/ngày
-        </p>
+        <h3 className="font-display font-semibold text-[15px] text-foreground">Bảng lương - Loại A</h3>
       </div>
 
       {/* Table */}
       <div className="glass-card overflow-hidden">
-        {/* Column headers */}
-        <div className="grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-3 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-          <span>Ngày</span>
-          <span>Ghi chú</span>
-          <span className="text-right">Tỷ lệ</span>
-          <span className="text-right">Phụ cấp</span>
-          <span className="text-right">Tổng ngày</span>
-        </div>
+        <div className="overflow-x-auto w-full">
+          <div className="min-w-[500px]">
+            {/* Column headers */}
+            <div className="grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-4 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <span>Ngày</span>
+              <span>Ghi chú</span>
+              <span className="text-right">Tỷ lệ</span>
+              <span className="text-right">Phụ cấp</span>
+              <span className="text-right">Tổng ngày</span>
+            </div>
 
         <div className="divide-y divide-border/30">
-          {visibleEntries.map((e) => {
+          {visibleEntries.map((e, idx) => {
             const { rate, allowance, deduction, total } = computeRow(e);
-            const moon = getMoon(e.entry_date);
-            const isEditing = editingRow === e.entry_date;
+            const isEditing = editingRow === e.entry_date && !isPreview;
             const isOff = e.is_day_off;
+            const rateDesc = rates.find(r => r.special_date === e.entry_date)?.description_vi;
 
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-3 items-center text-sm ${
+                  className={`grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-4 items-center text-base ${
                     isOff ? 'bg-muted/15 opacity-75' : ''
-                  } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8' : ''}`}
+                  } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8' : ''} ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}
                 >
                   {/* Date */}
-                  <span className={`font-semibold text-[12px] ${getDayColor(e.entry_date)}`}>
-                    {moon && <span className="mr-1">{moon}</span>}
+                  <span className={`font-semibold text-sm ${getDayColor(e.entry_date)}`}>
                     {formatDateViet(e.entry_date)}
                   </span>
 
@@ -128,15 +127,15 @@ export default function SalaryTableTypeA({
                     <input
                       value={editNote}
                       onChange={ev => setEditNote(ev.target.value)}
-                      className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0"
+                      className="px-2 py-1 rounded bg-background border border-border text-sm min-w-0"
                       autoFocus
                     />
                   ) : (
                     <button
-                      onClick={() => startEditRow(e)}
-                      className="text-left text-[12px] text-muted-foreground truncate hover:text-foreground transition-colors"
+                      onClick={() => !isPreview && startEditRow(e)}
+                      className={`text-left text-sm text-muted-foreground truncate transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
-                      {e.note || (isOff ? 'Nghỉ' : '—')}
+                      {e.note || rateDesc || (isOff ? 'Nghỉ' : '—')}
                     </button>
                   )}
 
@@ -147,12 +146,12 @@ export default function SalaryTableTypeA({
                         value={editRate}
                         onChange={ev => setEditRate(ev.target.value)}
                         placeholder={rate.toString()}
-                        className="w-14 px-2 py-1 rounded bg-background border border-border text-[12px] text-right"
+                        className="w-14 px-2 py-1.5 rounded bg-background border border-border text-sm text-right"
                         inputMode="decimal"
                       />
                     </div>
                   ) : (
-                    <span className={`text-right text-[12px] font-medium ${
+                    <span className={`text-right text-sm font-medium ${
                       e.allowance_rate_override !== null ? 'text-accent' : 'text-foreground'
                     }`}>
                       {rate > 0 ? `${rate}%` : '—'}
@@ -161,14 +160,14 @@ export default function SalaryTableTypeA({
                   )}
 
                   {/* Allowance */}
-                  <span className={`text-right text-[12px] font-semibold ${
+                  <span className={`text-right text-sm font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {isOff ? `-${formatVND(deduction)}` : (allowance > 0 ? formatVND(allowance) : '—')}
                   </span>
 
                   {/* Total */}
-                  <span className={`text-right text-[13px] font-bold ${
+                  <span className={`text-right text-base font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {formatVND(total)}
@@ -199,7 +198,7 @@ export default function SalaryTableTypeA({
                 )}
 
                 {/* Off percent snapper */}
-                {isOff && expandedOff === e.entry_date && (
+                {isOff && expandedOff === e.entry_date && !isPreview && (
                   <div className="px-3 pb-3 pt-1">
                     <OffPercentSnapper
                       value={e.off_percent}
@@ -207,7 +206,7 @@ export default function SalaryTableTypeA({
                     />
                   </div>
                 )}
-                {isOff && !isEditing && (
+                {isOff && !isEditing && !isPreview && (
                   <button
                     onClick={() => setExpandedOff(expandedOff === e.entry_date ? null : e.entry_date)}
                     className="w-full text-[10px] text-center text-muted-foreground py-1 hover:text-foreground transition-colors"
@@ -215,16 +214,23 @@ export default function SalaryTableTypeA({
                     {expandedOff === e.entry_date ? 'Ẩn' : `Nghỉ ${e.off_percent}% · Nhấn để chỉnh`}
                   </button>
                 )}
+                {isOff && isPreview && (
+                  <div className="w-full text-[10px] text-center text-muted-foreground py-1">
+                    Nghỉ {e.off_percent}%
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
-
-        {visibleEntries.length === 0 && (
-          <div className="p-6 text-center text-muted-foreground text-xs">
-            Chưa có dữ liệu ngày đặc biệt
+            
+            {visibleEntries.length === 0 && (
+              <div className="p-6 text-center text-muted-foreground text-xs">
+                Chưa có dữ liệu ngày đặc biệt
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Allowances */}
@@ -232,6 +238,7 @@ export default function SalaryTableTypeA({
         allowances={allowances}
         onToggle={onAllowanceToggle}
         onUpdate={onAllowanceUpdate}
+        isAdmin={!isPreview}
       />
 
       {/* Total */}

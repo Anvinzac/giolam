@@ -52,18 +52,20 @@ export default function EmployeeAllowanceEditor({
           }`}
         >
           {/* Toggle */}
-          <button
-            onClick={() => onToggle(a.allowance_key)}
-            className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
-              a.is_enabled ? 'bg-primary' : 'bg-border'
-            }`}
-          >
-            <motion.div
-              className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
-              animate={{ left: a.is_enabled ? 18 : 2 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => onToggle(a.allowance_key)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
+                a.is_enabled ? 'bg-primary' : 'bg-border'
+              }`}
+            >
+              <motion.div
+                className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
+                animate={{ left: a.is_enabled ? 18 : 2 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              />
+            </button>
+          )}
 
           {editingKey === a.allowance_key ? (
             <div className="flex-1 flex items-center gap-1.5">

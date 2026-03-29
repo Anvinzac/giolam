@@ -217,23 +217,7 @@ export default function SalaryTableTypeC({
     <div className="space-y-3">
       {/* Header */}
       <div className="glass-card p-3">
-        <h3 className="font-display font-semibold text-sm text-foreground">Bảng lương - Loại C</h3>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-[10px] text-muted-foreground">Đơn giá:</span>
-          {editingHourly ? (
-            <div className="flex items-center gap-1">
-              <input value={hourlyInput} onChange={e => setHourlyInput(e.target.value.replace(/\D/g, ''))}
-                className="w-20 px-1.5 py-0.5 rounded bg-background border border-border text-xs text-right"
-                inputMode="numeric" autoFocus />
-              <button onClick={saveHourlyRate} className="text-[10px] px-2 py-0.5 rounded gradient-gold text-primary-foreground font-semibold">OK</button>
-            </div>
-          ) : (
-            <button onClick={() => { setHourlyInput(hourlyRate.toString()); setEditingHourly(true); }}
-              className="text-[10px] text-accent hover:underline">
-              {formatVND(hourlyRate)}/giờ
-            </button>
-          )}
-        </div>
+        <h3 className="font-display font-semibold text-[15px] text-foreground">Bảng lương - Loại C</h3>
 
         {/* Custom date range */}
         <div className="flex items-center gap-2 mt-2">

@@ -96,7 +96,7 @@ export default function GlobalRateTable({ rates, onUpdate, onAdd, onRemove, peri
           <div
             key={r.id || idx}
             className={`grid grid-cols-[90px_1fr_60px_36px] gap-1 px-3 py-2 items-center text-sm ${
-              editId === r.id ? 'bg-primary/5 ring-1 ring-primary/20' : idx % 2 === 0 ? '' : 'bg-muted/10'
+              editId === r.id ? 'bg-primary/5 ring-1 ring-primary/20' : idx % 2 === 0 ? '' : 'bg-muted/30'
             }`}
           >
             <span className={`text-xs font-medium ${getDayTypeColor(r.day_type)}`}>

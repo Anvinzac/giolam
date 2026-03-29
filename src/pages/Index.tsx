@@ -56,7 +56,7 @@ export default function Index() {
 
       // Admin goes directly to admin dashboard
       if (userIsAdmin) {
-        navigate("/admin");
+        navigate("/admin/salary");
         return;
       }
 
@@ -185,7 +185,7 @@ export default function Index() {
         {isAdmin && (
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate("/admin")}
+            onClick={() => navigate("/admin/salary")}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-medium"
           >
             <Shield size={16} />

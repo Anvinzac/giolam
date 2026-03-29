@@ -1,7 +1,7 @@
-// Simplified lunar phase calculation
-// Returns 0 = new moon, 0.5 = full moon (approximate)
+// Using a more precise UTC seed for lunar calculations
+// 2000-01-06T18:14:00Z was a new moon
 export function getLunarPhase(date: Date): number {
-  const knownNewMoon = new Date(2000, 0, 6, 18, 14); // Known new moon
+  const knownNewMoon = new Date("2000-01-06T18:14:00Z");
   const lunarCycle = 29.53058867; // days
   const diff = (date.getTime() - knownNewMoon.getTime()) / (1000 * 60 * 60 * 24);
   const phase = ((diff % lunarCycle) + lunarCycle) % lunarCycle;
@@ -9,13 +9,20 @@ export function getLunarPhase(date: Date): number {
 }
 
 export function isFullMoon(date: Date): boolean {
-  const phase = getLunarPhase(date);
-  return Math.abs(phase - 0.5) < 0.03;
+  // Use local midnight to check the phase for that day
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0); // Check mid-day to be safe
+  const phase = getLunarPhase(d);
+  // Full moon is at 0.5 phase
+  return Math.abs(phase - 0.5) < 0.04;
 }
 
 export function isNewMoon(date: Date): boolean {
-  const phase = getLunarPhase(date);
-  return phase < 0.03 || phase > 0.97;
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  const phase = getLunarPhase(d);
+  // New moon is at 0.0 or 1.0 phase
+  return phase < 0.04 || phase > 0.96;
 }
 
 export function isDayBeforeFullMoon(date: Date): boolean {

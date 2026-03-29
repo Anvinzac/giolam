@@ -13,7 +13,7 @@ import { useSpecialDayRates } from '@/hooks/useSpecialDayRates';
 import { useEmployeeAllowances } from '@/hooks/useEmployeeAllowances';
 import { useSalaryEntries } from '@/hooks/useSalaryEntries';
 import { useSalaryRecord } from '@/hooks/useSalaryRecord';
-import { computeTotalSalary, formatVND } from '@/lib/salaryCalculations';
+import { calcDailyBase, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, formatVND } from '@/lib/salaryCalculations';
 import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/types/salary';
 
 interface Employee {
@@ -22,6 +22,7 @@ interface Employee {
   shift_type: EmployeeShiftType;
   base_salary: number;
   hourly_rate: number;
+  default_clock_in: string | null;
   department_id: string | null;
   department_name?: string;
 }
@@ -33,15 +34,71 @@ interface Period {
   off_days: string[];
 }
 
+const EditableAmount = ({ 
+  label, 
+  value, 
+  onChange, 
+  isPreview, 
+  suffix = '',
+  className = ''
+}: { 
+  label?: string; 
+  value: number; 
+  onChange: (val: number) => void; 
+  isPreview: boolean; 
+  suffix?: string;
+  className?: string;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [inputStr, setInputStr] = useState(value.toString());
+
+  useEffect(() => setInputStr(value.toString()), [value]);
+
+  const save = () => {
+    const parsed = parseInt(inputStr.replace(/\D/g, ''), 10);
+    if (!isNaN(parsed) && parsed !== value) onChange(parsed);
+    setEditing(false);
+  };
+
+  if (editing && !isPreview) {
+    return (
+      <div className={`flex items-center gap-1 ${className}`}>
+        {label && <span className="text-[13px] text-muted-foreground mr-1">{label}</span>}
+        <input 
+          value={inputStr} 
+          onChange={e => setInputStr(e.target.value.replace(/\D/g, ''))}
+          className="w-24 px-2 py-1 rounded bg-background border border-border text-[14px] text-right"
+          inputMode="numeric"
+          autoFocus
+        />
+        <button onClick={save} className="text-[13px] px-2.5 py-1 rounded gradient-gold text-primary-foreground font-semibold">OK</button>
+        <button onClick={() => setEditing(false)} className="text-[13px] text-muted-foreground ml-1 p-1">Hủy</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col ${className}`}>
+        {label && <span className="text-[11px] text-muted-foreground mb-0.5">{label}</span>}
+        <button onClick={() => !isPreview && setEditing(true)} 
+          className={`text-[15px] font-bold text-accent text-left ${!isPreview ? 'hover:underline' : 'cursor-default'}`}>
+          {formatVND(value).replace(' đ', '')}{suffix}
+        </button>
+    </div>
+  );
+};
+
 export default function SalaryAdmin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<'rates' | 'employees'>('employees');
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [globalClockIn, setGlobalClockIn] = useState<string>('17:00');
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -64,11 +121,27 @@ export default function SalaryAdmin() {
     selectedPeriodId
   );
 
+  // Sync global clock-in
+  useEffect(() => {
+    if (selectedEmployee) {
+      setGlobalClockIn(selectedEmployee.default_clock_in || '17:00');
+    }
+  }, [selectedEmployee]);
+
   // Compute breakdown
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
     if (!selectedEmployee || entries.length === 0) return null;
-    return computeTotalSalary(entries, allowances, selectedEmployee.base_salary);
-  }, [entries, allowances, selectedEmployee]);
+    switch (selectedEmployee.shift_type) {
+      case 'basic':
+        return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, rates);
+      case 'overtime':
+        return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn);
+      case 'notice_only':
+        return computeTotalSalaryTypeC(entries, allowances, selectedEmployee.hourly_rate, rates);
+      default:
+        return null;
+    }
+  }, [entries, allowances, selectedEmployee, rates, globalClockIn]);
 
   // Auto-save draft when breakdown changes
   useEffect(() => {
@@ -94,7 +167,8 @@ export default function SalaryAdmin() {
       if (periodsData.length > 0) setSelectedPeriodId(periodsData[0].id);
 
       // Fetch employees with departments
-      const { data: profiles } = await supabase.from('profiles').select('user_id, full_name, shift_type, base_salary, hourly_rate, department_id');
+      const res: any = await supabase.from('profiles').select('user_id, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in');
+      const profiles = res.data || [];
       const { data: depts } = await supabase.from('departments').select('id, name');
       const deptMap = new Map(depts?.map(d => [d.id, d.name]) || []);
 
@@ -102,15 +176,16 @@ export default function SalaryAdmin() {
       const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
       const adminIds = new Set(adminRoles?.map(r => r.user_id) || []);
 
-      const emps: Employee[] = (profiles || [])
-        .filter(p => !adminIds.has(p.user_id))
-        .map(p => ({
+      const emps: Employee[] = profiles
+        .filter((p: any) => !adminIds.has(p.user_id))
+        .map((p: any) => ({
           user_id: p.user_id,
           full_name: p.full_name || 'Nhân viên',
           shift_type: (p.shift_type || 'basic') as EmployeeShiftType,
           base_salary: (p as any).base_salary || 0,
           hourly_rate: (p as any).hourly_rate || 25000,
-          department_id: p.department_id,
+          default_clock_in: (p as any).default_clock_in || null,
+          department_id: p.department_id || null,
           department_name: p.department_id ? deptMap.get(p.department_id) : undefined,
         }));
 
@@ -126,12 +201,31 @@ export default function SalaryAdmin() {
     toast.success(`Đã công bố lương cho ${selectedEmployee.full_name}`);
   }, [breakdown, selectedEmployee, publish]);
 
+  const handleBaseSalaryChange = useCallback(async (salary: number) => {
+    if (!selectedEmployee) return;
+    await supabase.from('profiles').update({ base_salary: salary } as any).eq('user_id', selectedEmployee.user_id);
+    setSelectedEmployee(prev => prev ? { ...prev, base_salary: salary } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, base_salary: salary } : e
+    ));
+  }, [selectedEmployee]);
+
   const handleHourlyRateChange = useCallback(async (rate: number) => {
     if (!selectedEmployee) return;
-    await supabase.from('profiles').update({ hourly_rate: rate }).eq('user_id', selectedEmployee.user_id);
+    await supabase.from('profiles').update({ hourly_rate: rate } as any).eq('user_id', selectedEmployee.user_id);
     setSelectedEmployee(prev => prev ? { ...prev, hourly_rate: rate } : null);
     setEmployees(prev => prev.map(e =>
       e.user_id === selectedEmployee.user_id ? { ...e, hourly_rate: rate } : e
+    ));
+  }, [selectedEmployee]);
+
+  const handleGlobalClockInChange = useCallback(async (time: string) => {
+    if (!selectedEmployee) return;
+    setGlobalClockIn(time);
+    await supabase.from('profiles').update({ default_clock_in: time } as any).eq('user_id', selectedEmployee.user_id);
+    setSelectedEmployee(prev => prev ? { ...prev, default_clock_in: time } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, default_clock_in: time } : e
     ));
   }, [selectedEmployee]);
 
@@ -156,27 +250,62 @@ export default function SalaryAdmin() {
     <div className="min-h-screen bg-background pb-8">
       {/* Header */}
       <header className="px-6 pt-12 pb-4">
-        <div className="flex items-center gap-3 mb-4">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => selectedEmployee ? setSelectedEmployee(null) : navigate('/admin')}
-            className="p-2 rounded-xl bg-muted text-muted-foreground">
-            {selectedEmployee ? <ChevronLeft size={18} /> : <ArrowLeft size={18} />}
-          </motion.button>
-          <div className="flex-1">
-            <h1 className="font-display text-lg font-bold text-gradient-gold flex items-center gap-2">
-              <DollarSign size={18} />
-              {selectedEmployee ? selectedEmployee.full_name : 'Quản lý lương'}
-            </h1>
-            {selectedEmployee && (
-              <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-0.5 ${typeBadgeColor(selectedEmployee.shift_type)}`}>
-                {EMPLOYEE_TYPE_LABELS[selectedEmployee.shift_type]}
-              </span>
+        <div className="flex flex-col mb-4">
+          <div className="flex items-center gap-3">
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => selectedEmployee ? setSelectedEmployee(null) : navigate('/admin')}
+              className="p-2 rounded-xl bg-muted text-muted-foreground">
+              {selectedEmployee ? <ChevronLeft size={20} /> : <ArrowLeft size={20} />}
+            </motion.button>
+            <div className="flex-1 flex justify-between items-center">
+              <div>
+                <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
+                  {!selectedEmployee && <DollarSign size={20} />}
+                  {selectedEmployee ? selectedEmployee.full_name : 'Quản lý lương'}
+                </h1>
+                {selectedEmployee && !isPreviewMode && (
+                  <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-1 ${typeBadgeColor(selectedEmployee.shift_type)}`}>
+                    {EMPLOYEE_TYPE_LABELS[selectedEmployee.shift_type]}
+                  </span>
+                )}
+              </div>
+              
+              {/* Hourly Rate right side inline with name */}
+              {selectedEmployee && selectedEmployee.shift_type !== 'basic' && (
+                 <EditableAmount 
+                    value={selectedEmployee.hourly_rate} 
+                    onChange={handleHourlyRateChange} 
+                    isPreview={isPreviewMode} 
+                    suffix="đ/giờ"
+                    className="items-end"
+                 />
+              )}
+            </div>
+            {!selectedEmployee && (
+              <motion.button whileTap={{ scale: 0.9 }}
+                onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
+                className="p-2 rounded-xl bg-muted text-muted-foreground ml-2">
+                <LogOut size={20} />
+              </motion.button>
             )}
           </div>
-          <motion.button whileTap={{ scale: 0.9 }}
-            onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
-            className="p-2 rounded-xl bg-muted text-muted-foreground">
-            <LogOut size={18} />
-          </motion.button>
+          
+          {/* Base salary & daily wage row */}
+          {selectedEmployee && selectedEmployee.shift_type !== 'notice_only' && (
+            <div className="flex items-end justify-between pl-[44px] pr-2 mt-2">
+               <EditableAmount 
+                  label="Lương cơ bản"
+                  value={selectedEmployee.base_salary} 
+                  onChange={handleBaseSalaryChange} 
+                  isPreview={isPreviewMode} 
+               />
+               <div className="flex flex-col items-end">
+                 <span className="text-[11px] text-muted-foreground mb-0.5">Lương ngày</span>
+                 <span className="text-[15px] font-bold text-emerald-400">
+                    {formatVND(calcDailyBase(selectedEmployee.base_salary)).replace(' đ', '')}đ
+                 </span>
+               </div>
+            </div>
+          )}
         </div>
 
         {/* Period selector */}
@@ -266,6 +395,7 @@ export default function SalaryAdmin() {
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
                 breakdown={breakdown}
+                isPreview={isPreviewMode}
               />
             )}
 
@@ -276,6 +406,8 @@ export default function SalaryAdmin() {
                 allowances={allowances}
                 baseSalary={selectedEmployee.base_salary}
                 hourlyRate={selectedEmployee.hourly_rate}
+                globalClockIn={globalClockIn}
+                onGlobalClockInChange={handleGlobalClockInChange}
                 periodStart={selectedPeriod.start_date}
                 periodEnd={selectedPeriod.end_date}
                 onEntryUpdate={updateEntry}
@@ -285,6 +417,7 @@ export default function SalaryAdmin() {
                 onAllowanceUpdate={updateAllowance}
                 onHourlyRateChange={handleHourlyRateChange}
                 breakdown={breakdown}
+                isPreview={isPreviewMode}
               />
             )}
 
@@ -304,15 +437,26 @@ export default function SalaryAdmin() {
                 onHourlyRateChange={handleHourlyRateChange}
                 onCustomDateChange={() => {}} // TODO: store custom dates
                 breakdown={breakdown}
+                isPreview={isPreviewMode}
               />
             )}
 
-            <div className="mt-4">
-              <PublishButton
-                isPublished={isPublished}
-                isSaving={isSaving}
-                onPublish={handlePublish}
-              />
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setIsPreviewMode(!isPreviewMode)}
+                className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  isPreviewMode ? 'bg-primary/20 text-primary ring-1 ring-primary/30' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                {isPreviewMode ? 'Đóng xem trước' : 'Xem trước bản NV'}
+              </button>
+              <div className="flex-1">
+                <PublishButton
+                  isPublished={isPublished}
+                  isSaving={isSaving}
+                  onPublish={handlePublish}
+                />
+              </div>
             </div>
           </>
         )}

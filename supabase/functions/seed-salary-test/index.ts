@@ -105,13 +105,13 @@ serve(async (req) => {
       userIds.push(userId);
     }
 
-    // Create working period for March 2026
+    // Create working period for Feb 25 - Mar 25 2026
     let periodId: string;
     const { data: existingPeriod } = await supabase
       .from("working_periods")
       .select("id")
-      .eq("start_date", "2026-03-01")
-      .eq("end_date", "2026-03-31")
+      .eq("start_date", "2026-02-25")
+      .eq("end_date", "2026-03-25")
       .maybeSingle();
 
     if (existingPeriod) {
@@ -121,9 +121,9 @@ serve(async (req) => {
       const { data: newPeriod } = await supabase
         .from("working_periods")
         .insert({
-          start_date: "2026-03-01",
-          end_date: "2026-03-31",
-          off_days: ["2026-03-08", "2026-03-22"],
+          start_date: "2026-02-25",
+          end_date: "2026-03-25",
+          off_days: ["2026-03-23"],
         })
         .select()
         .single();
@@ -133,15 +133,18 @@ serve(async (req) => {
 
     // Create special day rates
     const specialDays = [
-      { date: "2026-03-01", type: "new_moon", desc: "Mùng 1 + 40%", rate: 40 },
+      { date: "2026-02-28", type: "saturday", desc: "Thứ Bảy + 15%", rate: 15 },
+      { date: "2026-03-01", type: "sunday", desc: "Chủ Nhật + 20%", rate: 20 },
+      { date: "2026-03-02", type: "day_before_full_moon", desc: "Trước Rằm + 15%", rate: 15 },
+      { date: "2026-03-03", type: "full_moon", desc: "Rằm + 40%", rate: 40 },
       { date: "2026-03-07", type: "saturday", desc: "Thứ Bảy + 15%", rate: 15 },
       { date: "2026-03-08", type: "sunday", desc: "Chủ Nhật + 20%", rate: 20 },
-      { date: "2026-03-14", type: "day_before_full_moon", desc: "Trước Rằm + 15%", rate: 15 },
-      { date: "2026-03-15", type: "full_moon", desc: "Rằm + 40%", rate: 40 },
+      { date: "2026-03-14", type: "saturday", desc: "Thứ Bảy + 15%", rate: 15 },
+      { date: "2026-03-15", type: "sunday", desc: "Chủ Nhật + 20%", rate: 20 },
+      { date: "2026-03-18", type: "day_before_new_moon", desc: "Trước Mùng 1 + 15%", rate: 15 },
+      { date: "2026-03-19", type: "new_moon", desc: "Mùng 1 + 40%", rate: 40 },
       { date: "2026-03-21", type: "saturday", desc: "Thứ Bảy + 15%", rate: 15 },
       { date: "2026-03-22", type: "sunday", desc: "Chủ Nhật + 20%", rate: 20 },
-      { date: "2026-03-28", type: "saturday", desc: "Thứ Bảy + 15%", rate: 15 },
-      { date: "2026-03-29", type: "sunday", desc: "Chủ Nhật + 20%", rate: 20 },
     ];
 
     // Delete existing rates for this period first
@@ -172,8 +175,8 @@ serve(async (req) => {
 
       const dailyBaseA = roundToThousand(8400000 / 28); // 300000
       const entriesA = specialDays.map(sd => {
-        const isOff = sd.date === "2026-03-08";
-        const isHalfOff = sd.date === "2026-03-15";
+        const isOff = sd.date === "2026-03-23";
+        const isHalfOff = false; // Feb-Mar range has no specific half-off for A
         const rate = sd.rate;
         const allowance = roundToThousand(dailyBaseA * rate / 100);
         const deduction = isOff ? dailyBaseA : isHalfOff ? roundToThousand(dailyBaseA * 50 / 100) : 0;
@@ -224,11 +227,10 @@ serve(async (req) => {
       const dailyBaseB = roundToThousand(7000000 / 28); // 250000
       const entriesB = [];
 
-      for (let day = 1; day <= 31; day++) {
-        const date = `2026-03-${day.toString().padStart(2, "0")}`;
-        const d = new Date(date + "T00:00:00");
-        const dow = d.getDay();
-        const isOff = date === "2026-03-08" || date === "2026-03-22";
+      for (let d_it = new Date("2026-02-25T00:00:00"); d_it <= new Date("2026-03-25T00:00:00"); d_it.setDate(d_it.getDate() + 1)) {
+        const date = d_it.toISOString().split('T')[0];
+        const dow = d_it.getDay();
+        const isOff = date === "2026-03-23";
         const isWeekend = dow === 0 || dow === 6;
         const rate = getRate(date);
         const allowance = roundToThousand(dailyBaseB * rate / 100);
@@ -255,8 +257,8 @@ serve(async (req) => {
         });
       }
 
-      // Add duplicate rows for March 7 and 14
-      for (const dupDate of ["2026-03-07", "2026-03-14"]) {
+      // Add duplicate rows for special days with OT
+      for (const dupDate of ["2026-03-03", "2026-03-19"]) {
         const rate = getRate(dupDate);
         const allowance = roundToThousand(dailyBaseB * rate / 100);
         const hours = 2;
@@ -305,11 +307,11 @@ serve(async (req) => {
       await supabase.from("employee_allowances").delete().eq("user_id", userIds[2]).eq("period_id", periodId);
 
       const entriesC = [];
-      const offDays = new Set(["2026-03-08", "2026-03-10", "2026-03-12", "2026-03-16", "2026-03-18", "2026-03-20", "2026-03-22", "2026-03-24"]);
+      const offDaysC = new Set(["2026-03-23"]);
 
-      for (let day = 5; day <= 25; day++) {
-        const date = `2026-03-${day.toString().padStart(2, "0")}`;
-        const isOff = offDays.has(date);
+      for (let d_it = new Date("2026-02-25T00:00:00"); d_it <= new Date("2026-03-15T00:00:00"); d_it.setDate(d_it.getDate() + 1)) {
+        const date = d_it.toISOString().split('T')[0];
+        const isOff = offDaysC.has(date);
         const rate = getRate(date);
         const clockIn = isOff ? null : randomTime(8, 10);
         const clockOut = isOff ? null : randomTime(14, 18);
