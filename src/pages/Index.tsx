@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import LunarHeader from "@/components/LunarHeader";
 import WeekView from "@/components/WeekView";
-import { Check, LogOut, Shield } from "lucide-react";
+import { Check, LogOut, Shield, DollarSign } from "lucide-react";
 import RegistrationResult from "@/components/RegistrationResult";
 import { toast } from "sonner";
 
@@ -192,6 +192,16 @@ export default function Index() {
             Admin Dashboard
           </motion.button>
         )}
+
+        {/* Salary link */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate("/salary")}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium"
+        >
+          <DollarSign size={16} />
+          Bảng lương tháng này
+        </motion.button>
 
         {period ? (
           <WeekView

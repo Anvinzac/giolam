@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell } from "lucide-react";
+import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import AdminEmployeeList from "@/components/AdminEmployeeList";
 import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
@@ -118,6 +118,13 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => navigate('/admin/salary')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all"
+          >
+            <DollarSign size={16} />
+            Lương
+          </button>
           {[
             { key: 'shifts' as const, label: 'Bảng công', icon: Table2, badge: 0 },
             { key: 'registrations' as const, label: 'Đăng ký', icon: Calendar, badge: regBadge },
@@ -127,7 +134,7 @@ export default function AdminDashboard() {
           ].map(({ key, label, icon: Icon, badge }) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => key === 'salary' ? navigate('/admin/salary') : setTab(key)}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 tab === key ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
               }`}

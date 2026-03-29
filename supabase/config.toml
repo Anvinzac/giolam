@@ -1,4 +1,4 @@
-project_id = "nnvfcvpoldufojsxcfzo"
+project_id = "rrjmkqpexcjsqkxenpet"
 
 [functions.login-by-username]
 verify_jwt = false
@@ -10,4 +10,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.manage-employee]
+verify_jwt = false
+
+[functions.seed-salary-test]
 verify_jwt = false
