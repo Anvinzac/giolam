@@ -95,7 +95,7 @@ export default function SalaryTableTypeA({
         <div className="overflow-x-auto w-full">
           <div className="min-w-[500px]">
             {/* Column headers */}
-            <div className="grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-4 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="grid grid-cols-[90px_1fr_60px_90px_100px] gap-x-1 gap-y-0 px-3 py-4 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <span>Ngày</span>
               <span>Ghi chú</span>
               <span className="text-right">Tỷ lệ</span>
