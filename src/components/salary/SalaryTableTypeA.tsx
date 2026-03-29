@@ -113,7 +113,7 @@ export default function SalaryTableTypeA({
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[100px_1fr_70px_100px_110px] gap-2 px-3 py-4 items-center text-base ${
+                  className={`grid grid-cols-[90px_1fr_60px_90px_100px] gap-x-1 gap-y-0 px-3 py-4 items-center text-base ${
                     isOff ? 'bg-muted/15 opacity-75' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8' : ''} ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}
                 >
