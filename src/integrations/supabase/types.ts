@@ -371,6 +371,47 @@ export type Database = {
           },
         ]
       }
+      special_day_rates: {
+        Row: {
+          created_at: string
+          day_type: string
+          description_vi: string
+          id: string
+          period_id: string
+          rate_percent: number
+          sort_order: number
+          special_date: string
+        }
+        Insert: {
+          created_at?: string
+          day_type: string
+          description_vi?: string
+          id?: string
+          period_id: string
+          rate_percent?: number
+          sort_order?: number
+          special_date: string
+        }
+        Update: {
+          created_at?: string
+          day_type?: string
+          description_vi?: string
+          id?: string
+          period_id?: string
+          rate_percent?: number
+          sort_order?: number
+          special_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_day_rates_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
