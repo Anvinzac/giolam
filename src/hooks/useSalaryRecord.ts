@@ -11,8 +11,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
 
     const fetch = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('salary_records')
+      const { data } = await (supabase
+        .from('salary_records') as any)
         .select('*')
         .eq('user_id', userId)
         .eq('period_id', periodId)
@@ -22,8 +22,8 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
         setRecord(data as unknown as SalaryRecord);
       } else {
         // Create draft
-        const { data: created } = await supabase
-          .from('salary_records')
+        const { data: created } = await (supabase
+          .from('salary_records') as any)
           .insert({
             user_id: userId,
             period_id: periodId,
