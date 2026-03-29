@@ -52,7 +52,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
           user_id: userId,
           period_id: periodId,
           total_salary: totalSalary,
-          salary_breakdown: breakdown as unknown as Record<string, unknown>,
+          salary_breakdown: JSON.parse(JSON.stringify(breakdown)),
           status: 'draft',
         }],
         { onConflict: 'user_id,period_id' }
@@ -74,7 +74,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
           user_id: userId,
           period_id: periodId,
           total_salary: totalSalary,
-          salary_breakdown: breakdown as unknown as Record<string, unknown>,
+          salary_breakdown: JSON.parse(JSON.stringify(breakdown)),
           status: 'published',
           published_at: new Date().toISOString(),
         }],
