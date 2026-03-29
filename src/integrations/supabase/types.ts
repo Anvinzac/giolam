@@ -61,6 +61,47 @@ export type Database = {
           },
         ]
       }
+      employee_allowances: {
+        Row: {
+          allowance_key: string
+          amount: number
+          created_at: string
+          id: string
+          is_enabled: boolean
+          label: string
+          period_id: string
+          user_id: string
+        }
+        Insert: {
+          allowance_key: string
+          amount?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          period_id: string
+          user_id: string
+        }
+        Update: {
+          allowance_key?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          period_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_allowances_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -110,6 +151,115 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_entries: {
+        Row: {
+          allowance_amount: number
+          allowance_rate_override: number | null
+          base_daily_wage: number
+          clock_in: string | null
+          clock_out: string | null
+          created_at: string
+          entry_date: string
+          extra_wage: number
+          id: string
+          is_day_off: boolean
+          note: string | null
+          off_percent: number
+          period_id: string
+          sort_order: number
+          total_daily_wage: number
+          total_hours: number | null
+          user_id: string
+        }
+        Insert: {
+          allowance_amount?: number
+          allowance_rate_override?: number | null
+          base_daily_wage?: number
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          entry_date: string
+          extra_wage?: number
+          id?: string
+          is_day_off?: boolean
+          note?: string | null
+          off_percent?: number
+          period_id: string
+          sort_order?: number
+          total_daily_wage?: number
+          total_hours?: number | null
+          user_id: string
+        }
+        Update: {
+          allowance_amount?: number
+          allowance_rate_override?: number | null
+          base_daily_wage?: number
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          entry_date?: string
+          extra_wage?: number
+          id?: string
+          is_day_off?: boolean
+          note?: string | null
+          off_percent?: number
+          period_id?: string
+          sort_order?: number
+          total_daily_wage?: number
+          total_hours?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_entries_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_records: {
+        Row: {
+          created_at: string
+          id: string
+          period_id: string
+          published_at: string | null
+          salary_breakdown: Json | null
+          status: string
+          total_salary: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          period_id: string
+          published_at?: string | null
+          salary_breakdown?: Json | null
+          status?: string
+          total_salary?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          period_id?: string
+          published_at?: string | null
+          salary_breakdown?: Json | null
+          status?: string
+          total_salary?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_records_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "working_periods"
             referencedColumns: ["id"]
           },
         ]
