@@ -150,7 +150,7 @@ export default function AdminDashboard() {
           ].map(({ key, label, icon: Icon, badge }) => (
             <button
               key={key}
-              onClick={() => (key as string) === 'salary' ? navigate('/admin/salary') : setTab(key)}
+              onClick={() => key === 'salary' ? navigate('/admin/salary') : setTab(key)}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 tab === key ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
               }`}

@@ -15,8 +15,8 @@ export function useSpecialDayRates(
     if (!periodId) { setLoading(false); return; }
     setLoading(true);
 
-    const { data, error } = await (supabase
-      .from('special_day_rates') as any)
+    const { data, error } = await supabase
+      .from('special_day_rates')
       .select('*')
       .eq('period_id', periodId)
       .order('sort_order', { ascending: true });
@@ -33,8 +33,8 @@ export function useSpecialDayRates(
     if (periodStart && periodEnd) {
       const defaults = generateDefaultSpecialDays(periodStart, periodEnd, periodId);
       if (defaults.length > 0) {
-        const { data: inserted, error: insertErr } = await (supabase
-          .from('special_day_rates') as any)
+        const { data: inserted, error: insertErr } = await supabase
+          .from('special_day_rates')
           .insert(defaults)
           .select();
         if (!insertErr && inserted) {
@@ -49,16 +49,16 @@ export function useSpecialDayRates(
 
   const updateRate = useCallback(async (id: string, updates: Partial<SpecialDayRate>) => {
     setRates(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
-    const { error } = await (supabase
-      .from('special_day_rates') as any)
+    const { error } = await supabase
+      .from('special_day_rates')
       .update(updates)
       .eq('id', id);
     if (error) console.error('Failed to update rate:', error);
   }, []);
 
   const addRate = useCallback(async (rate: Omit<SpecialDayRate, 'id'>) => {
-    const { data, error } = await (supabase
-      .from('special_day_rates') as any)
+    const { data, error } = await supabase
+      .from('special_day_rates')
       .insert(rate)
       .select()
       .single();
@@ -68,8 +68,8 @@ export function useSpecialDayRates(
 
   const removeRate = useCallback(async (id: string) => {
     setRates(prev => prev.filter(r => r.id !== id));
-    const { error } = await (supabase
-      .from('special_day_rates') as any)
+    const { error } = await supabase
+      .from('special_day_rates')
       .delete()
       .eq('id', id);
     if (error) console.error('Failed to remove rate:', error);
