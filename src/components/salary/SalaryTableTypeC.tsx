@@ -38,8 +38,8 @@ export default function SalaryTableTypeC({
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const tableGridClass = 'grid-cols-[minmax(124px,1fr)_0px_54px_32px_40px_46px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
-  const tableGapClass = 'gap-0.5 sm:gap-1.5 px-1 sm:px-2';
+  const tableGridClass = 'grid-cols-[minmax(132px,1fr)_0px_50px_30px_36px_44px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
+  const tableGapClass = 'gap-0.5 sm:gap-1.5 pl-1 pr-0 sm:px-2';
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);
@@ -283,7 +283,7 @@ export default function SalaryTableTypeC({
         isMoonDay ? 'moon-accent-row' : ''
       }`}>
         {/* Date + note */}
-        <div className="pr-3 sm:pr-2">
+        <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!isPreview && (
               <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
@@ -401,7 +401,7 @@ export default function SalaryTableTypeC({
       <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
-        <div className="pr-3 sm:pr-2">
+        <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!isPreview && dateStr ? (
               <button
