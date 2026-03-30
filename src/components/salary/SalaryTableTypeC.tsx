@@ -453,15 +453,21 @@ export default function SalaryTableTypeC({
         </div>
 
         {/* Hours */}
-        <span className="justify-self-end text-right font-semibold text-[12px] sm:text-[13px]">{formatHours(hours)}</span>
+        <div className="justify-self-end flex items-center h-full">
+          <span className="text-right font-semibold text-[13px] sm:text-[14px]">{formatHours(hours)}</span>
+        </div>
 
         {/* Allowance */}
-        <span className="justify-self-end text-right text-emerald-400 font-semibold text-[12px] sm:text-[13px]">
-          {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
-        </span>
+        <div className="justify-self-end flex items-center h-full">
+          <span className="text-right text-emerald-400 font-semibold text-[13px] sm:text-[14px]">
+            {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
+          </span>
+        </div>
 
         {/* Total */}
-        <span className="justify-self-end text-right font-bold text-[13px] sm:text-[15px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        <div className="justify-self-end flex items-center h-full">
+          <span className="text-right font-bold text-[14px] sm:text-[16px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        </div>
       </div>
       {showWeekSep && (
         <div className="py-1.5">
