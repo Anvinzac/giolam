@@ -38,8 +38,8 @@ export default function SalaryTableTypeC({
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const tableGridClass = 'grid-cols-[minmax(132px,1fr)_0px_50px_30px_36px_44px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
-  const tableGapClass = 'gap-0.5 sm:gap-1.5 pl-1 pr-0 sm:px-2';
+  const tableGridClass = 'sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
+  const tableGapClass = 'sm:gap-1.5 sm:px-2';
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);
@@ -277,7 +277,94 @@ export default function SalaryTableTypeC({
 
     return (
       <div key={cellKey}>
-      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
+      <div className={`flex items-start justify-between gap-2 py-2.5 pl-1 pr-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
+        e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
+      } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
+        isMoonDay ? 'moon-accent-row' : ''
+      }`}>
+        <div className="min-w-0 flex-1 pr-3">
+          <div className="flex items-start gap-1.5">
+            {!isPreview && (
+              <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+                {e.is_day_off ? <X size={11} /> : <Check size={11} />}
+              </button>
+            )}
+            <div className="min-w-0 flex-1">
+              {editingDateKey === `${cellKey}-date` && !isPreview ? (
+                <input
+                  type="date"
+                  value={editingDateValue}
+                  min={periodStart}
+                  max={periodEnd}
+                  onChange={(ev) => setEditingDateValue(ev.target.value)}
+                  onBlur={() => saveDateEdit(e)}
+                  onKeyDown={(ev) => {
+                    if (ev.key === 'Enter') saveDateEdit(e);
+                    if (ev.key === 'Escape') setEditingDateKey(null);
+                  }}
+                  className="px-1 py-1 rounded bg-background border border-border text-[10px] min-w-0 w-full"
+                  autoFocus
+                />
+              ) : (
+                <button
+                  onClick={() => toggleDayOff(e)}
+                  className={`block -mt-0.5 font-semibold text-[15px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+                >
+                  {formatDayOnly(e.entry_date)}
+                </button>
+              )}
+              {editingCell === `${cellKey}-note` && !isPreview ? (
+                <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
+                  onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                  className="mt-1 px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
+              ) : (
+                <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
+                  className={`mt-1 block text-left text-[12px] leading-tight ${
+                    isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+                  } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
+                  {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="ml-2 flex shrink-0 items-start gap-3 text-right">
+          <div className="flex w-[40px] flex-col gap-[0.15rem] min-h-[38px] items-end">
+            {editingCell === `${cellKey}-clock_in` && !isPreview ? (
+              <button
+                onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
+              >
+                Chọn
+              </button>
+            ) : (
+              <button onClick={() => !isPreview && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                className={`w-full text-right font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                {formatClockDecimal(e.clock_in)}
+              </button>
+            )}
+            {editingCell === `${cellKey}-clock_out` && !isPreview ? (
+              <button
+                onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
+              >
+                Chọn
+              </button>
+            ) : (
+              <button onClick={() => !isPreview && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                className={`w-full text-right font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
+                {formatClockDecimal(e.clock_out)}
+              </button>
+            )}
+          </div>
+          <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
+          <span className="w-[30px] text-right text-emerald-400 font-semibold text-[12px]">
+            {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
+          </span>
+          <span className="w-[40px] text-right font-bold text-[13px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        </div>
+      </div>
+      <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'moon-accent-row' : ''
@@ -316,18 +403,7 @@ export default function SalaryTableTypeC({
                 </button>
               )}
 
-              {editingCell === `${cellKey}-note` && !isPreview ? (
-                <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
-                  onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                  className="mt-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full sm:ml-1" autoFocus />
-              ) : (
-                <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-                  className={`mt-1 block text-left text-[12px] leading-tight sm:hidden ${
-                    isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-                  } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
-                  {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
-                </button>
-              )}
+              
             </div>
           </div>
         </div>
@@ -398,7 +474,53 @@ export default function SalaryTableTypeC({
 
   const renderEmptyRow = (dateStr: string | null, idx: number) => (
     <div key={`empty-${dateStr || idx}`}>
-      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
+      <div className={`flex items-start justify-between gap-2 py-2.5 pl-1 pr-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
+        idx % 2 !== 0 ? 'bg-muted/20' : ''
+      } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
+        <div className="min-w-0 flex-1 pr-3">
+          <div className="flex items-start gap-1.5">
+            {!isPreview && dateStr ? (
+              <button
+                onClick={() => !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
+                className={`mt-0.5 flex-shrink-0 transition-colors ${
+                  scheduledOffDays.has(dateStr)
+                    ? 'text-destructive/60 cursor-default'
+                    : 'text-destructive/50 hover:text-emerald-400'
+                }`}
+              >
+                <X size={11} />
+              </button>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              {dateStr ? (
+                <button
+                  onClick={() => !isPreview && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
+                  className={`block -mt-0.5 font-semibold text-[15px] leading-none whitespace-nowrap ${getDayColor(dateStr)} ${
+                    !isPreview && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
+                  }`}
+                >
+                  {formatDayOnly(dateStr)}
+                </button>
+              ) : (
+                <span className="block font-semibold text-[15px] leading-none whitespace-nowrap opacity-0">00</span>
+              )}
+              <span className="mt-1 block text-left text-[12px] leading-tight text-muted-foreground">
+                {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="ml-2 flex shrink-0 items-start gap-3 text-right">
+          <div className="flex w-[40px] flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-end">
+            <span className="w-full text-right">—</span>
+            <span className="w-full text-right">—</span>
+          </div>
+          <span className="w-[24px] text-right text-muted-foreground font-semibold">—</span>
+          <span className="w-[30px] text-right text-muted-foreground font-semibold">—</span>
+          <span className="w-[40px] text-right text-[13px] text-muted-foreground font-bold">—</span>
+        </div>
+      </div>
+      <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
         <div className="pr-4 sm:pr-2">
@@ -450,7 +572,30 @@ export default function SalaryTableTypeC({
   );
 
   const renderTableHeader = () => (
-    <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full`}>
+    <>
+    <div className="flex items-center justify-between gap-2 py-2.5 pl-1 pr-0 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full sm:hidden">
+      <span className="flex items-center justify-center">
+        <button
+          onClick={() => !isPreview && setAddingDate(prev => !prev)}
+          className={`mx-auto flex items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
+            !isPreview
+              ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
+              : 'border-border/30 bg-muted/20 cursor-default'
+          }`}
+          aria-label="Thêm dòng theo ngày"
+        >
+          <span>Ngày</span>
+          <Plus size={11} />
+        </button>
+      </span>
+      <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
+        <span className="w-[40px] text-center">V/R</span>
+        <span className="w-[24px] text-right">Giờ</span>
+        <span className="w-[30px] text-right">PC</span>
+        <span className="w-[40px] text-right">Tổng</span>
+      </div>
+    </div>
+    <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full`}>
       <span className="flex items-center justify-center sm:justify-center">
         <button
           onClick={() => !isPreview && setAddingDate(prev => !prev)}
@@ -471,6 +616,7 @@ export default function SalaryTableTypeC({
       <span className="text-right">Phụ cấp</span>
       <span className="text-right">Tổng</span>
     </div>
+    </>
   );
 
   const renderCompact = () => {

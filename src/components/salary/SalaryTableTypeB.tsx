@@ -39,8 +39,8 @@ export default function SalaryTableTypeB({
   breakdown,
   isPreview = false,
 }: SalaryTableTypeBProps) {
-  const tableGridClass = 'grid-cols-[minmax(132px,1fr)_0px_46px_30px_44px_52px] sm:grid-cols-[70px_minmax(140px,1fr)_50px_40px_70px_80px]';
-  const tableGapClass = 'gap-0.5 sm:gap-1.5 pl-1 pr-0 sm:px-1';
+  const tableGridClass = 'sm:grid-cols-[70px_minmax(140px,1fr)_50px_40px_70px_80px]';
+  const tableGapClass = 'sm:gap-1.5 sm:px-1';
   const [currentPage, setCurrentPage] = useState(0);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [cellValue, setCellValue] = useState('');
@@ -107,9 +107,18 @@ export default function SalaryTableTypeB({
   const renderPage = (pageEntries: SalaryEntry[]) => (
     <div>
           {/* Column headers */}
-          <div className={`grid ${tableGridClass} ${tableGapClass} py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40`}>
+          <div className="flex items-center justify-between gap-2 py-3 pl-1 pr-0 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 sm:hidden">
             <span>Ngày</span>
-            <span className="hidden sm:block text-center">Ghi chú</span>
+            <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
+              <span className="w-[38px]">Ra</span>
+              <span className="w-[26px]">Giờ</span>
+              <span className="w-[36px]">PC</span>
+              <span className="w-[44px]">Tổng</span>
+            </div>
+          </div>
+          <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40`}>
+            <span>Ngày</span>
+            <span className="text-center">Ghi chú</span>
             <span className="text-right">Ra</span>
             <span className="text-right">Giờ</span>
             <span className="text-right">Phụ cấp</span>
@@ -134,7 +143,83 @@ export default function SalaryTableTypeB({
 
           return (
             <div key={cellKey}>
-            <div className={`grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
+            <div className={`flex items-start justify-between gap-2 py-3.5 pl-1 pr-0 text-[14px] border-b border-border/20 sm:hidden ${
+              e.is_day_off ? 'opacity-50' : ''
+            } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
+              isMoonDay ? 'moon-accent-row' : ''
+            }`}>
+              <div className="min-w-0 flex-1 pr-3">
+                <div className="flex items-start gap-1">
+                  {!isPreview && (
+                    isDupe ? (
+                      <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
+                        <Trash2 size={10} />
+                      </button>
+                    ) : (
+                      <button onClick={() => onAddDuplicateRow(e.entry_date)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
+                        <Plus size={10} />
+                      </button>
+                    )
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className={`block font-semibold text-[15px] leading-none ${getDayColor(e.entry_date)}`}>
+                      {isDupe ? '↳' : formatDayOnly(e.entry_date)}
+                    </span>
+                    {editingCell === `${cellKey}-note` && !isPreview ? (
+                      <input
+                        value={cellValue}
+                        onChange={ev => setCellValue(ev.target.value)}
+                        onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                        onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                        className="mt-1 block w-full rounded bg-background border border-border px-2 py-1 text-[12px] min-w-0"
+                        autoFocus
+                      />
+                    ) : (
+                      <button
+                        onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
+                        className={`mt-1 block text-left text-[12px] leading-tight ${
+                          isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+                        } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+                      >
+                        {e.note || rateDesc || '—'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="ml-2 flex shrink-0 items-start gap-3 text-right">
+                {editingCell === `${cellKey}-clock_out` && !isPreview ? (
+                  <button
+                    onClick={() => setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order })}
+                    className="w-[38px] rounded border border-border bg-background px-1 py-1 text-right text-[10px] text-accent"
+                  >
+                    Chọn
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (!isPreview) {
+                        setEditingCell(`${cellKey}-clock_out`);
+                        setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order });
+                      }
+                    }}
+                    className={`w-[38px] text-right text-sm font-medium ${
+                      !isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'
+                    }`}
+                  >
+                    {formatClockDecimal(e.clock_out)}
+                  </button>
+                )}
+                <span className="w-[26px] text-right font-semibold text-[13px]">{formatHours(hours)}</span>
+                <span className="w-[36px] text-right text-emerald-400 font-semibold text-[14px]">
+                  {allowance > 0 ? formatCompactK(allowance) : ''}
+                </span>
+                <span className={`w-[44px] text-right font-bold text-[15px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+                  {formatCompactK(total)}
+                </span>
+              </div>
+            </div>
+            <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
               e.is_day_off ? 'opacity-50' : ''
             } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
               isMoonDay ? 'moon-accent-row' : ''
@@ -154,29 +239,9 @@ export default function SalaryTableTypeB({
                   )
                 )}
                 <div className="min-w-0 flex-1">
-                  <span className={`block font-semibold text-[15px] leading-none sm:text-sm sm:leading-normal ${getDayColor(e.entry_date)}`}>
-                    <span className="sm:hidden">{isDupe ? '↳' : formatDayOnly(e.entry_date)}</span>
-                    <span className="hidden sm:inline">{isDupe ? '↳' : formatDateViet(e.entry_date)}</span>
+                  <span className={`block font-semibold text-sm ${getDayColor(e.entry_date)}`}>
+                    {isDupe ? '↳' : formatDateViet(e.entry_date)}
                   </span>
-                  {editingCell === `${cellKey}-note` && !isPreview ? (
-                    <input
-                      value={cellValue}
-                      onChange={ev => setCellValue(ev.target.value)}
-                      onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                      onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                      className="mt-1 block w-full rounded bg-background border border-border px-2 py-1 text-[12px] min-w-0 sm:hidden"
-                      autoFocus
-                    />
-                  ) : (
-                    <button
-                      onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-                      className={`mt-1 block text-left text-[12px] leading-tight sm:hidden ${
-                        isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-                      } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
-                    >
-                      {e.note || rateDesc || '—'}
-                    </button>
-                  )}
                 </div>
                 </div>
               </div>
@@ -188,13 +253,13 @@ export default function SalaryTableTypeB({
                   onChange={ev => setCellValue(ev.target.value)}
                   onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
                   onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                  className="hidden sm:block px-2 py-1.5 rounded bg-background border border-border text-sm min-w-0"
+                  className="px-2 py-1.5 rounded bg-background border border-border text-sm min-w-0"
                   autoFocus
                 />
               ) : (
                 <button
                   onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-                  className={`hidden sm:block text-left truncate text-sm transition-colors ${
+                  className={`text-left truncate text-sm transition-colors ${
                     isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
                   } ${
                     !isPreview ? 'hover:text-foreground' : 'cursor-default'
