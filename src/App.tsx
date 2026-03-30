@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import SalaryAdmin from "./pages/SalaryAdmin";
 import SalaryEmployee from "./pages/SalaryEmployee";
 import NotFound from "./pages/NotFound";
+import TestTypeC from "./pages/TestTypeC";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/salary" element={<SalaryAdmin />} />
           <Route path="/salary" element={<SalaryEmployee />} />
+          <Route path="/test" element={<TestTypeC />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
