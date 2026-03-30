@@ -100,6 +100,21 @@ export default function SalaryTableTypeC({
     return { rate, hours, baseWage, allowanceAmt, total };
   };
 
+  const formatHours = (hours: number) => {
+    if (hours <= 0) return '—';
+    return Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
+  };
+
+  const formatClockDecimal = (time: string | null) => {
+    if (!time) return '—';
+    const [hoursStr, minutesStr] = time.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return '—';
+    const decimalHours = hours + minutes / 60;
+    return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
+  };
+
   const saveHourlyRate = () => {
     onHourlyRateChange(parseInt(hourlyInput) || 25000);
     setEditingHourly(false);
@@ -128,7 +143,10 @@ export default function SalaryTableTypeC({
   const formatNextDay = (dateStr: string) => {
     const date = new Date(`${dateStr}T00:00:00`);
     date.setDate(date.getDate() + 1);
-    return date.toISOString().slice(0, 10);
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const clampDateToPeriod = (dateStr: string) => {
@@ -247,8 +265,8 @@ export default function SalaryTableTypeC({
               className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-center" autoFocus />
           ) : (
             <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_in`, e.clock_in || '')}
-              className={`w-full text-center font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-0.5`}>
-              {e.clock_in?.slice(0, 5) || '—'}
+              className={`w-full text-center font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
+              {formatClockDecimal(e.clock_in)}
             </button>
           )}
           {editingCell === `${cellKey}-clock_out` && !isPreview ? (
@@ -257,14 +275,14 @@ export default function SalaryTableTypeC({
               className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-center" autoFocus />
           ) : (
             <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_out`, e.clock_out || '')}
-              className={`w-full text-center font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'} self-center translate-x-0.5`}>
-              {e.clock_out?.slice(0, 5) || '—'}
+              className={`w-full text-center font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'} self-center translate-x-1`}>
+              {formatClockDecimal(e.clock_out)}
             </button>
           )}
         </div>
 
         {/* Hours */}
-        <span className="text-right font-semibold text-[12px] sm:text-[13px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
+        <span className="text-right font-semibold text-[12px] sm:text-[13px]">{formatHours(hours)}</span>
 
         {/* Extra wage */}
         <span className="text-right text-emerald-400 font-semibold text-[12px] sm:text-[13px]">
@@ -359,6 +377,12 @@ export default function SalaryTableTypeC({
               >
                 Tạo dòng
               </button>
+              <button
+                onClick={() => setAddingDate(false)}
+                className="px-2 py-1 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+              >
+                Hủy
+              </button>
             </div>
           )}
           <div className="px-2 py-2 text-[11px] text-muted-foreground font-semibold flex items-center justify-between border-b border-border/40">
@@ -376,10 +400,14 @@ export default function SalaryTableTypeC({
 
   const renderPage = (page: { startDate: string; endDate: string; entries: SalaryEntry[] }) => {
     const pageDates = generateDateRange(page.startDate, page.endDate);
-    const filledDates = new Set(page.entries.map(entry => entry.entry_date));
-    const emptyRows = pageDates
-      .filter(dateStr => !filledDates.has(dateStr))
-      .map((dateStr, idx) => ({ dateStr, idx: page.entries.length + idx }));
+    const pageRows = pageDates.map((dateStr, idx) => ({
+      idx,
+      dateStr,
+      entry: page.entries.find(entry => entry.entry_date === dateStr) || null,
+    }));
+    const orderedEntries = pageRows
+      .filter((row): row is { idx: number; dateStr: string; entry: SalaryEntry } => row.entry !== null)
+      .map(row => row.entry);
 
     return (
       <div className="w-full overflow-x-auto pb-2">
@@ -404,12 +432,21 @@ export default function SalaryTableTypeC({
               >
                 Tạo dòng
               </button>
+              <button
+                onClick={() => setAddingDate(false)}
+                className="px-2 py-1 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+              >
+                Hủy
+              </button>
             </div>
           )}
           {renderTableHeader()}
           <div className="divide-y divide-border/20">
-            {page.entries.map((e, idx) => renderRow(e, idx, page.entries))}
-            {emptyRows.map(({ dateStr, idx }) => renderEmptyRow(dateStr, idx))}
+            {pageRows.map((row, idx) =>
+              row.entry
+                ? renderRow(row.entry, idx, orderedEntries)
+                : renderEmptyRow(row.dateStr, idx)
+            )}
           </div>
         </div>
       </div>

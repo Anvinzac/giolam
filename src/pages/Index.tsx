@@ -7,6 +7,8 @@ import WeekView from "@/components/WeekView";
 import { Check, LogOut, Shield, DollarSign } from "lucide-react";
 import RegistrationResult from "@/components/RegistrationResult";
 import { toast } from "sonner";
+import AppBootState from "@/components/AppBootState";
+import { withTimeout } from "@/lib/withTimeout";
 
 interface ShiftData {
   shift_date: string;
@@ -31,6 +33,8 @@ export default function Index() {
   const [shifts, setShifts] = useState<ShiftData[]>([]);
   const [saving, setSaving] = useState(false);
   const [useDefaultTime, setUseDefaultTime] = useState(true);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -47,7 +51,11 @@ export default function Index() {
       setUserId(session.user.id);
 
       // Fetch profile
-      const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).single();
+      const { data: prof } = await withTimeout(
+        supabase.from('profiles').select('*').eq('user_id', session.user.id).single(),
+        10000,
+        'Profile lookup timed out.',
+      );
       if (!isMounted) return;
       if (prof?.must_change_password) {
         setLoading(false);
@@ -58,7 +66,11 @@ export default function Index() {
       setUserName(prof?.full_name || session.user.email || 'Employee');
 
       // Check admin
-      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+      const { data: roles } = await withTimeout(
+        supabase.from('user_roles').select('role').eq('user_id', session.user.id),
+        10000,
+        'Role check timed out.',
+      );
       if (!isMounted) return;
       const userIsAdmin = roles?.some(r => r.role === 'admin') ?? false;
       setIsAdmin(userIsAdmin);
@@ -71,17 +83,29 @@ export default function Index() {
 
       // Get current period
       const today = new Date().toISOString().split('T')[0];
-      const { data: periods } = await supabase.from('working_periods').select('*').lte('start_date', today).gte('end_date', today);
+      const { data: periods } = await withTimeout(
+        supabase.from('working_periods').select('*').lte('start_date', today).gte('end_date', today),
+        10000,
+        'Working period lookup timed out.',
+      );
 
       let currentPeriod = periods?.[0];
       if (!currentPeriod) {
-        const { data: upcoming } = await supabase.from('working_periods').select('*').gte('start_date', today).order('start_date', { ascending: true }).limit(1);
+        const { data: upcoming } = await withTimeout(
+          supabase.from('working_periods').select('*').gte('start_date', today).order('start_date', { ascending: true }).limit(1),
+          10000,
+          'Upcoming period lookup timed out.',
+        );
         currentPeriod = upcoming?.[0];
       }
 
       if (currentPeriod) {
         setPeriod(currentPeriod);
-        const { data: shiftData } = await supabase.from('shifts').select('*').eq('user_id', session.user.id).eq('period_id', currentPeriod.id);
+        const { data: shiftData } = await withTimeout(
+          supabase.from('shifts').select('*').eq('user_id', session.user.id).eq('period_id', currentPeriod.id),
+          10000,
+          'Shift data lookup timed out.',
+        );
         if (!isMounted) return;
         setShifts(shiftData?.map(s => ({
           shift_date: s.shift_date,
@@ -104,11 +128,20 @@ export default function Index() {
 
     const bootstrap = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        setLoading(true);
+        setBootError(null);
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          10000,
+          'Session check timed out.',
+        );
         await hydrateFromSession(data.session);
       } catch (error) {
         console.error('Failed to initialize session:', error);
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setBootError(error instanceof Error ? error.message : 'Unknown startup error.');
+          setLoading(false);
+        }
       }
     };
 
@@ -122,7 +155,7 @@ export default function Index() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, retryKey]);
 
   const handleShiftUpdate = useCallback((date: string, updates: Partial<ShiftData>) => {
     setShifts(prev => {
@@ -177,12 +210,8 @@ export default function Index() {
     navigate("/login");
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full gradient-gold animate-glow-pulse" />
-      </div>
-    );
+  if (loading || bootError) {
+    return <AppBootState error={bootError} onRetry={() => setRetryKey(key => key + 1)} />;
   }
 
   const periodLabel = period
