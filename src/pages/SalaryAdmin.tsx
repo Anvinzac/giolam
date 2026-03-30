@@ -481,64 +481,70 @@ export default function SalaryAdmin() {
 
         {/* Selected employee salary table */}
         {selectedEmployee && selectedPeriod && (
-          <div className="-mx-4 sm:mx-0">
+          <>
             {selectedEmployee.shift_type === 'basic' && (
-              <SalaryTableTypeA
-                entries={entries}
-                rates={rates}
-                allowances={allowances}
-                baseSalary={selectedEmployee.base_salary}
-                onEntryUpdate={updateEntry}
-                onAllowanceToggle={toggleAllowance}
-                onAllowanceUpdate={updateAllowance}
-                breakdown={breakdown}
-                isPreview={isPreviewMode}
-              />
+              <div className="-mx-4 sm:mx-0">
+                <SalaryTableTypeA
+                  entries={entries}
+                  rates={rates}
+                  allowances={allowances}
+                  baseSalary={selectedEmployee.base_salary}
+                  onEntryUpdate={updateEntry}
+                  onAllowanceToggle={toggleAllowance}
+                  onAllowanceUpdate={updateAllowance}
+                  breakdown={breakdown}
+                  isPreview={isPreviewMode}
+                />
+              </div>
             )}
 
             {selectedEmployee.shift_type === 'overtime' && (
-              <SalaryTableTypeB
-                entries={entries}
-                rates={rates}
-                allowances={allowances}
-                baseSalary={selectedEmployee.base_salary}
-                hourlyRate={selectedEmployee.hourly_rate}
-                globalClockIn={globalClockIn}
-                onGlobalClockInChange={handleGlobalClockInChange}
-                periodStart={selectedPeriod.start_date}
-                periodEnd={selectedPeriod.end_date}
-                onEntryUpdate={updateEntry}
-                onAddDuplicateRow={addDuplicateRow}
-                onRemoveEntry={removeEntry}
-                onAllowanceToggle={toggleAllowance}
-                onAllowanceUpdate={updateAllowance}
-                onHourlyRateChange={handleHourlyRateChange}
-                breakdown={breakdown}
-                isPreview={isPreviewMode}
-              />
+              <div className="-mx-4 sm:mx-0">
+                <SalaryTableTypeB
+                  entries={entries}
+                  rates={rates}
+                  allowances={allowances}
+                  baseSalary={selectedEmployee.base_salary}
+                  hourlyRate={selectedEmployee.hourly_rate}
+                  globalClockIn={globalClockIn}
+                  onGlobalClockInChange={handleGlobalClockInChange}
+                  periodStart={selectedPeriod.start_date}
+                  periodEnd={selectedPeriod.end_date}
+                  onEntryUpdate={updateEntry}
+                  onAddDuplicateRow={addDuplicateRow}
+                  onRemoveEntry={removeEntry}
+                  onAllowanceToggle={toggleAllowance}
+                  onAllowanceUpdate={updateAllowance}
+                  onHourlyRateChange={handleHourlyRateChange}
+                  breakdown={breakdown}
+                  isPreview={isPreviewMode}
+                />
+              </div>
             )}
 
             {selectedEmployee.shift_type === 'notice_only' && (
-              <SalaryTableTypeC
-                entries={entries}
-                rates={rates}
-                allowances={allowances}
-                offDays={selectedPeriod.off_days || []}
-                hourlyRate={selectedEmployee.hourly_rate}
-                periodStart={selectedPeriod.start_date}
-                periodEnd={selectedPeriod.end_date}
-                customStartDate={null}
-                customEndDate={null}
-                onEntryUpdate={updateEntry}
-                onEntryDateChange={moveEntryToDate}
-                onAddRowAtDate={addRowAtDate}
-                onAllowanceToggle={toggleAllowance}
-                onAllowanceUpdate={updateAllowance}
-                onHourlyRateChange={handleHourlyRateChange}
-                onCustomDateChange={() => {}} // TODO: store custom dates
-                breakdown={breakdown}
-                isPreview={isPreviewMode}
-              />
+              <div className="-mx-4 sm:mx-0">
+                <SalaryTableTypeC
+                  entries={entries}
+                  rates={rates}
+                  allowances={allowances}
+                  offDays={selectedPeriod.off_days || []}
+                  hourlyRate={selectedEmployee.hourly_rate}
+                  periodStart={selectedPeriod.start_date}
+                  periodEnd={selectedPeriod.end_date}
+                  customStartDate={null}
+                  customEndDate={null}
+                  onEntryUpdate={updateEntry}
+                  onEntryDateChange={moveEntryToDate}
+                  onAddRowAtDate={addRowAtDate}
+                  onAllowanceToggle={toggleAllowance}
+                  onAllowanceUpdate={updateAllowance}
+                  onHourlyRateChange={handleHourlyRateChange}
+                  onCustomDateChange={() => {}} // TODO: store custom dates
+                  breakdown={breakdown}
+                  isPreview={isPreviewMode}
+                />
+              </div>
             )}
 
             <div className="mt-4 flex gap-2">
@@ -558,7 +564,7 @@ export default function SalaryAdmin() {
                 />
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>

@@ -107,7 +107,7 @@ export default function SalaryTableTypeB({
   const renderPage = (pageEntries: SalaryEntry[]) => (
     <div>
           {/* Column headers */}
-          <div className="flex items-center justify-between gap-2 py-3 pl-1 pr-0 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 sm:hidden">
+          <div className="flex items-center justify-between gap-2 py-3 pl-3 pr-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 sm:hidden">
             <span>Ngày</span>
             <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
               <span className="w-[38px]">Ra</span>
@@ -143,7 +143,7 @@ export default function SalaryTableTypeB({
 
           return (
             <div key={cellKey}>
-            <div className={`flex items-start justify-between gap-2 py-3.5 pl-1 pr-0 text-[14px] border-b border-border/20 sm:hidden ${
+            <div className={`flex items-start justify-between gap-2 py-3.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden ${
               e.is_day_off ? 'opacity-50' : ''
             } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
               isMoonDay ? 'moon-accent-row' : ''

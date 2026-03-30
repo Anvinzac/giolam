@@ -277,7 +277,7 @@ export default function SalaryTableTypeC({
 
     return (
       <div key={cellKey}>
-      <div className={`flex items-start justify-between gap-2 py-2.5 pl-1 pr-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
+      <div className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'moon-accent-row' : ''
@@ -474,7 +474,7 @@ export default function SalaryTableTypeC({
 
   const renderEmptyRow = (dateStr: string | null, idx: number) => (
     <div key={`empty-${dateStr || idx}`}>
-      <div className={`flex items-start justify-between gap-2 py-2.5 pl-1 pr-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
+      <div className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
         <div className="min-w-0 flex-1 pr-3">
@@ -573,7 +573,7 @@ export default function SalaryTableTypeC({
 
   const renderTableHeader = () => (
     <>
-    <div className="flex items-center justify-between gap-2 py-2.5 pl-1 pr-0 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full sm:hidden">
+    <div className="flex items-center justify-between gap-2 py-2.5 pl-3 pr-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full sm:hidden">
       <span className="flex items-center justify-center">
         <button
           onClick={() => !isPreview && setAddingDate(prev => !prev)}
@@ -589,7 +589,7 @@ export default function SalaryTableTypeC({
         </button>
       </span>
       <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
-        <span className="w-[40px] text-center">V/R</span>
+        <span className="w-[40px] text-center normal-case">Vào / Ra</span>
         <span className="w-[24px] text-right">Giờ</span>
         <span className="w-[30px] text-right">PC</span>
         <span className="w-[40px] text-right">Tổng</span>
