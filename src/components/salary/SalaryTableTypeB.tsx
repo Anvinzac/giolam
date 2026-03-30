@@ -95,12 +95,8 @@ export default function SalaryTableTypeB({
     setEditingCell(null);
   };
 
-  const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
+  const renderPage = (pageEntries: SalaryEntry[]) => (
     <div>
-      <div className="px-1 py-2 text-[11px] text-muted-foreground font-semibold border-b border-border/40">
-        {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
-      </div>
-
           {/* Column headers */}
           <div className="grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
             <span>Ngày</span>
@@ -250,7 +246,8 @@ export default function SalaryTableTypeB({
       {/* Swipeable pages */}
       {pages.length > 0 ? (
         <SwipeablePages
-          pages={pages.map(p => renderPage(p.entries, p.startDate, p.endDate))}
+          pages={pages.map(p => renderPage(p.entries))}
+          labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
         />

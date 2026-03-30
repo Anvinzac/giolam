@@ -220,11 +220,6 @@
   50% { transform: translateY(-10px); }
 }
 
-@keyframes week-sep-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 .week-separator {
   background: linear-gradient(
     90deg,
@@ -234,6 +229,4 @@
     hsl(190 75% 50% / 0.3) 80%,
     transparent 100%
   );
-  background-size: 200% 100%;
-  animation: week-sep-shimmer 3s ease-in-out infinite;
 }

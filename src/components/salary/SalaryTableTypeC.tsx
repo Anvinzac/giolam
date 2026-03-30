@@ -210,11 +210,8 @@ export default function SalaryTableTypeC({
     </div>
   );
 
-  const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
+  const renderPage = (pageEntries: SalaryEntry[]) => (
     <div>
-      <div className="px-1 py-2 text-[11px] text-muted-foreground font-semibold border-b border-border/40">
-        {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
-      </div>
       {renderTableHeader()}
       <div className="divide-y divide-border/20">
         {pageEntries.map((e, idx) => renderRow(e, idx, pageEntries))}
@@ -263,7 +260,8 @@ export default function SalaryTableTypeC({
         renderCompact()
       ) : pages.length > 0 ? (
         <SwipeablePages
-          pages={pages.map(p => renderPage(p.entries, p.startDate, p.endDate))}
+          pages={pages.map(p => renderPage(p.entries))}
+          labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
         />

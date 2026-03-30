@@ -3,11 +3,12 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 
 interface SwipeablePagesProps {
   pages: React.ReactNode[];
+  labels?: string[];
   currentPage: number;
   onPageChange: (page: number) => void;
 }
 
-export default function SwipeablePages({ pages, currentPage, onPageChange }: SwipeablePagesProps) {
+export default function SwipeablePages({ pages, labels, currentPage, onPageChange }: SwipeablePagesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState(0);
 
@@ -29,7 +30,7 @@ export default function SwipeablePages({ pages, currentPage, onPageChange }: Swi
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div ref={containerRef} className="overflow-hidden relative">
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
@@ -50,9 +51,9 @@ export default function SwipeablePages({ pages, currentPage, onPageChange }: Swi
         </AnimatePresence>
       </div>
 
-      {/* Page dots */}
+      {/* Page bar — bottom, wrap around text */}
       {pages.length > 1 && (
-        <div className="flex justify-center gap-1.5">
+        <div className="flex justify-center gap-2 px-1">
           {pages.map((_, idx) => (
             <button
               key={idx}
@@ -60,12 +61,14 @@ export default function SwipeablePages({ pages, currentPage, onPageChange }: Swi
                 setDirection(idx > currentPage ? 1 : -1);
                 onPageChange(idx);
               }}
-              className={`rounded-full transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
                 idx === currentPage
-                  ? 'w-6 h-2 gradient-gold'
-                  : 'w-2 h-2 bg-muted-foreground/30'
+                  ? 'gradient-gold text-primary-foreground'
+                  : 'bg-muted/60 text-muted-foreground hover:bg-muted'
               }`}
-            />
+            >
+              {labels?.[idx] ?? `Trang ${idx + 1}`}
+            </button>
           ))}
         </div>
       )}
