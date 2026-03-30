@@ -107,7 +107,7 @@ export default function SalaryTableTypeC({
     const cellKey = `${e.entry_date}-${e.sort_order}`;
 
     return (
-      <div key={cellKey} className={`grid grid-cols-[70px_1fr_50px_50px_40px_40px_55px_65px] gap-1.5 px-2 py-2.5 items-center text-[11px] ${
+      <div key={cellKey} className={`grid grid-cols-[65px_1fr_45px_45px_35px_50px_60px] gap-1 px-2 py-2.5 items-center text-[12px] ${
         e.is_day_off ? 'opacity-50 bg-muted/10' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/30' : ''}`}>
         {/* Date + toggle */}
@@ -157,13 +157,10 @@ export default function SalaryTableTypeC({
         )}
 
         {/* Hours */}
-        <span className="text-right font-semibold text-[11px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
-
-        {/* Rate */}
-        <span className="text-right font-medium text-[11px]">{rate > 0 ? `${rate}%` : '—'}</span>
+        <span className="text-right font-semibold text-[12px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
 
         {/* Extra wage */}
-        <span className="text-right text-emerald-400 font-semibold text-[10px]">
+        <span className="text-right text-emerald-400 font-semibold text-[12px]">
           {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
         </span>
 
@@ -174,13 +171,12 @@ export default function SalaryTableTypeC({
   };
 
   const renderTableHeader = () => (
-    <div className="grid grid-cols-[70px_1fr_50px_50px_40px_40px_55px_65px] gap-1.5 px-2 py-2.5 bg-muted/30 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+    <div className="grid grid-cols-[65px_1fr_45px_45px_35px_50px_60px] gap-1 px-2 py-2.5 bg-muted/30 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
       <span>Ngày</span>
       <span>Ghi chú</span>
       <span className="text-right">Vào</span>
       <span className="text-right">Ra</span>
       <span className="text-right">Giờ</span>
-      <span className="text-right">TL</span>
       <span className="text-right">Thêm</span>
       <span className="text-right">Tổng</span>
     </div>

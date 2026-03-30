@@ -101,15 +101,12 @@ export default function SalaryTableTypeB({
         {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
       </div>
 
-      <div className="overflow-x-auto w-full">
-        <div className="min-w-[550px]">
           {/* Column headers */}
-          <div className="grid grid-cols-[80px_1fr_65px_50px_50px_85px_95px] gap-2 px-3 py-3.5 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="grid grid-cols-[70px_1fr_50px_40px_65px_75px] gap-1 px-2 py-3 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
             <span>Ngày</span>
             <span>Ghi chú</span>
             <span className="text-right">Ra</span>
             <span className="text-right">Giờ</span>
-            <span className="text-right">TL</span>
             <span className="text-right">Thêm</span>
             <span className="text-right">Tổng</span>
           </div>
@@ -123,7 +120,7 @@ export default function SalaryTableTypeB({
           const rateDesc = rates.find(r => r.special_date === e.entry_date)?.description_vi;
 
           return (
-            <div key={cellKey} className={`grid grid-cols-[80px_1fr_65px_50px_50px_85px_95px] gap-2 px-3 py-4 items-center text-sm ${
+            <div key={cellKey} className={`grid grid-cols-[70px_1fr_50px_40px_65px_75px] gap-1 px-2 py-3.5 items-center text-[13px] ${
               e.is_day_off ? 'opacity-50 bg-muted/10' : ''
             } ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}>
               {/* Date */}
@@ -187,31 +184,24 @@ export default function SalaryTableTypeB({
               )}
 
               {/* Hours */}
-              <span className="text-right font-semibold text-sm">
+              <span className="text-right font-semibold text-[13px]">
                 {hours > 0 ? hours.toFixed(1) : '—'}
               </span>
 
-              {/* Rate */}
-              <span className={`text-right text-sm font-medium ${e.allowance_rate_override !== null ? 'text-accent' : ''}`}>
-                {rate > 0 ? `${rate}%` : '—'}
-              </span>
-
               {/* Extra wage */}
-              <span className="text-right text-emerald-400 font-semibold text-sm">
+              <span className="text-right text-emerald-400 font-semibold text-[13px]">
                 {extraWage > 0 ? formatVND(extraWage).replace(' đ', '') : '—'}
               </span>
 
               {/* Total */}
-              <span className={`text-right font-bold text-base ${total === 0 ? 'text-muted-foreground' : ''}`}>
+              <span className={`text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                 {formatVND(total).replace(' đ', '')}
               </span>
             </div>
           );
         })}
         </div>
-      </div>
     </div>
-  </div>
 );
 
   return (

@@ -92,13 +92,10 @@ export default function SalaryTableTypeA({
 
       {/* Table */}
       <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <div className="min-w-[500px]">
             {/* Column headers */}
-            <div className="grid grid-cols-[85px_2.5fr_65px_95px_100px] gap-1.5 px-3 py-4 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="grid grid-cols-[75px_1fr_80px_90px] gap-1 px-2 py-3 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
               <span>Ngày</span>
               <span>Ghi chú</span>
-              <span className="text-right">Tỷ lệ</span>
               <span className="text-right">Phụ cấp</span>
               <span className="text-right">Tổng ngày</span>
             </div>
@@ -113,12 +110,12 @@ export default function SalaryTableTypeA({
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[85px_2.5fr_65px_95px_100px] gap-1.5 px-3 py-4 items-center text-base ${
+                  className={`grid grid-cols-[75px_1fr_80px_90px] gap-1 px-2 py-3.5 items-center ${
                     isOff ? 'bg-muted/15 opacity-75' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8' : ''} ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}
                 >
                   {/* Date */}
-                  <span className={`font-semibold text-sm ${getDayColor(e.entry_date)}`}>
+                  <span className={`font-semibold text-[13px] ${getDayColor(e.entry_date)}`}>
                     {formatDateViet(e.entry_date)}
                   </span>
 
@@ -127,47 +124,27 @@ export default function SalaryTableTypeA({
                     <input
                       value={editNote}
                       onChange={ev => setEditNote(ev.target.value)}
-                      className="px-2 py-1 rounded bg-background border border-border text-sm min-w-0 w-full"
+                      className="px-2 py-1 rounded bg-background border border-border text-[13px] min-w-0 w-full"
                       autoFocus
                     />
                   ) : (
                     <button
                       onClick={() => !isPreview && startEditRow(e)}
-                      className={`text-left text-sm text-muted-foreground break-words transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
+                      className={`text-left text-[13px] text-muted-foreground break-words transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
                       {e.note || rateDesc || (isOff ? 'Nghỉ' : '—')}
                     </button>
                   )}
 
-                  {/* Rate */}
-                  {isEditing ? (
-                    <div className="flex items-center justify-end">
-                      <input
-                        value={editRate}
-                        onChange={ev => setEditRate(ev.target.value)}
-                        placeholder={rate.toString()}
-                        className="w-14 px-2 py-1.5 rounded bg-background border border-border text-sm text-right"
-                        inputMode="decimal"
-                      />
-                    </div>
-                  ) : (
-                    <span className={`text-right text-sm font-medium ${
-                      e.allowance_rate_override !== null ? 'text-accent' : 'text-foreground'
-                    }`}>
-                      {rate > 0 ? `${rate}%` : '—'}
-                      {e.allowance_rate_override !== null && <Edit3 className="inline w-3 h-3 ml-1" />}
-                    </span>
-                  )}
-
                   {/* Allowance */}
-                  <span className={`text-right text-sm font-semibold ${
+                  <span className={`text-right text-[13px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {isOff ? `-${formatVND(deduction)}` : (allowance > 0 ? formatVND(allowance) : '—')}
                   </span>
 
                   {/* Total */}
-                  <span className={`text-right text-base font-bold ${
+                  <span className={`text-right text-[14px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {formatVND(total)}
@@ -223,14 +200,12 @@ export default function SalaryTableTypeA({
             );
           })}
         </div>
-            
-            {visibleEntries.length === 0 && (
-              <div className="p-6 text-center text-muted-foreground text-xs">
-                Chưa có dữ liệu ngày đặc biệt
-              </div>
-            )}
+
+        {visibleEntries.length === 0 && (
+          <div className="p-6 text-center text-muted-foreground text-xs">
+            Chưa có dữ liệu ngày đặc biệt
           </div>
-        </div>
+        )}
       </div>
 
       {/* Allowances */}
