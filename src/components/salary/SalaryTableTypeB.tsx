@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Edit3 } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
+import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatDateViet } from '@/lib/salaryCalculations';
 import { splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -95,6 +95,11 @@ export default function SalaryTableTypeB({
     return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
   };
 
+  const formatCompactK = (amount: number) => {
+    if (amount === 0) return '0k';
+    return `${amount / 1000}k`;
+  };
+
   const renderPage = (pageEntries: SalaryEntry[]) => (
     <div>
           {/* Column headers */}
@@ -128,7 +133,7 @@ export default function SalaryTableTypeB({
             <div className={`grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3.5 items-center text-[14px] border-b border-border/20 ${
               e.is_day_off ? 'opacity-50' : ''
             } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
-              isMoonDay ? 'bg-[linear-gradient(90deg,rgba(236,201,75,0.08),rgba(236,201,75,0.02),transparent)]' : ''
+              isMoonDay ? 'moon-accent-row' : ''
             }`}>
               {/* Date */}
               <div className="flex items-center gap-1">
@@ -162,7 +167,7 @@ export default function SalaryTableTypeB({
                 <button
                   onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
                   className={`text-left truncate text-sm transition-colors ${
-                    isMoonDay ? 'text-[hsl(42,55%,70%)]' : 'text-muted-foreground'
+                    isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
                   } ${
                     !isPreview ? 'hover:text-foreground' : 'cursor-default'
                   }`}
@@ -202,12 +207,12 @@ export default function SalaryTableTypeB({
 
               {/* Allowance */}
               <span className="text-right text-emerald-400 font-semibold text-[14px]">
-                {allowance > 0 ? formatVND(allowance).replace(' đ', '') : ''}
+                {allowance > 0 ? formatCompactK(allowance) : ''}
               </span>
 
               {/* Total */}
               <span className={`text-right font-bold text-[15px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
-                {formatVND(total).replace(' đ', '')}
+                {formatCompactK(total)}
               </span>
             </div>
             {showWeekSep && (

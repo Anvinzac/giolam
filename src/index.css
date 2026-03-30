@@ -188,6 +188,32 @@
     box-shadow: 0 0 40px hsl(260 80% 65% / 0.15), 0 0 80px hsl(260 80% 65% / 0.05);
   }
 
+  .moon-accent-row {
+    background: linear-gradient(
+      90deg,
+      hsl(42 100% 70% / 0.08),
+      hsl(42 100% 70% / 0.02),
+      transparent
+    );
+  }
+
+  html.light .moon-accent-row {
+    background: linear-gradient(
+      90deg,
+      hsl(200 95% 78% / 0.28),
+      hsl(200 95% 78% / 0.06),
+      transparent
+    );
+  }
+
+  .moon-accent-text {
+    color: hsl(42 55% 70%);
+  }
+
+  html.light .moon-accent-text {
+    color: hsl(205 70% 35%);
+  }
+
   .gradient-gold {
     background: linear-gradient(135deg, hsl(42 90% 55%), hsl(42 100% 70%));
   }
