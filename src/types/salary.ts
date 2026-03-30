@@ -1,4 +1,4 @@
-export type AllowanceKey = 'chuyen_can' | 'nang_luc' | 'gui_xe';
+export type AllowanceKey = 'chuyen_can' | 'nang_luc' | 'gui_xe' | (string & {});
 
 export type DayType =
   | 'saturday'

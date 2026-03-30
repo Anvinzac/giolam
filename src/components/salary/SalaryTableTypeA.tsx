@@ -17,13 +17,14 @@ interface SalaryTableTypeAProps {
   onEntryUpdate: (entryDate: string, sortOrder: number, updates: Partial<SalaryEntry>) => void;
   onAllowanceToggle: (key: AllowanceKey) => void;
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
+  onAddAllowance?: (label: string, amount: number) => void;
   breakdown: SalaryBreakdown | null;
   isPreview?: boolean;
 }
 
 export default function SalaryTableTypeA({
   entries, rates, allowances, baseSalary,
-  onEntryUpdate, onAllowanceToggle, onAllowanceUpdate, breakdown, isPreview = false,
+  onEntryUpdate, onAllowanceToggle, onAllowanceUpdate, onAddAllowance, breakdown, isPreview = false,
 }: SalaryTableTypeAProps) {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
@@ -215,6 +216,7 @@ export default function SalaryTableTypeA({
         allowances={allowances}
         onToggle={onAllowanceToggle}
         onUpdate={onAllowanceUpdate}
+        onAddAllowance={onAddAllowance}
         isAdmin={!isPreview}
       />
 

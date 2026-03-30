@@ -23,6 +23,7 @@ interface SalaryTableTypeBProps {
   onRemoveEntry: (id: string) => void;
   onAllowanceToggle: (key: AllowanceKey) => void;
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
+  onAddAllowance?: (label: string, amount: number) => void;
   onHourlyRateChange: (rate: number) => void;
   globalClockIn: string;
   onGlobalClockInChange: (time: string) => void;
@@ -34,7 +35,7 @@ export default function SalaryTableTypeB({
   entries, rates, allowances, baseSalary, hourlyRate,
   periodStart, periodEnd,
   onEntryUpdate, onAddDuplicateRow, onRemoveEntry,
-  onAllowanceToggle, onAllowanceUpdate, onHourlyRateChange,
+  onAllowanceToggle, onAllowanceUpdate, onAddAllowance, onHourlyRateChange,
   globalClockIn, onGlobalClockInChange,
   breakdown,
   isPreview = false,
@@ -343,6 +344,7 @@ export default function SalaryTableTypeB({
         allowances={allowances}
         onToggle={onAllowanceToggle}
         onUpdate={onAllowanceUpdate}
+        onAddAllowance={onAddAllowance}
         isAdmin={!isPreview}
       />
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Plus } from 'lucide-react';
 import { EmployeeAllowance, AllowanceKey } from '@/types/salary';
 import { formatVND } from './TotalSalaryDisplay';
 
@@ -7,6 +8,7 @@ interface EmployeeAllowanceEditorProps {
   allowances: EmployeeAllowance[];
   onToggle: (key: AllowanceKey) => void;
   onUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
+  onAddAllowance?: (label: string, amount: number) => void;
   isAdmin?: boolean;
 }
 
@@ -14,11 +16,15 @@ export default function EmployeeAllowanceEditor({
   allowances,
   onToggle,
   onUpdate,
+  onAddAllowance,
   isAdmin = true,
 }: EmployeeAllowanceEditorProps) {
   const [editingKey, setEditingKey] = useState<AllowanceKey | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [addingNew, setAddingNew] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newAmount, setNewAmount] = useState('');
 
   const visible = isAdmin ? allowances : allowances.filter(a => a.is_enabled);
 
@@ -36,13 +42,72 @@ export default function EmployeeAllowanceEditor({
     setEditingKey(null);
   };
 
-  if (visible.length === 0) return null;
+  const handleAddNew = () => {
+    if (newLabel.trim() && onAddAllowance) {
+      onAddAllowance(newLabel, parseInt(newAmount) || 0);
+      setNewLabel('');
+      setNewAmount('');
+      setAddingNew(false);
+    }
+  };
+
+  if (visible.length === 0 && !isAdmin) return null;
 
   return (
     <div className="glass-card p-3 space-y-2">
-      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        Phụ cấp thêm
-      </h4>
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Phụ cấp thêm
+        </h4>
+        {isAdmin && (
+          <button
+            onClick={() => setAddingNew(true)}
+            className="p-1 hover:bg-muted/50 rounded-lg transition-colors"
+            title="Thêm phụ cấp mới"
+          >
+            <Plus size={14} className="text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {addingNew && (
+        <motion.div
+          layout
+          className="flex items-center gap-2 p-2 rounded-xl bg-muted/50"
+        >
+          <input
+            value={newLabel}
+            onChange={e => setNewLabel(e.target.value)}
+            placeholder="Tên phụ cấp"
+            className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground"
+            autoFocus
+          />
+          <input
+            value={newAmount}
+            onChange={e => setNewAmount(e.target.value.replace(/\D/g, ''))}
+            placeholder="0"
+            className="w-24 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground text-right"
+            inputMode="numeric"
+          />
+          <button
+            onClick={handleAddNew}
+            className="px-2 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"
+          >
+            OK
+          </button>
+          <button
+            onClick={() => {
+              setAddingNew(false);
+              setNewLabel('');
+              setNewAmount('');
+            }}
+            className="px-2 py-1 rounded-lg border border-border text-xs font-semibold hover:bg-muted/50"
+          >
+            Hủy
+          </button>
+        </motion.div>
+      )}
+
       {visible.map(a => (
         <motion.div
           key={a.allowance_key}

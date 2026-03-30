@@ -25,6 +25,7 @@ interface SalaryTableTypeCProps {
   onAddRowAtDate: (entryDate: string) => void;
   onAllowanceToggle: (key: AllowanceKey) => void;
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
+  onAddAllowance?: (label: string, amount: number) => void;
   onHourlyRateChange: (rate: number) => void;
   onCustomDateChange: (start: string | null, end: string | null) => void;
   breakdown: SalaryBreakdown | null;
@@ -34,7 +35,7 @@ interface SalaryTableTypeCProps {
 export default function SalaryTableTypeC({
   entries, rates, allowances, offDays, hourlyRate,
   periodStart, periodEnd, customStartDate, customEndDate,
-  onEntryUpdate, onEntryDateChange, onAddRowAtDate, onAllowanceToggle, onAllowanceUpdate,
+  onEntryUpdate, onEntryDateChange, onAddRowAtDate, onAllowanceToggle, onAllowanceUpdate, onAddAllowance,
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const OFF_DAY_NOTE = 'Quán nghỉ';
@@ -818,6 +819,7 @@ export default function SalaryTableTypeC({
         allowances={allowances}
         onToggle={onAllowanceToggle}
         onUpdate={onAllowanceUpdate}
+        onAddAllowance={onAddAllowance}
       />
 
       {/* Total */}

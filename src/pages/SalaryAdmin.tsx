@@ -115,7 +115,7 @@ export default function SalaryAdmin() {
     selectedPeriod?.start_date,
     selectedPeriod?.end_date
   );
-  const { allowances, toggleAllowance, updateAllowance } = useEmployeeAllowances(
+  const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
     selectedEmployee?.user_id || null,
     selectedPeriodId
   );
@@ -491,6 +491,7 @@ export default function SalaryAdmin() {
                 onEntryUpdate={updateEntry}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
+                onAddAllowance={addAllowance}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
               />
@@ -512,6 +513,7 @@ export default function SalaryAdmin() {
                 onRemoveEntry={removeEntry}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
+                onAddAllowance={addAllowance}
                 onHourlyRateChange={handleHourlyRateChange}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
@@ -534,6 +536,7 @@ export default function SalaryAdmin() {
                 onAddRowAtDate={addRowAtDate}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
+                onAddAllowance={addAllowance}
                 onHourlyRateChange={handleHourlyRateChange}
                 onCustomDateChange={() => {}} // TODO: store custom dates
                 breakdown={breakdown}

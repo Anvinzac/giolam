@@ -220,6 +220,7 @@ export function computeTotalSalaryTypeC(
 ): SalaryBreakdown {
   let totalDailyWages = 0;
   let totalAllowancesFromRates = 0;
+  let workingDays = 0;
 
   for (const e of entries) {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
@@ -230,10 +231,28 @@ export function computeTotalSalaryTypeC(
 
     totalDailyWages += rowTotal;
     totalAllowancesFromRates += allowanceAmt;
+
+    // Count working days (non-day-off entries with clock times)
+    if (!e.is_day_off && (e.clock_in || e.clock_out)) {
+      workingDays++;
+    }
   }
 
-  const allowanceItems = allowances.map(a => ({ key: a.allowance_key, label: a.label, amount: a.amount, enabled: a.is_enabled }));
-  const enabledAllowancesSum = allowances.filter(a => a.is_enabled).reduce((sum, a) => sum + a.amount, 0);
+  // Calculate gui_xe automatically: 10000 * working days
+  const guiXeAmount = workingDays * 10000;
+
+  const allowanceItems = allowances.map(a => ({
+    key: a.allowance_key,
+    label: a.label,
+    amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
+    enabled: a.allowance_key === 'gui_xe' ? true : a.is_enabled
+  }));
+
+  const enabledAllowancesSum = allowances.reduce((sum, a) => {
+    if (a.allowance_key === 'gui_xe') return sum + guiXeAmount;
+    return a.is_enabled ? sum + a.amount : sum;
+  }, 0);
+
   const total = totalDailyWages + enabledAllowancesSum;
 
   return { base_salary: 0, daily_base: 0, total_daily_wages: totalDailyWages, total_allowances_from_rates: totalAllowancesFromRates, total_deductions: 0, allowances: allowanceItems, total };

@@ -94,5 +94,25 @@ export function useEmployeeAllowances(userId: string | null, periodId: string | 
     await supabase.from('employee_allowances').update(updates).eq('id', current.id);
   }, [allowances]);
 
-  return { allowances, loading, toggleAllowance, updateAllowance };
+  const addAllowance = useCallback(async (label: string, amount: number) => {
+    if (!userId || !periodId) return;
+    const uniqueKey = `custom_${Date.now()}`;
+    const newAllowance: Omit<EmployeeAllowance, 'id'> = {
+      user_id: userId,
+      period_id: periodId,
+      allowance_key: uniqueKey as AllowanceKey,
+      label,
+      amount,
+      is_enabled: true,
+    };
+    const { data: inserted } = await supabase
+      .from('employee_allowances')
+      .insert([newAllowance])
+      .select();
+    if (inserted) {
+      setAllowances(prev => [...prev, inserted[0] as EmployeeAllowance]);
+    }
+  }, [userId, periodId]);
+
+  return { allowances, loading, toggleAllowance, updateAllowance, addAllowance };
 }
