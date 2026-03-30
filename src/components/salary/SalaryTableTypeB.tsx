@@ -42,8 +42,6 @@ export default function SalaryTableTypeB({
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);
   const [hourlyInput, setHourlyInput] = useState(hourlyRate.toString());
-  const [editingClockIn, setEditingClockIn] = useState(false);
-  const [clockInInput, setClockInInput] = useState(globalClockIn);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [cellValue, setCellValue] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -72,13 +70,6 @@ export default function SalaryTableTypeB({
     const val = parseInt(hourlyInput) || 25000;
     onHourlyRateChange(val);
     setEditingHourly(false);
-  };
-
-  const saveGlobalClockIn = () => {
-    if (clockInInput && clockInInput !== globalClockIn) {
-      onGlobalClockInChange(clockInInput);
-    }
-    setEditingClockIn(false);
   };
 
   const startCellEdit = (key: string, val: string) => {
@@ -215,33 +206,6 @@ export default function SalaryTableTypeB({
 
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="glass-card p-2.5">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground">Giờ vào:</span>
-            {editingClockIn ? (
-              <div className="flex items-center gap-1">
-                <input
-                  type="time"
-                  value={clockInInput}
-                  onChange={e => setClockInInput(e.target.value)}
-                  className="px-1.5 py-0.5 rounded bg-background border border-border text-xs text-right"
-                  autoFocus
-                />
-                <button onClick={saveGlobalClockIn} className="text-[10px] px-2 py-0.5 rounded gradient-gold text-primary-foreground font-semibold">OK</button>
-                <button onClick={() => setEditingClockIn(false)} className="text-[10px] text-muted-foreground">Hủy</button>
-              </div>
-            ) : (
-              <button onClick={() => { if (!isPreview) { setClockInInput(globalClockIn); setEditingClockIn(true); } }} className={`text-[10px] text-accent ${!isPreview ? 'hover:underline' : 'cursor-default'}`}>
-                {globalClockIn}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Swipeable pages */}
       {pages.length > 0 ? (
         <SwipeablePages

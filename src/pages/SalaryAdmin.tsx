@@ -17,6 +17,7 @@ import { calcDailyBase, computeTotalSalaryTypeA, computeTotalSalaryTypeB, comput
 import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/types/salary';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
+import AnalogClock from '@/components/AnalogClock';
 
 interface Employee {
   user_id: string;
@@ -102,6 +103,7 @@ export default function SalaryAdmin() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [globalClockIn, setGlobalClockIn] = useState<string>('17:00');
+  const [pickingGlobalClockIn, setPickingGlobalClockIn] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
@@ -354,23 +356,53 @@ export default function SalaryAdmin() {
             )}
           </div>
           
-          {/* Base salary & daily wage row */}
+          {/* Salary summary row */}
           {selectedEmployee && selectedEmployee.shift_type !== 'notice_only' && (
-            <div className="flex items-end justify-between pl-[44px] pr-2 mt-2">
+            <div className="mt-2 pl-[44px] pr-2">
+              <div className="grid grid-cols-3 items-end gap-x-4 gap-y-3">
                <EditableAmount 
                   label="Lương cơ bản"
                   value={selectedEmployee.base_salary} 
                   onChange={handleBaseSalaryChange} 
                   isPreview={isPreviewMode} 
                />
-               <div className="flex flex-col items-end">
+               <div className="flex flex-col items-center">
                  <span className="text-[11px] text-muted-foreground mb-0.5">Lương ngày</span>
                  <span className="text-[15px] font-bold text-emerald-400">
                     {formatVND(calcDailyBase(selectedEmployee.base_salary)).replace(' đ', '')}đ
                  </span>
                </div>
+               {selectedEmployee.shift_type === 'overtime' ? (
+                 <div className="flex flex-col items-end justify-self-end">
+                   <span className="text-[11px] text-muted-foreground mb-0.5">Giờ vào</span>
+                   <button
+                     onClick={() => !isPreviewMode && setPickingGlobalClockIn(true)}
+                     className={`rounded-xl border px-3 py-2 text-[18px] font-bold leading-none ${
+                       isPreviewMode
+                         ? 'border-border/40 bg-muted/20 text-accent cursor-default'
+                         : 'border-border/70 bg-muted/40 text-accent hover:bg-muted/70 transition-colors'
+                     }`}
+                   >
+                     {globalClockIn}
+                   </button>
+                 </div>
+               ) : (
+                 <div />
+               )}
+              </div>
             </div>
           )}
+
+      {pickingGlobalClockIn && (
+        <AnalogClock
+          label="Giờ vào"
+          onTimeSelect={(time) => {
+            handleGlobalClockInChange(time);
+            setPickingGlobalClockIn(false);
+          }}
+          onClose={() => setPickingGlobalClockIn(false)}
+        />
+      )}
         </div>
 
         {/* Period selector */}
@@ -491,6 +523,7 @@ export default function SalaryAdmin() {
                 entries={entries}
                 rates={rates}
                 allowances={allowances}
+                offDays={selectedPeriod.off_days || []}
                 hourlyRate={selectedEmployee.hourly_rate}
                 periodStart={selectedPeriod.start_date}
                 periodEnd={selectedPeriod.end_date}
