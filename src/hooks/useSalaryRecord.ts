@@ -47,7 +47,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     if (!userId || !periodId) return;
     const { data } = await supabase
       .from('salary_records')
-      .upsert(
+      .upsert([
         {
           user_id: userId,
           period_id: periodId,
@@ -55,7 +55,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
           salary_breakdown: breakdown as unknown as Record<string, unknown>,
           status: 'draft',
         },
-        { onConflict: 'user_id,period_id' }
+      ], { onConflict: 'user_id,period_id' }
       )
       .select()
       .single();
@@ -69,7 +69,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     if (!userId || !periodId) return;
     const { data } = await supabase
       .from('salary_records')
-      .upsert(
+      .upsert([
         {
           user_id: userId,
           period_id: periodId,
@@ -78,7 +78,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
           status: 'published',
           published_at: new Date().toISOString(),
         },
-        { onConflict: 'user_id,period_id' }
+      ], { onConflict: 'user_id,period_id' }
       )
       .select()
       .single();
