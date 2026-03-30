@@ -85,11 +85,6 @@ export default function SalaryTableTypeA({
 
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="glass-card p-3">
-        <h3 className="font-display font-semibold text-[15px] text-foreground">Bảng lương - Loại A</h3>
-      </div>
-
       {/* Table */}
       <div>
             {/* Column headers */}

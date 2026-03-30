@@ -216,9 +216,8 @@ export default function SalaryTableTypeB({
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="glass-card p-3">
-        <h3 className="font-display font-semibold text-[15px] text-foreground">Bảng lương - Loại B</h3>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+      <div className="glass-card p-2.5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground">Giờ vào:</span>

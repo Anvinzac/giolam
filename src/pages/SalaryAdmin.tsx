@@ -113,7 +113,7 @@ export default function SalaryAdmin() {
     selectedEmployee?.user_id || null,
     selectedPeriodId
   );
-  const { entries, updateEntry, addDuplicateRow, removeEntry, isSaving } = useSalaryEntries(
+  const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, isSaving } = useSalaryEntries(
     selectedEmployee?.user_id || null,
     selectedPeriodId
   );
@@ -447,6 +447,8 @@ export default function SalaryAdmin() {
                 customStartDate={null}
                 customEndDate={null}
                 onEntryUpdate={updateEntry}
+                onEntryDateChange={moveEntryToDate}
+                onAddRowAtDate={addRowAtDate}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
                 onHourlyRateChange={handleHourlyRateChange}
