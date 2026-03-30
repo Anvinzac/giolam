@@ -481,7 +481,7 @@ export default function SalaryAdmin() {
 
         {/* Selected employee salary table */}
         {selectedEmployee && selectedPeriod && (
-          <>
+          <div className="-mx-4 sm:mx-0">
             {selectedEmployee.shift_type === 'basic' && (
               <SalaryTableTypeA
                 entries={entries}
@@ -558,7 +558,7 @@ export default function SalaryAdmin() {
                 />
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
