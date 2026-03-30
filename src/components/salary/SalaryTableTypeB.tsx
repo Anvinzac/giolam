@@ -96,13 +96,13 @@ export default function SalaryTableTypeB({
   };
 
   const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
-    <div className="glass-card overflow-hidden">
-      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold">
+    <div>
+      <div className="px-1 py-2 text-[11px] text-muted-foreground font-semibold border-b border-border/40">
         {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
       </div>
 
           {/* Column headers */}
-          <div className="grid grid-cols-[70px_1fr_50px_40px_65px_75px] gap-1 px-2 py-3 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
             <span>Ngày</span>
             <span>Ghi chú</span>
             <span className="text-right">Ra</span>
@@ -120,9 +120,9 @@ export default function SalaryTableTypeB({
           const rateDesc = rates.find(r => r.special_date === e.entry_date)?.description_vi;
 
           return (
-            <div key={cellKey} className={`grid grid-cols-[70px_1fr_50px_40px_65px_75px] gap-1 px-2 py-3.5 items-center text-[13px] ${
-              e.is_day_off ? 'opacity-50 bg-muted/10' : ''
-            } ${idx % 2 !== 0 ? 'bg-muted/30' : ''}`}>
+            <div key={cellKey} className={`grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3.5 items-center text-[14px] border-b border-border/20 ${
+              e.is_day_off ? 'opacity-50' : ''
+            } ${idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
               {/* Date */}
               <div className="flex items-center gap-1">
                 {!isPreview && (
@@ -189,12 +189,12 @@ export default function SalaryTableTypeB({
               </span>
 
               {/* Extra wage */}
-              <span className="text-right text-emerald-400 font-semibold text-[13px]">
+              <span className="text-right text-emerald-400 font-semibold text-[14px]">
                 {extraWage > 0 ? formatVND(extraWage).replace(' đ', '') : '—'}
               </span>
 
               {/* Total */}
-              <span className={`text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+              <span className={`text-right font-bold text-[15px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                 {formatVND(total).replace(' đ', '')}
               </span>
             </div>

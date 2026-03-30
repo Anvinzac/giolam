@@ -107,9 +107,9 @@ export default function SalaryTableTypeC({
     const cellKey = `${e.entry_date}-${e.sort_order}`;
 
     return (
-      <div key={cellKey} className={`grid grid-cols-[65px_1fr_45px_45px_35px_50px_60px] gap-1 px-2 py-2.5 items-center text-[12px] ${
-        e.is_day_off ? 'opacity-50 bg-muted/10' : ''
-      } ${idx && idx % 2 !== 0 ? 'bg-muted/30' : ''}`}>
+      <div key={cellKey} className={`grid grid-cols-[65px_1fr_45px_45px_35px_55px_65px] gap-1 px-1 py-2.5 items-center text-[13px] border-b border-border/20 ${
+        e.is_day_off ? 'opacity-50' : ''
+      } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
         {/* Date + toggle */}
         <div className="flex items-center gap-1">
           <button onClick={() => toggleDayOff(e)} className={`flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
@@ -157,21 +157,21 @@ export default function SalaryTableTypeC({
         )}
 
         {/* Hours */}
-        <span className="text-right font-semibold text-[12px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
+        <span className="text-right font-semibold text-[13px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
 
         {/* Extra wage */}
-        <span className="text-right text-emerald-400 font-semibold text-[12px]">
+        <span className="text-right text-emerald-400 font-semibold text-[13px]">
           {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
         </span>
 
         {/* Total */}
-        <span className="text-right font-bold text-[13px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        <span className="text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
       </div>
     );
   };
 
   const renderTableHeader = () => (
-    <div className="grid grid-cols-[65px_1fr_45px_45px_35px_50px_60px] gap-1 px-2 py-2.5 bg-muted/30 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+    <div className="grid grid-cols-[65px_1fr_45px_45px_35px_55px_65px] gap-1 px-1 py-2.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
       <span>Ngày</span>
       <span>Ghi chú</span>
       <span className="text-right">Vào</span>
@@ -183,8 +183,8 @@ export default function SalaryTableTypeC({
   );
 
   const renderCompact = () => (
-    <div className="glass-card overflow-hidden">
-      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold flex items-center justify-between">
+    <div>
+      <div className="px-1 py-2 text-[11px] text-muted-foreground font-semibold flex items-center justify-between border-b border-border/40">
         <span>Chế độ gọn · {workingEntries.length} ngày làm</span>
       </div>
       {renderTableHeader()}
@@ -198,8 +198,8 @@ export default function SalaryTableTypeC({
   );
 
   const renderPage = (pageEntries: SalaryEntry[], pageStart: string, pageEnd: string) => (
-    <div className="glass-card overflow-hidden">
-      <div className="px-3 py-2 bg-muted/20 text-[11px] text-muted-foreground font-semibold">
+    <div>
+      <div className="px-1 py-2 text-[11px] text-muted-foreground font-semibold border-b border-border/40">
         {formatDateViet(pageStart)} — {formatDateViet(pageEnd)}
       </div>
       {renderTableHeader()}
