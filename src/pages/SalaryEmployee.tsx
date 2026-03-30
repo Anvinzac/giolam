@@ -4,28 +4,52 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, DollarSign } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
+import AppBootState from '@/components/AppBootState';
+import { withTimeout } from '@/lib/withTimeout';
 
 export default function SalaryEmployee() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate('/login'); return; }
-      setUserId(user.id);
-      setLoading(false);
-    };
-    init();
-  }, [navigate]);
+    let isMounted = true;
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full gradient-gold animate-glow-pulse" />
-      </div>
-    );
+    const init = async () => {
+      try {
+        setLoading(true);
+        setBootError(null);
+        const { data: { user } } = await withTimeout(
+          supabase.auth.getUser(),
+          10000,
+          'Session check timed out.',
+        );
+        if (!isMounted) return;
+        if (!user) {
+          setLoading(false);
+          navigate('/login');
+          return;
+        }
+        setUserId(user.id);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to initialize salary employee page:', error);
+        if (!isMounted) return;
+        setBootError(error instanceof Error ? error.message : 'Unknown startup error.');
+        setLoading(false);
+      }
+    };
+
+    init();
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, retryKey]);
+
+  if (loading || bootError) {
+    return <AppBootState error={bootError} onRetry={() => setRetryKey(key => key + 1)} />;
   }
 
   return (

@@ -8,6 +8,8 @@ import AdminEmployeeList from "@/components/AdminEmployeeList";
 import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
 import AdminRegistrations from "@/components/AdminRegistrations";
 import AdminEmployeeManager from "@/components/AdminEmployeeManager";
+import AppBootState from "@/components/AppBootState";
+import { withTimeout } from "@/lib/withTimeout";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -18,6 +20,8 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations'>('shifts');
   const [changesBadge, setChangesBadge] = useState(0);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const handleSeed = async () => {
     setIsSeeding(true);
@@ -41,39 +45,78 @@ export default function AdminDashboard() {
   const [offDays, setOffDays] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
+
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/login"); return; }
+      try {
+        setLoading(true);
+        setBootError(null);
+        const { data: { user } } = await withTimeout(
+          supabase.auth.getUser(),
+          10000,
+          'Session check timed out.',
+        );
+        if (!isMounted) return;
+        if (!user) {
+          setLoading(false);
+          navigate("/login");
+          return;
+        }
 
-      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
-      if (!roles?.some(r => r.role === 'admin')) { navigate("/"); return; }
-      setIsAdmin(true);
+        const { data: roles } = await withTimeout(
+          supabase.from('user_roles').select('role').eq('user_id', user.id),
+          10000,
+          'Role check timed out.',
+        );
+        if (!isMounted) return;
+        if (!roles?.some(r => r.role === 'admin')) {
+          setLoading(false);
+          navigate("/");
+          return;
+        }
+        setIsAdmin(true);
 
-      // Fetch periods
-      const { data: p } = await supabase.from('working_periods').select('*').order('start_date', { ascending: false });
-      setPeriods(p || []);
+        const { data: p } = await withTimeout(
+          supabase.from('working_periods').select('*').order('start_date', { ascending: false }),
+          10000,
+          'Working period lookup timed out.',
+        );
+        if (!isMounted) return;
+        setPeriods(p || []);
 
-      // Compute initial badge count for changes tab
-      if (p && p.length > 0) {
-        const today = new Date().toISOString().split('T')[0];
-        const { data: recentShifts } = await supabase
-          .from('shifts')
-          .select('updated_at')
-          .eq('period_id', p[0].id)
-          .gte('shift_date', today);
-        const lastViewed = getLastViewedTime();
-        const unseen = (recentShifts || []).filter(s => s.updated_at > lastViewed).length;
-        setChangesBadge(unseen);
+        if (p && p.length > 0) {
+          const today = new Date().toISOString().split('T')[0];
+          const { data: recentShifts } = await withTimeout(
+            supabase.from('shifts').select('updated_at').eq('period_id', p[0].id).gte('shift_date', today),
+            10000,
+            'Recent changes lookup timed out.',
+          );
+          if (!isMounted) return;
+          const lastViewed = getLastViewedTime();
+          const unseen = (recentShifts || []).filter(s => s.updated_at > lastViewed).length;
+          setChangesBadge(unseen);
+        }
+
+        const { data: profiles } = await withTimeout(
+          supabase.from('profiles').select('*'),
+          10000,
+          'Employee lookup timed out.',
+        );
+        if (!isMounted) return;
+        setEmployees(profiles || []);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to initialize admin dashboard:', error);
+        if (!isMounted) return;
+        setBootError(error instanceof Error ? error.message : 'Unknown startup error.');
+        setLoading(false);
       }
-
-      // Fetch employees  
-      const { data: profiles } = await supabase.from('profiles').select('*');
-      setEmployees(profiles || []);
-
-      setLoading(false);
     };
     init();
-  }, [navigate]);
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, retryKey]);
 
   const createPeriod = async () => {
     if (!startDate || !endDate) { toast.error("Start and end dates required"); return; }
@@ -104,12 +147,8 @@ export default function AdminDashboard() {
     toast.success("Period deleted");
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full gradient-gold animate-glow-pulse" />
-      </div>
-    );
+  if (loading || bootError) {
+    return <AppBootState error={bootError} onRetry={() => setRetryKey(key => key + 1)} />;
   }
 
   if (!isAdmin) return null;

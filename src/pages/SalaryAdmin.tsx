@@ -15,6 +15,9 @@ import { useSalaryEntries } from '@/hooks/useSalaryEntries';
 import { useSalaryRecord } from '@/hooks/useSalaryRecord';
 import { calcDailyBase, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, formatVND } from '@/lib/salaryCalculations';
 import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/types/salary';
+import AppBootState from '@/components/AppBootState';
+import { withTimeout } from '@/lib/withTimeout';
+import AnalogClock from '@/components/AnalogClock';
 
 interface Employee {
   user_id: string;
@@ -100,6 +103,9 @@ export default function SalaryAdmin() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [globalClockIn, setGlobalClockIn] = useState<string>('17:00');
+  const [pickingGlobalClockIn, setPickingGlobalClockIn] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -113,7 +119,7 @@ export default function SalaryAdmin() {
     selectedEmployee?.user_id || null,
     selectedPeriodId
   );
-  const { entries, updateEntry, addDuplicateRow, removeEntry, isSaving } = useSalaryEntries(
+  const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, isSaving } = useSalaryEntries(
     selectedEmployee?.user_id || null,
     selectedPeriodId
   );
@@ -162,48 +168,98 @@ export default function SalaryAdmin() {
 
   // Init
   useEffect(() => {
+    let isMounted = true;
+
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate('/login'); return; }
+      try {
+        setLoading(true);
+        setBootError(null);
+        const { data: { user } } = await withTimeout(
+          supabase.auth.getUser(),
+          10000,
+          'Session check timed out.',
+        );
+        if (!isMounted) return;
+        if (!user) {
+          setLoading(false);
+          navigate('/login');
+          return;
+        }
 
-      const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
-      if (!roles?.some(r => r.role === 'admin')) { navigate('/'); return; }
-      setIsAdmin(true);
+        const { data: roles } = await withTimeout(
+          supabase.from('user_roles').select('role').eq('user_id', user.id),
+          10000,
+          'Role check timed out.',
+        );
+        if (!isMounted) return;
+        if (!roles?.some(r => r.role === 'admin')) {
+          setLoading(false);
+          navigate('/');
+          return;
+        }
+        setIsAdmin(true);
 
-      // Fetch periods
-      const { data: p } = await supabase.from('working_periods').select('*').order('start_date', { ascending: false });
-      const periodsData = (p || []) as Period[];
-      setPeriods(periodsData);
-      if (periodsData.length > 0) setSelectedPeriodId(periodsData[0].id);
+        const { data: p } = await withTimeout(
+          supabase.from('working_periods').select('*').order('start_date', { ascending: false }),
+          10000,
+          'Working period lookup timed out.',
+        );
+        if (!isMounted) return;
+        const periodsData = (p || []) as Period[];
+        setPeriods(periodsData);
+        if (periodsData.length > 0) setSelectedPeriodId(periodsData[0].id);
 
-      // Fetch employees with departments
-      const res: any = await supabase.from('profiles').select('user_id, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in');
-      const profiles = res.data || [];
-      const { data: depts } = await supabase.from('departments').select('id, name');
-      const deptMap = new Map(depts?.map(d => [d.id, d.name]) || []);
+        const [profilesRes, deptsRes, adminRolesRes] = await Promise.all([
+          withTimeout(
+            supabase.from('profiles').select('user_id, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in'),
+            10000,
+            'Profile lookup timed out.',
+          ),
+          withTimeout(
+            supabase.from('departments').select('id, name'),
+            10000,
+            'Department lookup timed out.',
+          ),
+          withTimeout(
+            supabase.from('user_roles').select('user_id').eq('role', 'admin'),
+            10000,
+            'Admin role lookup timed out.',
+          ),
+        ]);
+        if (!isMounted) return;
 
-      // Filter out admins
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').eq('role', 'admin');
-      const adminIds = new Set(adminRoles?.map(r => r.user_id) || []);
+        const profiles = (profilesRes as any).data || [];
+        const depts = deptsRes.data || [];
+        const deptMap = new Map(depts.map(d => [d.id, d.name]));
+        const adminIds = new Set((adminRolesRes.data || []).map(r => r.user_id));
 
-      const emps: Employee[] = profiles
-        .filter((p: any) => !adminIds.has(p.user_id))
-        .map((p: any) => ({
-          user_id: p.user_id,
-          full_name: p.full_name || 'Nhân viên',
-          shift_type: (p.shift_type || 'basic') as EmployeeShiftType,
-          base_salary: (p as any).base_salary || 0,
-          hourly_rate: (p as any).hourly_rate || 25000,
-          default_clock_in: (p as any).default_clock_in || null,
-          department_id: p.department_id || null,
-          department_name: p.department_id ? deptMap.get(p.department_id) : undefined,
-        }));
+        const emps: Employee[] = profiles
+          .filter((p: any) => !adminIds.has(p.user_id))
+          .map((p: any) => ({
+            user_id: p.user_id,
+            full_name: p.full_name || 'Nhân viên',
+            shift_type: (p.shift_type || 'basic') as EmployeeShiftType,
+            base_salary: (p as any).base_salary || 0,
+            hourly_rate: (p as any).hourly_rate || 25000,
+            default_clock_in: (p as any).default_clock_in || null,
+            department_id: p.department_id || null,
+            department_name: p.department_id ? deptMap.get(p.department_id) : undefined,
+          }));
 
-      setEmployees(emps);
-      setLoading(false);
+        setEmployees(emps);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to initialize salary admin page:', error);
+        if (!isMounted) return;
+        setBootError(error instanceof Error ? error.message : 'Unknown startup error.');
+        setLoading(false);
+      }
     };
     init();
-  }, [navigate]);
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, retryKey]);
 
   const handlePublish = useCallback(async () => {
     if (!breakdown || !selectedEmployee) return;
@@ -247,12 +303,8 @@ export default function SalaryAdmin() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full gradient-gold animate-glow-pulse" />
-      </div>
-    );
+  if (loading || bootError) {
+    return <AppBootState error={bootError} onRetry={() => setRetryKey(key => key + 1)} />;
   }
   if (!isAdmin) return null;
 
@@ -304,23 +356,53 @@ export default function SalaryAdmin() {
             )}
           </div>
           
-          {/* Base salary & daily wage row */}
+          {/* Salary summary row */}
           {selectedEmployee && selectedEmployee.shift_type !== 'notice_only' && (
-            <div className="flex items-end justify-between pl-[44px] pr-2 mt-2">
+            <div className="mt-2 pl-[44px] pr-2">
+              <div className="grid grid-cols-3 items-end gap-x-4 gap-y-3">
                <EditableAmount 
                   label="Lương cơ bản"
                   value={selectedEmployee.base_salary} 
                   onChange={handleBaseSalaryChange} 
                   isPreview={isPreviewMode} 
                />
-               <div className="flex flex-col items-end">
+               <div className="flex flex-col items-center">
                  <span className="text-[11px] text-muted-foreground mb-0.5">Lương ngày</span>
                  <span className="text-[15px] font-bold text-emerald-400">
                     {formatVND(calcDailyBase(selectedEmployee.base_salary)).replace(' đ', '')}đ
                  </span>
                </div>
+               {selectedEmployee.shift_type === 'overtime' ? (
+                 <div className="flex flex-col items-end justify-self-end">
+                   <span className="text-[11px] text-muted-foreground mb-0.5">Giờ vào</span>
+                   <button
+                     onClick={() => !isPreviewMode && setPickingGlobalClockIn(true)}
+                     className={`rounded-xl border px-3 py-2 text-[18px] font-bold leading-none ${
+                       isPreviewMode
+                         ? 'border-border/40 bg-muted/20 text-accent cursor-default'
+                         : 'border-border/70 bg-muted/40 text-accent hover:bg-muted/70 transition-colors'
+                     }`}
+                   >
+                     {globalClockIn}
+                   </button>
+                 </div>
+               ) : (
+                 <div />
+               )}
+              </div>
             </div>
           )}
+
+      {pickingGlobalClockIn && (
+        <AnalogClock
+          label="Giờ vào"
+          onTimeSelect={(time) => {
+            handleGlobalClockInChange(time);
+            setPickingGlobalClockIn(false);
+          }}
+          onClose={() => setPickingGlobalClockIn(false)}
+        />
+      )}
         </div>
 
         {/* Period selector */}
@@ -441,12 +523,15 @@ export default function SalaryAdmin() {
                 entries={entries}
                 rates={rates}
                 allowances={allowances}
+                offDays={selectedPeriod.off_days || []}
                 hourlyRate={selectedEmployee.hourly_rate}
                 periodStart={selectedPeriod.start_date}
                 periodEnd={selectedPeriod.end_date}
                 customStartDate={null}
                 customEndDate={null}
                 onEntryUpdate={updateEntry}
+                onEntryDateChange={moveEntryToDate}
+                onAddRowAtDate={addRowAtDate}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
                 onHourlyRateChange={handleHourlyRateChange}
