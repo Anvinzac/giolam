@@ -135,6 +135,7 @@ export function computeTotalSalaryTypeA(
   let totalDailyWages = 0;
   let totalAllowancesFromRates = 0;
   let totalDeductions = 0;
+  let offDays = 0;
 
   for (const e of entries) {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
@@ -149,6 +150,7 @@ export function computeTotalSalaryTypeA(
         // Full day off, 0 logic or deduction
         rowTotal = 0;
       }
+      offDays++;
     }
 
     // Accumulate actual row calculations (if it matches Type A)
@@ -175,8 +177,21 @@ export function computeTotalSalaryTypeA(
     totalDailyWages += total;
   }
 
-  const allowanceItems = allowances.map(a => ({ key: a.allowance_key, label: a.label, amount: a.amount, enabled: a.is_enabled }));
-  const enabledAllowancesSum = allowances.filter(a => a.is_enabled).reduce((sum, a) => sum + a.amount, 0);
+  // Calculate gui_xe automatically: (28 - off_days) * 10000
+  const guiXeAmount = (28 - offDays) * 10000;
+
+  const allowanceItems = allowances.map(a => ({
+    key: a.allowance_key,
+    label: a.label,
+    amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
+    enabled: a.allowance_key === 'gui_xe' ? (guiXeAmount > 0) : a.is_enabled
+  }));
+
+  const enabledAllowancesSum = allowances.reduce((sum, a) => {
+    if (a.allowance_key === 'gui_xe') return sum + (guiXeAmount > 0 ? guiXeAmount : 0);
+    return a.is_enabled ? sum + a.amount : sum;
+  }, 0);
+
   const total = totalDailyWages + enabledAllowancesSum;
 
   return { base_salary: baseSalary, daily_base: dailyBase, total_daily_wages: totalDailyWages, total_allowances_from_rates: totalAllowancesFromRates, total_deductions: totalDeductions, allowances: allowanceItems, total };
@@ -193,6 +208,7 @@ export function computeTotalSalaryTypeB(
   const dailyBase = calcDailyBase(baseSalary);
   let totalDailyWages = 0;
   let totalAllowancesFromRates = 0;
+  let offDays = 0;
 
   for (const e of entries) {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
@@ -203,10 +219,27 @@ export function computeTotalSalaryTypeB(
 
     totalDailyWages += rowTotal;
     totalAllowancesFromRates += allowance;
+
+    if (e.is_day_off) {
+      offDays++;
+    }
   }
 
-  const allowanceItems = allowances.map(a => ({ key: a.allowance_key, label: a.label, amount: a.amount, enabled: a.is_enabled }));
-  const enabledAllowancesSum = allowances.filter(a => a.is_enabled).reduce((sum, a) => sum + a.amount, 0);
+  // Calculate gui_xe automatically: (28 - off_days) * 10000
+  const guiXeAmount = (28 - offDays) * 10000;
+
+  const allowanceItems = allowances.map(a => ({
+    key: a.allowance_key,
+    label: a.label,
+    amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
+    enabled: a.allowance_key === 'gui_xe' ? (guiXeAmount > 0) : a.is_enabled
+  }));
+
+  const enabledAllowancesSum = allowances.reduce((sum, a) => {
+    if (a.allowance_key === 'gui_xe') return sum + (guiXeAmount > 0 ? guiXeAmount : 0);
+    return a.is_enabled ? sum + a.amount : sum;
+  }, 0);
+
   const total = totalDailyWages + enabledAllowancesSum;
 
   return { base_salary: baseSalary, daily_base: dailyBase, total_daily_wages: totalDailyWages, total_allowances_from_rates: totalAllowancesFromRates, total_deductions: 0, allowances: allowanceItems, total };
