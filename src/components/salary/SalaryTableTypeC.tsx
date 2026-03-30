@@ -275,7 +275,7 @@ export default function SalaryTableTypeC({
 
     return (
       <div key={cellKey}>
-      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[12px] sm:text-[13px] border-b border-border/20 w-full ${
+      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'bg-[linear-gradient(90deg,rgba(236,201,75,0.08),rgba(236,201,75,0.02),transparent)]' : ''
@@ -305,7 +305,7 @@ export default function SalaryTableTypeC({
           ) : (
             <button
               onClick={() => toggleDayOff(e)}
-              className={`font-semibold text-[12px] sm:text-[13px] whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+              className={`font-semibold text-[13px] sm:text-[14px] whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
             >
               {formatDateViet(e.entry_date).split(' ')[0]}
             </button>
@@ -316,10 +316,10 @@ export default function SalaryTableTypeC({
         {editingCell === `${cellKey}-note` && !isPreview ? (
           <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
             onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-            className="px-2 py-1 rounded bg-background border border-border text-[11px] min-w-0 w-full" autoFocus />
+            className="ml-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full" autoFocus />
         ) : (
           <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-            className={`text-left whitespace-nowrap overflow-hidden text-ellipsis mr-1 sm:mr-2 ${
+            className={`ml-1 text-left whitespace-nowrap overflow-hidden text-ellipsis text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
               isMoonDay ? 'text-[hsl(42,55%,70%)]' : 'text-muted-foreground'
             } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
             {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
@@ -359,13 +359,13 @@ export default function SalaryTableTypeC({
         {/* Hours */}
         <span className="text-right font-semibold text-[12px] sm:text-[13px]">{formatHours(hours)}</span>
 
-        {/* Extra wage */}
+        {/* Allowance */}
         <span className="text-right text-emerald-400 font-semibold text-[12px] sm:text-[13px]">
-          {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
+          {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
         </span>
 
         {/* Total */}
-        <span className="text-right font-bold text-[12px] sm:text-[14px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        <span className="text-right font-bold text-[13px] sm:text-[15px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
       </div>
       {showWeekSep && (
         <div className="py-1.5">
@@ -378,7 +378,7 @@ export default function SalaryTableTypeC({
 
   const renderEmptyRow = (dateStr: string | null, idx: number) => (
     <div key={`empty-${dateStr || idx}`}>
-      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[12px] sm:text-[13px] border-b border-border/20 w-full ${
+      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
         <div className="flex items-center gap-1.5 pr-2">
@@ -397,17 +397,17 @@ export default function SalaryTableTypeC({
           {dateStr ? (
             <button
               onClick={() => !isPreview && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
-              className={`font-semibold text-[12px] sm:text-[13px] whitespace-nowrap ${getDayColor(dateStr)} ${
+              className={`font-semibold text-[13px] sm:text-[14px] whitespace-nowrap ${getDayColor(dateStr)} ${
                 !isPreview && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
               }`}
             >
               {formatDateViet(dateStr).split(' ')[0]}
             </button>
           ) : (
-            <span className="font-semibold text-[12px] sm:text-[13px] whitespace-nowrap opacity-0">00/00</span>
+            <span className="font-semibold text-[13px] sm:text-[14px] whitespace-nowrap opacity-0">00/00</span>
           )}
         </div>
-        <span className="text-left text-muted-foreground mr-1 sm:mr-2">
+        <span className="ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
           {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
         </span>
         <div className="flex flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-center">
@@ -416,7 +416,7 @@ export default function SalaryTableTypeC({
         </div>
         <span className="text-right text-muted-foreground font-semibold">—</span>
         <span className="text-right text-muted-foreground font-semibold">—</span>
-        <span className="text-right text-muted-foreground font-bold">—</span>
+        <span className="text-right text-[13px] sm:text-[15px] text-muted-foreground font-bold">—</span>
       </div>
     </div>
   );
@@ -440,7 +440,7 @@ export default function SalaryTableTypeC({
       <span className="text-center">Ghi chú</span>
       <span className="text-center">Vào / Ra</span>
       <span className="text-right">Giờ</span>
-      <span className="text-right">Thêm</span>
+      <span className="text-right">Phụ cấp</span>
       <span className="text-right">Tổng</span>
     </div>
   );

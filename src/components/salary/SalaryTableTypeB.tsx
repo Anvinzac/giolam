@@ -4,11 +4,11 @@ import { Plus, Trash2, Edit3 } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
 import { splitIntoPages } from '@/lib/salaryPaging';
-import { getMoonEmoji } from '@/lib/lunarUtils';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
+import AnalogClock from '../AnalogClock';
 
 interface SalaryTableTypeBProps {
   entries: SalaryEntry[];
@@ -40,11 +40,10 @@ export default function SalaryTableTypeB({
   isPreview = false,
 }: SalaryTableTypeBProps) {
   const [currentPage, setCurrentPage] = useState(0);
-  const [editingHourly, setEditingHourly] = useState(false);
-  const [hourlyInput, setHourlyInput] = useState(hourlyRate.toString());
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [cellValue, setCellValue] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [pickingClockOut, setPickingClockOut] = useState<{ entryDate: string; sortOrder: number } | null>(null);
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
   const pages = useMemo(() => splitIntoPages(periodStart, periodEnd, entries), [periodStart, periodEnd, entries]);
@@ -66,24 +65,34 @@ export default function SalaryTableTypeB({
     return { rate, allowance, hours, extraWage, total };
   };
 
-  const saveHourlyRate = () => {
-    const val = parseInt(hourlyInput) || 25000;
-    onHourlyRateChange(val);
-    setEditingHourly(false);
-  };
-
   const startCellEdit = (key: string, val: string) => {
     setEditingCell(key);
     setCellValue(val);
   };
 
-  const saveCellEdit = (entryDate: string, sortOrder: number, field: string) => {
+  const saveCellEdit = (entryDate: string, sortOrder: number, field: string, overrideValue?: string) => {
+    const nextValue = overrideValue ?? cellValue;
     const updates: Partial<SalaryEntry> = {};
-    if (field === 'clock_out') updates.clock_out = cellValue || null;
-    if (field === 'note') updates.note = cellValue || null;
-    if (field === 'total_hours') updates.total_hours = parseFloat(cellValue) || null;
+    if (field === 'clock_out') updates.clock_out = nextValue || null;
+    if (field === 'note') updates.note = nextValue || null;
+    if (field === 'total_hours') updates.total_hours = parseFloat(nextValue) || null;
     onEntryUpdate(entryDate, sortOrder, updates);
     setEditingCell(null);
+  };
+
+  const formatHours = (hours: number) => {
+    if (hours <= 0) return '—';
+    return Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
+  };
+
+  const formatClockDecimal = (time: string | null) => {
+    if (!time) return '—';
+    const [hoursStr, minutesStr] = time.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return '—';
+    const decimalHours = hours + minutes / 60;
+    return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
   };
 
   const renderPage = (pageEntries: SalaryEntry[]) => (
@@ -91,10 +100,10 @@ export default function SalaryTableTypeB({
           {/* Column headers */}
           <div className="grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
             <span>Ngày</span>
-            <span>Ghi chú</span>
+            <span className="text-center">Ghi chú</span>
             <span className="text-right">Ra</span>
             <span className="text-right">Giờ</span>
-            <span className="text-right">Thêm</span>
+            <span className="text-right">Phụ cấp</span>
             <span className="text-right">Tổng</span>
           </div>
 
@@ -104,7 +113,9 @@ export default function SalaryTableTypeB({
           const { rate, allowance, hours, extraWage, total } = computeRow(e);
           const cellKey = `${e.entry_date}-${e.sort_order}`;
           const isDupe = e.sort_order > 0;
-          const rateDesc = rates.find(r => r.special_date === e.entry_date)?.description_vi;
+          const matchedRate = rates.find(r => r.special_date === e.entry_date);
+          const rateDesc = matchedRate?.description_vi;
+          const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
 
           // Show week separator after Sunday, if not the last row and next row is a different date
           const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
@@ -116,7 +127,9 @@ export default function SalaryTableTypeB({
             <div key={cellKey}>
             <div className={`grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3.5 items-center text-[14px] border-b border-border/20 ${
               e.is_day_off ? 'opacity-50' : ''
-            } ${idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
+            } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
+              isMoonDay ? 'bg-[linear-gradient(90deg,rgba(236,201,75,0.08),rgba(236,201,75,0.02),transparent)]' : ''
+            }`}>
               {/* Date */}
               <div className="flex items-center gap-1">
                 {!isPreview && (
@@ -149,7 +162,9 @@ export default function SalaryTableTypeB({
                 <button
                   onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
                   className={`text-left truncate text-sm transition-colors ${
-                    !isPreview ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground cursor-default'
+                    isMoonDay ? 'text-[hsl(42,55%,70%)]' : 'text-muted-foreground'
+                  } ${
+                    !isPreview ? 'hover:text-foreground' : 'cursor-default'
                   }`}
                 >
                   {e.note || rateDesc || '—'}
@@ -158,33 +173,36 @@ export default function SalaryTableTypeB({
 
               {/* Clock out */}
               {editingCell === `${cellKey}-clock_out` && !isPreview ? (
-                <input
-                  type="time"
-                  value={cellValue}
-                  onChange={ev => setCellValue(ev.target.value)}
-                  onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_out')}
-                  className="px-1 py-1.5 rounded bg-background border border-border text-sm w-full text-right"
-                  autoFocus
-                />
+                <button
+                  onClick={() => setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order })}
+                  className="w-full rounded border border-border bg-background px-1 py-1.5 text-right text-sm text-accent"
+                >
+                  Chọn giờ
+                </button>
               ) : (
                 <button
-                  onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_out`, e.clock_out || '')}
+                  onClick={() => {
+                    if (!isPreview) {
+                      setEditingCell(`${cellKey}-clock_out`);
+                      setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order });
+                    }
+                  }}
                   className={`text-right text-sm font-medium ${
                     !isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'
                   }`}
                 >
-                  {e.clock_out?.slice(0, 5) || '—'}
+                  {formatClockDecimal(e.clock_out)}
                 </button>
               )}
 
               {/* Hours */}
               <span className="text-right font-semibold text-[13px]">
-                {hours > 0 ? hours.toFixed(1) : '—'}
+                {formatHours(hours)}
               </span>
 
-              {/* Extra wage */}
+              {/* Allowance */}
               <span className="text-right text-emerald-400 font-semibold text-[14px]">
-                {extraWage > 0 ? formatVND(extraWage).replace(' đ', '') : '—'}
+                {allowance > 0 ? formatVND(allowance).replace(' đ', '') : ''}
               </span>
 
               {/* Total */}
@@ -239,6 +257,20 @@ export default function SalaryTableTypeB({
         onClose={() => setShowBreakdown(false)}
         breakdown={breakdown}
       />
+
+      {pickingClockOut && (
+        <AnalogClock
+          label="Giờ ra"
+          onTimeSelect={(time) => {
+            saveCellEdit(pickingClockOut.entryDate, pickingClockOut.sortOrder, 'clock_out', time);
+            setPickingClockOut(null);
+          }}
+          onClose={() => {
+            setEditingCell(null);
+            setPickingClockOut(null);
+          }}
+        />
+      )}
     </div>
   );
 }
