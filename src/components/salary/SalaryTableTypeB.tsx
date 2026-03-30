@@ -323,18 +323,20 @@ export default function SalaryTableTypeB({
   return (
     <div className="space-y-3">
       {/* Swipeable pages */}
-      {pages.length > 0 ? (
-        <SwipeablePages
-          pages={pages.map(p => renderPage(p.entries))}
-          labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
-      ) : (
-        <div className="glass-card p-6 text-center text-muted-foreground text-xs">
-          Chưa có dữ liệu
-        </div>
-      )}
+      <div className="-mx-4 sm:mx-0">
+        {pages.length > 0 ? (
+          <SwipeablePages
+            pages={pages.map(p => renderPage(p.entries))}
+            labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+          />
+        ) : (
+          <div className="glass-card p-6 text-center text-muted-foreground text-xs">
+            Chưa có dữ liệu
+          </div>
+        )}
+      </div>
 
       {/* Allowances */}
       <EmployeeAllowanceEditor
