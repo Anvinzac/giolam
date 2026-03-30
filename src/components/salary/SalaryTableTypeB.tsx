@@ -119,8 +119,15 @@ export default function SalaryTableTypeB({
           const isDupe = e.sort_order > 0;
           const rateDesc = rates.find(r => r.special_date === e.entry_date)?.description_vi;
 
+          // Show week separator after Sunday, if not the last row and next row is a different date
+          const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
+          const nextEntry = pageEntries[idx + 1];
+          const isLastSundayRow = isSunday && (!nextEntry || nextEntry.entry_date !== e.entry_date);
+          const showWeekSep = isLastSundayRow && nextEntry !== undefined;
+
           return (
-            <div key={cellKey} className={`grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3.5 items-center text-[14px] border-b border-border/20 ${
+            <div key={cellKey}>
+            <div className={`grid grid-cols-[70px_1fr_50px_40px_70px_80px] gap-1.5 px-1 py-3.5 items-center text-[14px] border-b border-border/20 ${
               e.is_day_off ? 'opacity-50' : ''
             } ${idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
               {/* Date */}
@@ -197,6 +204,12 @@ export default function SalaryTableTypeB({
               <span className={`text-right font-bold text-[15px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                 {formatVND(total).replace(' đ', '')}
               </span>
+            </div>
+            {showWeekSep && (
+              <div className="py-1.5">
+                <div className="h-[2px] rounded-full week-separator" />
+              </div>
+            )}
             </div>
           );
         })}

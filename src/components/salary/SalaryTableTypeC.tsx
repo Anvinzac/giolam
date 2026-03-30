@@ -101,13 +101,20 @@ export default function SalaryTableTypeC({
     });
   };
 
-  const renderRow = (e: SalaryEntry, idx?: number) => {
+  const renderRow = (e: SalaryEntry, idx?: number, allEntries?: SalaryEntry[]) => {
     const { rate, hours, baseWage, allowanceAmt, total } = computeRow(e);
     const moon = getMoonEmoji(new Date(e.entry_date + 'T00:00:00'));
     const cellKey = `${e.entry_date}-${e.sort_order}`;
 
+    // Show week separator after Sunday, if not the last row
+    const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
+    const entries = allEntries || [];
+    const nextEntry = idx !== undefined ? entries[idx + 1] : undefined;
+    const showWeekSep = isSunday && nextEntry !== undefined;
+
     return (
-      <div key={cellKey} className={`grid grid-cols-[65px_1fr_45px_45px_35px_55px_65px] gap-1 px-1 py-2.5 items-center text-[13px] border-b border-border/20 ${
+      <div key={cellKey}>
+      <div className={`grid grid-cols-[65px_1fr_45px_45px_35px_55px_65px] gap-1 px-1 py-2.5 items-center text-[13px] border-b border-border/20 ${
         e.is_day_off ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
         {/* Date + toggle */}
@@ -167,6 +174,12 @@ export default function SalaryTableTypeC({
         {/* Total */}
         <span className="text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
       </div>
+      {showWeekSep && (
+        <div className="py-1.5">
+          <div className="h-[2px] rounded-full week-separator" />
+        </div>
+      )}
+      </div>
     );
   };
 
@@ -189,7 +202,7 @@ export default function SalaryTableTypeC({
       </div>
       {renderTableHeader()}
       <div className="divide-y divide-border/20">
-        {workingEntries.map((e, idx) => renderRow(e, idx))}
+        {workingEntries.map((e, idx) => renderRow(e, idx, workingEntries))}
       </div>
       {workingEntries.length === 0 && (
         <div className="p-6 text-center text-muted-foreground text-sm">Chưa có ngày làm</div>
@@ -204,7 +217,7 @@ export default function SalaryTableTypeC({
       </div>
       {renderTableHeader()}
       <div className="divide-y divide-border/20">
-        {pageEntries.map((e, idx) => renderRow(e, idx))}
+        {pageEntries.map((e, idx) => renderRow(e, idx, pageEntries))}
       </div>
     </div>
   );
