@@ -38,8 +38,8 @@ export default function SalaryTableTypeC({
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const tableGridClass = 'grid-cols-[98px_0px_62px_38px_46px_52px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
-  const tableGapClass = 'gap-1 sm:gap-1.5 px-1.5 sm:px-2';
+  const tableGridClass = 'grid-cols-[minmax(124px,1fr)_0px_54px_32px_40px_46px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
+  const tableGapClass = 'gap-0.5 sm:gap-1.5 px-1 sm:px-2';
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);
@@ -283,7 +283,7 @@ export default function SalaryTableTypeC({
         isMoonDay ? 'moon-accent-row' : ''
       }`}>
         {/* Date + note */}
-        <div className="pr-2">
+        <div className="pr-3 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!isPreview && (
               <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
@@ -347,7 +347,7 @@ export default function SalaryTableTypeC({
         )}
 
         {/* Combined clock column */}
-        <div className="flex flex-col gap-[0.15rem] min-h-[38px] items-center">
+        <div className="flex flex-col gap-[0.15rem] min-h-[38px] items-center justify-self-end w-full">
           {editingCell === `${cellKey}-clock_in` && !isPreview ? (
             <button
               onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
@@ -377,15 +377,15 @@ export default function SalaryTableTypeC({
         </div>
 
         {/* Hours */}
-        <span className="text-right font-semibold text-[12px] sm:text-[13px]">{formatHours(hours)}</span>
+        <span className="justify-self-end text-right font-semibold text-[12px] sm:text-[13px]">{formatHours(hours)}</span>
 
         {/* Allowance */}
-        <span className="text-right text-emerald-400 font-semibold text-[12px] sm:text-[13px]">
+        <span className="justify-self-end text-right text-emerald-400 font-semibold text-[12px] sm:text-[13px]">
           {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
         </span>
 
         {/* Total */}
-        <span className="text-right font-bold text-[13px] sm:text-[15px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        <span className="justify-self-end text-right font-bold text-[13px] sm:text-[15px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
       </div>
       {showWeekSep && (
         <div className="py-1.5">
@@ -401,7 +401,7 @@ export default function SalaryTableTypeC({
       <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
-        <div className="pr-2">
+        <div className="pr-3 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!isPreview && dateStr ? (
               <button
@@ -438,13 +438,13 @@ export default function SalaryTableTypeC({
         <span className="hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
           {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
         </span>
-        <div className="flex flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-center">
+        <div className="flex flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-center justify-self-end w-full">
           <span className="w-full self-center -translate-x-0.5 text-center">—</span>
           <span className="w-full self-center translate-x-0.5 text-center">—</span>
         </div>
-        <span className="text-right text-muted-foreground font-semibold">—</span>
-        <span className="text-right text-muted-foreground font-semibold">—</span>
-        <span className="text-right text-[13px] sm:text-[15px] text-muted-foreground font-bold">—</span>
+        <span className="justify-self-end text-right text-muted-foreground font-semibold">—</span>
+        <span className="justify-self-end text-right text-muted-foreground font-semibold">—</span>
+        <span className="justify-self-end text-right text-[13px] sm:text-[15px] text-muted-foreground font-bold">—</span>
       </div>
     </div>
   );
