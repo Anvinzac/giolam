@@ -38,7 +38,7 @@ export default function SalaryTableTypeC({
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const tableGridClass = 'grid-cols-[56px_minmax(88px,1fr)_62px_38px_46px_52px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
+  const tableGridClass = 'grid-cols-[98px_0px_62px_38px_46px_52px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
   const tableGapClass = 'gap-1 sm:gap-1.5 px-1.5 sm:px-2';
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -153,6 +153,8 @@ export default function SalaryTableTypeC({
     const decimalHours = hours + minutes / 60;
     return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
   };
+
+  const formatDayOnly = (dateStr: string) => `${parseInt(dateStr.slice(8, 10), 10)}`;
 
   const saveHourlyRate = () => {
     onHourlyRateChange(parseInt(hourlyInput) || 25000);
@@ -278,49 +280,67 @@ export default function SalaryTableTypeC({
       <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
-        isMoonDay ? 'bg-[linear-gradient(90deg,rgba(236,201,75,0.08),rgba(236,201,75,0.02),transparent)]' : ''
+        isMoonDay ? 'moon-accent-row' : ''
       }`}>
-        {/* Date + toggle */}
-        <div className="flex items-center gap-1.5 pr-2">
-          {!isPreview && (
-          <button onClick={() => toggleDayOff(e)} className={`flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
-              {e.is_day_off ? <X size={11} /> : <Check size={11} />}
-            </button>
-          )}
-          {editingDateKey === `${cellKey}-date` && !isPreview ? (
-            <input
-              type="date"
-              value={editingDateValue}
-              min={periodStart}
-              max={periodEnd}
-              onChange={(ev) => setEditingDateValue(ev.target.value)}
-              onBlur={() => saveDateEdit(e)}
-              onKeyDown={(ev) => {
-                if (ev.key === 'Enter') saveDateEdit(e);
-                if (ev.key === 'Escape') setEditingDateKey(null);
-              }}
-              className="px-1 py-1 rounded bg-background border border-border text-[10px] min-w-0 w-full"
-              autoFocus
-            />
-          ) : (
-            <button
-              onClick={() => toggleDayOff(e)}
-              className={`font-semibold text-[13px] sm:text-[14px] whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
-            >
-              {formatDateViet(e.entry_date).split(' ')[0]}
-            </button>
-          )}
+        {/* Date + note */}
+        <div className="pr-2">
+          <div className="flex items-start gap-1.5">
+            {!isPreview && (
+              <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+                {e.is_day_off ? <X size={11} /> : <Check size={11} />}
+              </button>
+            )}
+            <div className="min-w-0 flex-1">
+              {editingDateKey === `${cellKey}-date` && !isPreview ? (
+                <input
+                  type="date"
+                  value={editingDateValue}
+                  min={periodStart}
+                  max={periodEnd}
+                  onChange={(ev) => setEditingDateValue(ev.target.value)}
+                  onBlur={() => saveDateEdit(e)}
+                  onKeyDown={(ev) => {
+                    if (ev.key === 'Enter') saveDateEdit(e);
+                    if (ev.key === 'Escape') setEditingDateKey(null);
+                  }}
+                  className="px-1 py-1 rounded bg-background border border-border text-[10px] min-w-0 w-full"
+                  autoFocus
+                />
+              ) : (
+                <button
+                  onClick={() => toggleDayOff(e)}
+                  className={`block -mt-0.5 font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+                >
+                  <span className="sm:hidden">{formatDayOnly(e.entry_date)}</span>
+                  <span className="hidden sm:inline">{formatDateViet(e.entry_date).split(' ')[0]}</span>
+                </button>
+              )}
+
+              {editingCell === `${cellKey}-note` && !isPreview ? (
+                <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
+                  onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                  className="mt-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full sm:ml-1" autoFocus />
+              ) : (
+                <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
+                  className={`mt-1 block text-left text-[12px] leading-tight sm:hidden ${
+                    isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+                  } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
+                  {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Note */}
         {editingCell === `${cellKey}-note` && !isPreview ? (
           <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
             onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-            className="ml-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full" autoFocus />
+            className="hidden sm:block sm:ml-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full" autoFocus />
         ) : (
           <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-            className={`ml-1 text-left whitespace-nowrap overflow-hidden text-ellipsis text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
-              isMoonDay ? 'text-[hsl(42,55%,70%)]' : 'text-muted-foreground'
+            className={`hidden sm:block sm:ml-1 text-left whitespace-nowrap overflow-hidden text-ellipsis text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
+              isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
             } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
             {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
           </button>
@@ -381,33 +401,41 @@ export default function SalaryTableTypeC({
       <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
-        <div className="flex items-center gap-1.5 pr-2">
-          {!isPreview && dateStr ? (
-            <button
-              onClick={() => !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
-              className={`flex-shrink-0 transition-colors ${
-                scheduledOffDays.has(dateStr)
-                  ? 'text-destructive/60 cursor-default'
-                  : 'text-destructive/50 hover:text-emerald-400'
-              }`}
-            >
-              <X size={11} />
-            </button>
-          ) : null}
-          {dateStr ? (
-            <button
-              onClick={() => !isPreview && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
-              className={`font-semibold text-[13px] sm:text-[14px] whitespace-nowrap ${getDayColor(dateStr)} ${
-                !isPreview && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
-              }`}
-            >
-              {formatDateViet(dateStr).split(' ')[0]}
-            </button>
-          ) : (
-            <span className="font-semibold text-[13px] sm:text-[14px] whitespace-nowrap opacity-0">00/00</span>
-          )}
+        <div className="pr-2">
+          <div className="flex items-start gap-1.5">
+            {!isPreview && dateStr ? (
+              <button
+                onClick={() => !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
+                className={`mt-0.5 flex-shrink-0 transition-colors ${
+                  scheduledOffDays.has(dateStr)
+                    ? 'text-destructive/60 cursor-default'
+                    : 'text-destructive/50 hover:text-emerald-400'
+                }`}
+              >
+                <X size={11} />
+              </button>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              {dateStr ? (
+                <button
+                  onClick={() => !isPreview && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
+                  className={`block -mt-0.5 font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap ${getDayColor(dateStr)} ${
+                    !isPreview && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
+                  }`}
+                >
+                  <span className="sm:hidden">{formatDayOnly(dateStr)}</span>
+                  <span className="hidden sm:inline">{formatDateViet(dateStr).split(' ')[0]}</span>
+                </button>
+              ) : (
+                <span className="block font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap opacity-0">00</span>
+              )}
+              <span className="mt-1 block text-left text-[12px] leading-tight text-muted-foreground sm:hidden">
+                {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
+              </span>
+            </div>
+          </div>
         </div>
-        <span className="ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
+        <span className="hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
           {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
         </span>
         <div className="flex flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-center">
@@ -423,7 +451,7 @@ export default function SalaryTableTypeC({
 
   const renderTableHeader = () => (
     <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full`}>
-      <span className="flex items-center justify-center">
+      <span className="flex items-center justify-center sm:justify-center">
         <button
           onClick={() => !isPreview && setAddingDate(prev => !prev)}
           className={`mx-auto flex items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
@@ -437,7 +465,7 @@ export default function SalaryTableTypeC({
           <Plus size={11} />
         </button>
       </span>
-      <span className="text-center">Ghi chú</span>
+      <span className="hidden sm:block text-center">Ghi chú</span>
       <span className="text-center">Vào / Ra</span>
       <span className="text-right">Giờ</span>
       <span className="text-right">Phụ cấp</span>

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Edit3 } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, getRateForDate, formatVND, formatDateViet, VIET_DAYS } from '@/lib/salaryCalculations';
+import { roundToThousand, calcDailyBase, getRateForDate, formatDateViet, VIET_DAYS } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
 import OffPercentSnapper from './OffPercentSnapper';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -75,6 +75,13 @@ export default function SalaryTableTypeA({
 
   const getMoon = (dateStr: string) => getMoonEmoji(new Date(dateStr + 'T00:00:00'));
 
+  const formatCompactK = (amount: number) => {
+    if (amount === 0) return '0k';
+    const isNeg = amount < 0;
+    const abs = Math.abs(amount);
+    return `${isNeg ? '-' : ''}${abs / 1000}k`;
+  };
+
   const getDayColor = (dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
     const day = d.getDay();
@@ -135,14 +142,14 @@ export default function SalaryTableTypeA({
                   <span className={`text-right text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
-                    {isOff ? `-${formatVND(deduction)}` : (allowance > 0 ? formatVND(allowance) : '—')}
+                    {isOff ? formatCompactK(-deduction) : (allowance > 0 ? formatCompactK(allowance) : '—')}
                   </span>
 
                   {/* Total */}
                   <span className={`text-right text-[15px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
-                    {formatVND(total)}
+                    {formatCompactK(total)}
                   </span>
                 </div>
 
