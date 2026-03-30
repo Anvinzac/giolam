@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, Plus } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
-import { splitIntoPages } from '@/lib/salaryPaging';
+import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
@@ -36,6 +36,8 @@ export default function SalaryTableTypeC({
   onEntryUpdate, onEntryDateChange, onAddRowAtDate, onAllowanceToggle, onAllowanceUpdate,
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
+  const tableGridClass = 'grid-cols-[56px_minmax(88px,1fr)_62px_38px_46px_52px] sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
+  const tableGapClass = 'gap-1 sm:gap-1.5 px-1.5 sm:px-2';
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);
@@ -129,6 +131,13 @@ export default function SalaryTableTypeC({
     return date.toISOString().slice(0, 10);
   };
 
+  const clampDateToPeriod = (dateStr: string) => {
+    if (!dateStr) return periodStart;
+    if (dateStr < periodStart) return periodStart;
+    if (dateStr > periodEnd) return periodEnd;
+    return dateStr;
+  };
+
   const queueDateTapAction = (e: SalaryEntry, cellKey: string) => {
     if (isPreview) return;
     if (pendingDateTapRef.current && lastTappedDateRef.current === cellKey) {
@@ -176,13 +185,13 @@ export default function SalaryTableTypeC({
 
     return (
       <div key={cellKey}>
-      <div className={`grid grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px] gap-1.5 px-2 py-2.5 items-center text-[13px] border-b border-border/20 min-w-max ${
+      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[12px] sm:text-[13px] border-b border-border/20 w-full ${
         e.is_day_off ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
         {/* Date + toggle */}
         <div className="flex items-center gap-1.5 pr-2">
           {!isPreview && (
-            <button onClick={() => toggleDayOff(e)} className={`flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+          <button onClick={() => toggleDayOff(e)} className={`flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
               {e.is_day_off ? <EyeOff size={11} /> : <Eye size={11} />}
             </button>
           )}
@@ -198,7 +207,7 @@ export default function SalaryTableTypeC({
                 if (ev.key === 'Enter') saveDateEdit(e);
                 if (ev.key === 'Escape') setEditingDateKey(null);
               }}
-              className="px-1 py-1 rounded bg-background border border-border text-[10px] min-w-0"
+              className="px-1 py-1 rounded bg-background border border-border text-[10px] min-w-0 w-full"
               autoFocus
             />
           ) : (
@@ -211,7 +220,7 @@ export default function SalaryTableTypeC({
                 lastTappedDateRef.current = null;
                 onAddRowAtDate(formatNextDay(e.entry_date));
               }}
-              className={`font-semibold text-[12px] whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+              className={`font-semibold text-[11px] sm:text-[12px] whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
             >
               {formatDateViet(e.entry_date).split(' ')[0]}
             </button>
@@ -222,10 +231,10 @@ export default function SalaryTableTypeC({
         {editingCell === `${cellKey}-note` && !isPreview ? (
           <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
             onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-            className="px-2 py-1 rounded bg-background border border-border text-[11px] min-w-0" autoFocus />
+            className="px-2 py-1 rounded bg-background border border-border text-[11px] min-w-0 w-full" autoFocus />
         ) : (
           <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-            className={`text-left whitespace-nowrap overflow-hidden text-ellipsis text-muted-foreground mr-2 ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
+            className={`text-left whitespace-nowrap overflow-hidden text-ellipsis text-muted-foreground mr-1 sm:mr-2 ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
             {e.note || rateDesc || '—'}
           </button>
         )}
@@ -235,35 +244,35 @@ export default function SalaryTableTypeC({
           {editingCell === `${cellKey}-clock_in` && !isPreview ? (
             <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
               onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_in')}
-              className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-left" autoFocus />
+              className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-center" autoFocus />
           ) : (
             <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_in`, e.clock_in || '')}
-              className={`text-center font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
+              className={`w-full text-center font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-0.5`}>
               {e.clock_in?.slice(0, 5) || '—'}
             </button>
           )}
           {editingCell === `${cellKey}-clock_out` && !isPreview ? (
             <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
               onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_out')}
-              className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-right" autoFocus />
+              className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-center" autoFocus />
           ) : (
             <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_out`, e.clock_out || '')}
-              className={`text-center font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'} self-center translate-x-1`}>
+              className={`w-full text-center font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'} self-center translate-x-0.5`}>
               {e.clock_out?.slice(0, 5) || '—'}
             </button>
           )}
         </div>
 
         {/* Hours */}
-        <span className="text-right font-semibold text-[13px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
+        <span className="text-right font-semibold text-[12px] sm:text-[13px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
 
         {/* Extra wage */}
-        <span className="text-right text-emerald-400 font-semibold text-[13px]">
+        <span className="text-right text-emerald-400 font-semibold text-[12px] sm:text-[13px]">
           {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
         </span>
 
         {/* Total */}
-        <span className="text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+        <span className="text-right font-bold text-[12px] sm:text-[14px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
       </div>
       {showWeekSep && (
         <div className="py-1.5">
@@ -274,19 +283,20 @@ export default function SalaryTableTypeC({
     );
   };
 
-  const renderEmptyRow = (idx: number) => (
-    <div key={`empty-${idx}`}>
-      <div className={`grid grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px] gap-1.5 px-2 py-2.5 items-center text-[13px] border-b border-border/20 min-w-max ${
+  const renderEmptyRow = (dateStr: string | null, idx: number) => (
+    <div key={`empty-${dateStr || idx}`}>
+      <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[12px] sm:text-[13px] border-b border-border/20 w-full ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       }`}>
-        <div className="flex items-center gap-1.5 pr-2 opacity-0">
-          <button className="flex-shrink-0"><Eye size={11} /></button>
-          <span className="font-semibold text-[12px]">00/00</span>
+        <div className="flex items-center gap-1.5 pr-2">
+          <span className={`font-semibold text-[11px] sm:text-[12px] whitespace-nowrap ${dateStr ? getDayColor(dateStr) : 'opacity-0'}`}>
+            {dateStr ? formatDateViet(dateStr).split(' ')[0] : '00/00'}
+          </span>
         </div>
-        <span className="text-left text-muted-foreground mr-2">—</span>
+        <span className="text-left text-muted-foreground mr-1 sm:mr-2">—</span>
         <div className="flex flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-center">
-          <span className="self-center -translate-x-1 text-center">—</span>
-          <span className="self-center translate-x-1 text-center">—</span>
+          <span className="w-full self-center -translate-x-0.5 text-center">—</span>
+          <span className="w-full self-center translate-x-0.5 text-center">—</span>
         </div>
         <span className="text-right text-muted-foreground font-semibold">—</span>
         <span className="text-right text-muted-foreground font-semibold">—</span>
@@ -296,7 +306,7 @@ export default function SalaryTableTypeC({
   );
 
   const renderTableHeader = () => (
-    <div className="grid grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px] gap-1.5 px-2 py-2.5 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 min-w-max">
+    <div className={`grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full`}>
       <span className="flex items-center">
         <button
           onClick={() => !isPreview && setAddingDate(prev => !prev)}
@@ -312,7 +322,7 @@ export default function SalaryTableTypeC({
         </button>
       </span>
       <span>Ghi chú</span>
-      <span className="text-right">Vào / Ra</span>
+      <span className="text-center">Vào / Ra</span>
       <span className="text-right">Giờ</span>
       <span className="text-right">Thêm</span>
       <span className="text-right">Tổng</span>
@@ -321,11 +331,14 @@ export default function SalaryTableTypeC({
 
   const renderCompact = () => {
     const emptyCount = Math.max(0, 10 - workingEntries.length);
-    const emptyRows = Array.from({ length: emptyCount }, (_, i) => i + workingEntries.length);
+    const emptyRows = Array.from({ length: emptyCount }, (_, i) => ({
+      idx: i + workingEntries.length,
+      dateStr: null,
+    }));
 
     return (
       <div className="w-full overflow-x-auto pb-2">
-        <div className="min-w-max">
+        <div className="w-full min-w-0">
           {addingDate && !isPreview && (
             <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
               <input
@@ -333,12 +346,13 @@ export default function SalaryTableTypeC({
                 value={newRowDate}
                 min={periodStart}
                 max={periodEnd}
-                onChange={(e) => setNewRowDate(e.target.value)}
+                onChange={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
+                onBlur={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
                 className="px-2 py-1 rounded bg-background border border-border text-[11px]"
               />
               <button
                 onClick={() => {
-                  onAddRowAtDate(newRowDate);
+                  onAddRowAtDate(clampDateToPeriod(newRowDate));
                   setAddingDate(false);
                 }}
                 className="px-2 py-1 rounded bg-muted text-[10px] text-foreground hover:bg-muted/80 transition-colors"
@@ -353,20 +367,23 @@ export default function SalaryTableTypeC({
           {renderTableHeader()}
           <div className="divide-y divide-border/20">
             {workingEntries.map((e, idx) => renderRow(e, idx, workingEntries))}
-            {emptyRows.map(idx => renderEmptyRow(idx))}
+            {emptyRows.map(({ idx, dateStr }) => renderEmptyRow(dateStr, idx))}
           </div>
         </div>
       </div>
     );
   };
 
-  const renderPage = (pageEntries: SalaryEntry[]) => {
-    const emptyCount = Math.max(0, 10 - pageEntries.length);
-    const emptyRows = Array.from({ length: emptyCount }, (_, i) => i + pageEntries.length);
+  const renderPage = (page: { startDate: string; endDate: string; entries: SalaryEntry[] }) => {
+    const pageDates = generateDateRange(page.startDate, page.endDate);
+    const filledDates = new Set(page.entries.map(entry => entry.entry_date));
+    const emptyRows = pageDates
+      .filter(dateStr => !filledDates.has(dateStr))
+      .map((dateStr, idx) => ({ dateStr, idx: page.entries.length + idx }));
 
     return (
       <div className="w-full overflow-x-auto pb-2">
-        <div className="min-w-max">
+        <div className="w-full min-w-0">
           {addingDate && !isPreview && (
             <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
               <input
@@ -374,12 +391,13 @@ export default function SalaryTableTypeC({
                 value={newRowDate}
                 min={periodStart}
                 max={periodEnd}
-                onChange={(e) => setNewRowDate(e.target.value)}
+                onChange={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
+                onBlur={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
                 className="px-2 py-1 rounded bg-background border border-border text-[11px]"
               />
               <button
                 onClick={() => {
-                  onAddRowAtDate(newRowDate);
+                  onAddRowAtDate(clampDateToPeriod(newRowDate));
                   setAddingDate(false);
                 }}
                 className="px-2 py-1 rounded bg-muted text-[10px] text-foreground hover:bg-muted/80 transition-colors"
@@ -390,8 +408,8 @@ export default function SalaryTableTypeC({
           )}
           {renderTableHeader()}
           <div className="divide-y divide-border/20">
-            {pageEntries.map((e, idx) => renderRow(e, idx, pageEntries))}
-            {emptyRows.map(idx => renderEmptyRow(idx))}
+            {page.entries.map((e, idx) => renderRow(e, idx, page.entries))}
+            {emptyRows.map(({ dateStr, idx }) => renderEmptyRow(dateStr, idx))}
           </div>
         </div>
       </div>
@@ -454,7 +472,7 @@ export default function SalaryTableTypeC({
         renderCompact()
       ) : pages.length > 0 ? (
         <SwipeablePages
-          pages={pages.map(p => renderPage(p.entries))}
+          pages={pages.map(p => renderPage(p))}
           labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
           currentPage={currentPage}
           onPageChange={setCurrentPage}
