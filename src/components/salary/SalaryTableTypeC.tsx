@@ -119,7 +119,7 @@ export default function SalaryTableTypeC({
 
     return (
       <div key={cellKey}>
-      <div className={`grid grid-cols-[75px_minmax(140px,1fr)_45px_45px_45px_60px_70px] gap-1.5 px-2 py-2.5 items-center text-[13px] border-b border-border/20 min-w-max ${
+      <div className={`grid grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px] gap-1.5 px-2 py-2.5 items-center text-[13px] border-b border-border/20 min-w-max ${
         e.is_day_off ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
         {/* Date + toggle */}
@@ -146,29 +146,29 @@ export default function SalaryTableTypeC({
           </button>
         )}
 
-        {/* Clock in */}
-        {editingCell === `${cellKey}-clock_in` && !isPreview ? (
-          <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
-            onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_in')}
-            className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-right" autoFocus />
-        ) : (
-          <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_in`, e.clock_in || '')}
-            className={`text-right font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
-            {e.clock_in?.slice(0, 5) || '—'}
-          </button>
-        )}
-
-        {/* Clock out */}
-        {editingCell === `${cellKey}-clock_out` && !isPreview ? (
-          <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
-            onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_out')}
-            className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-right" autoFocus />
-        ) : (
-          <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_out`, e.clock_out || '')}
-            className={`text-right font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
-            {e.clock_out?.slice(0, 5) || '—'}
-          </button>
-        )}
+        {/* Combined clock column */}
+        <div className="flex flex-col gap-[0.15rem] min-h-[38px] items-center">
+          {editingCell === `${cellKey}-clock_in` && !isPreview ? (
+            <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
+              onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_in')}
+              className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-left" autoFocus />
+          ) : (
+            <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_in`, e.clock_in || '')}
+              className={`text-center font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
+              {e.clock_in?.slice(0, 5) || '—'}
+            </button>
+          )}
+          {editingCell === `${cellKey}-clock_out` && !isPreview ? (
+            <input type="time" value={cellValue} onChange={ev => setCellValue(ev.target.value)}
+              onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'clock_out')}
+              className="px-1 py-1 rounded bg-background border border-border text-[10px] w-full text-right" autoFocus />
+          ) : (
+            <button onClick={() => !isPreview && startCellEdit(`${cellKey}-clock_out`, e.clock_out || '')}
+              className={`text-center font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'} self-center translate-x-1`}>
+              {e.clock_out?.slice(0, 5) || '—'}
+            </button>
+          )}
+        </div>
 
         {/* Hours */}
         <span className="text-right font-semibold text-[13px]">{hours > 0 ? hours.toFixed(1) : '—'}</span>
@@ -192,7 +192,7 @@ export default function SalaryTableTypeC({
 
   const renderEmptyRow = (idx: number) => (
     <div key={`empty-${idx}`}>
-      <div className={`grid grid-cols-[75px_minmax(140px,1fr)_45px_45px_45px_60px_70px] gap-1.5 px-2 py-2.5 items-center text-[13px] border-b border-border/20 min-w-max ${
+      <div className={`grid grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px] gap-1.5 px-2 py-2.5 items-center text-[13px] border-b border-border/20 min-w-max ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       }`}>
         <div className="flex items-center gap-1.5 pr-2 opacity-0">
@@ -200,8 +200,10 @@ export default function SalaryTableTypeC({
           <span className="font-semibold text-[12px]">00/00</span>
         </div>
         <span className="text-left text-muted-foreground mr-2">—</span>
-        <span className="text-right text-muted-foreground font-medium">—</span>
-        <span className="text-right text-muted-foreground font-medium">—</span>
+        <div className="flex flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-center">
+          <span className="self-center -translate-x-1 text-center">—</span>
+          <span className="self-center translate-x-1 text-center">—</span>
+        </div>
         <span className="text-right text-muted-foreground font-semibold">—</span>
         <span className="text-right text-muted-foreground font-semibold">—</span>
         <span className="text-right text-muted-foreground font-bold">—</span>
@@ -210,11 +212,10 @@ export default function SalaryTableTypeC({
   );
 
   const renderTableHeader = () => (
-    <div className="grid grid-cols-[75px_minmax(140px,1fr)_45px_45px_45px_60px_70px] gap-1.5 px-2 py-2.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 min-w-max">
+    <div className="grid grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px] gap-1.5 px-2 py-2.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 min-w-max">
       <span>Ngày</span>
       <span>Ghi chú</span>
-      <span className="text-right">Vào</span>
-      <span className="text-right">Ra</span>
+      <span className="text-right">Vào / Ra</span>
       <span className="text-right">Giờ</span>
       <span className="text-right">Thêm</span>
       <span className="text-right">Tổng</span>
