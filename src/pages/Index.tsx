@@ -33,16 +33,24 @@ export default function Index() {
   const [useDefaultTime, setUseDefaultTime] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    let isMounted = true;
+
+    const hydrateFromSession = async (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
+      if (!isMounted) return;
+
       if (!session) {
+        setLoading(false);
         navigate("/login");
         return;
       }
+
       setUserId(session.user.id);
 
       // Fetch profile
       const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).single();
+      if (!isMounted) return;
       if (prof?.must_change_password) {
+        setLoading(false);
         navigate("/login");
         return;
       }
@@ -51,11 +59,12 @@ export default function Index() {
 
       // Check admin
       const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', session.user.id);
+      if (!isMounted) return;
       const userIsAdmin = roles?.some(r => r.role === 'admin') ?? false;
       setIsAdmin(userIsAdmin);
 
-      // Admin goes directly to admin dashboard
       if (userIsAdmin) {
+        setLoading(false);
         navigate("/admin/salary");
         return;
       }
@@ -63,17 +72,17 @@ export default function Index() {
       // Get current period
       const today = new Date().toISOString().split('T')[0];
       const { data: periods } = await supabase.from('working_periods').select('*').lte('start_date', today).gte('end_date', today);
-      
+
       let currentPeriod = periods?.[0];
       if (!currentPeriod) {
-        // Try upcoming period
         const { data: upcoming } = await supabase.from('working_periods').select('*').gte('start_date', today).order('start_date', { ascending: true }).limit(1);
         currentPeriod = upcoming?.[0];
       }
-      
+
       if (currentPeriod) {
         setPeriod(currentPeriod);
         const { data: shiftData } = await supabase.from('shifts').select('*').eq('user_id', session.user.id).eq('period_id', currentPeriod.id);
+        if (!isMounted) return;
         setShifts(shiftData?.map(s => ({
           shift_date: s.shift_date,
           is_active: s.is_active,
@@ -85,13 +94,34 @@ export default function Index() {
           overtime_clock_out: s.overtime_clock_out,
           notice: s.notice,
         })) || []);
+      } else {
+        setPeriod(null);
+        setShifts([]);
       }
 
       setLoading(false);
+    };
+
+    const bootstrap = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        await hydrateFromSession(data.session);
+      } catch (error) {
+        console.error('Failed to initialize session:', error);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      await hydrateFromSession(session);
     });
 
-    supabase.auth.getSession();
-    return () => subscription.unsubscribe();
+    bootstrap();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleShiftUpdate = useCallback((date: string, updates: Partial<ShiftData>) => {
