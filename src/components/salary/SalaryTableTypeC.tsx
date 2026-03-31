@@ -39,7 +39,7 @@ export default function SalaryTableTypeC({
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const tableGridClass = 'sm:grid-cols-[75px_minmax(140px,1fr)_84px_60px_70px_80px]';
+  const tableGridClass = 'sm:grid-cols-[75px_minmax(110px,1fr)_84px_40px_55px_55px_70px]';
   const tableGapClass = 'sm:gap-1.5 sm:px-2';
   const [compact, setCompact] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -359,6 +359,9 @@ export default function SalaryTableTypeC({
             )}
           </div>
           <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
+          <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
+            {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
+          </span>
           <span className="w-[30px] text-right text-emerald-400 font-semibold text-[12px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
           </span>
@@ -456,6 +459,13 @@ export default function SalaryTableTypeC({
         {/* Hours */}
         <div className="justify-self-end flex items-center h-full">
           <span className="text-right font-semibold text-[13px] sm:text-[14px]">{formatHours(hours)}</span>
+        </div>
+
+        {/* Wage (hours × rate) */}
+        <div className="justify-self-end flex items-center h-full">
+          <span className="text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
+            {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
+          </span>
         </div>
 
         {/* Allowance */}
@@ -598,6 +608,7 @@ export default function SalaryTableTypeC({
       <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
         <span className="w-[40px] text-center normal-case">Vào / Ra</span>
         <span className="w-[24px] text-right">Giờ</span>
+        <span className="w-[34px] text-right">Lương</span>
         <span className="w-[30px] text-right">PC</span>
         <span className="w-[40px] text-right">Tổng</span>
       </div>
@@ -620,7 +631,8 @@ export default function SalaryTableTypeC({
       <span className="hidden sm:block text-center">Ghi chú</span>
       <span className="text-center">Vào / Ra</span>
       <span className="text-right">Giờ</span>
-      <span className="text-right">Phụ cấp</span>
+      <span className="text-right">Lương</span>
+      <span className="text-right">PC</span>
       <span className="text-right">Tổng</span>
     </div>
     </>

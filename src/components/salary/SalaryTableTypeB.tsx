@@ -40,7 +40,7 @@ export default function SalaryTableTypeB({
   breakdown,
   isPreview = false,
 }: SalaryTableTypeBProps) {
-  const tableGridClass = 'sm:grid-cols-[70px_minmax(140px,1fr)_50px_40px_70px_80px]';
+  const tableGridClass = 'sm:grid-cols-[70px_minmax(120px,1fr)_50px_40px_55px_60px_75px]';
   const tableGapClass = 'sm:gap-1.5 sm:px-1';
   const [currentPage, setCurrentPage] = useState(0);
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -112,9 +112,10 @@ export default function SalaryTableTypeB({
             <span>Ngày</span>
             <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
               <span className="w-[38px]">Ra</span>
-              <span className="w-[26px]">Giờ</span>
-              <span className="w-[36px]">PC</span>
-              <span className="w-[44px]">Tổng</span>
+              <span className="w-[24px]">Giờ</span>
+              <span className="w-[34px]">Lương</span>
+              <span className="w-[30px]">PC</span>
+              <span className="w-[40px]">Tổng</span>
             </div>
           </div>
           <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40`}>
@@ -122,7 +123,8 @@ export default function SalaryTableTypeB({
             <span className="text-center">Ghi chú</span>
             <span className="text-right">Ra</span>
             <span className="text-right">Giờ</span>
-            <span className="text-right">Phụ cấp</span>
+            <span className="text-right">Lương</span>
+            <span className="text-right">PC</span>
             <span className="text-right">Tổng</span>
           </div>
 
@@ -211,11 +213,14 @@ export default function SalaryTableTypeB({
                     {formatClockDecimal(e.clock_out)}
                   </button>
                 )}
-                <span className="w-[26px] text-right font-semibold text-[13px]">{formatHours(hours)}</span>
-                <span className="w-[36px] text-right text-emerald-400 font-semibold text-[14px]">
+                <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
+                <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
+                  {extraWage > 0 ? formatCompactK(extraWage) : '—'}
+                </span>
+                <span className="w-[30px] text-right text-emerald-400 font-semibold text-[12px]">
                   {allowance > 0 ? formatCompactK(allowance) : ''}
                 </span>
-                <span className={`w-[44px] text-right font-bold text-[15px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+                <span className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                   {formatCompactK(total)}
                 </span>
               </div>
@@ -299,13 +304,18 @@ export default function SalaryTableTypeB({
                 {formatHours(hours)}
               </span>
 
+              {/* Wage (hours × rate) */}
+              <span className="justify-self-end text-right font-medium text-[13px] text-foreground/70">
+                {extraWage > 0 ? formatCompactK(extraWage) : '—'}
+              </span>
+
               {/* Allowance */}
-              <span className="justify-self-end text-right text-emerald-400 font-semibold text-[14px]">
+              <span className="justify-self-end text-right text-emerald-400 font-semibold text-[13px]">
                 {allowance > 0 ? formatCompactK(allowance) : ''}
               </span>
 
               {/* Total */}
-              <span className={`justify-self-end text-right font-bold text-[15px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+              <span className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                 {formatCompactK(total)}
               </span>
             </div>
