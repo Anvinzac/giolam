@@ -98,9 +98,9 @@ export default function SalaryTableTypeB({
     return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
   };
 
-  const formatCompactK = (amount: number) => {
-    if (amount === 0) return '0k';
-    return `${amount / 1000}k`;
+  const formatCompact = (amount: number) => {
+    if (amount === 0) return '0';
+    return `${amount / 1000}`;
   };
 
   const formatDayOnly = (dateStr: string) => `${parseInt(dateStr.slice(8, 10), 10)}`;
@@ -215,13 +215,13 @@ export default function SalaryTableTypeB({
                 )}
                 <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
                 <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
-                  {extraWage > 0 ? formatCompactK(extraWage) : '—'}
+                  {extraWage > 0 ? formatCompact(extraWage) : '—'}
                 </span>
                 <span className="w-[30px] text-right text-emerald-400 font-semibold text-[12px]">
-                  {allowance > 0 ? formatCompactK(allowance) : ''}
+                  {allowance > 0 ? formatCompact(allowance) : ''}
                 </span>
                 <span className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
-                  {formatCompactK(total)}
+                  {formatCompact(total)}
                 </span>
               </div>
             </div>
@@ -306,17 +306,17 @@ export default function SalaryTableTypeB({
 
               {/* Wage (hours × rate) */}
               <span className="justify-self-end text-right font-medium text-[13px] text-foreground/70">
-                {extraWage > 0 ? formatCompactK(extraWage) : '—'}
+                {extraWage > 0 ? formatCompact(extraWage) : '—'}
               </span>
 
               {/* Allowance */}
               <span className="justify-self-end text-right text-emerald-400 font-semibold text-[13px]">
-                {allowance > 0 ? formatCompactK(allowance) : ''}
+                {allowance > 0 ? formatCompact(allowance) : ''}
               </span>
 
               {/* Total */}
               <span className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
-                {formatCompactK(total)}
+                {formatCompact(total)}
               </span>
             </div>
             {showWeekSep && (

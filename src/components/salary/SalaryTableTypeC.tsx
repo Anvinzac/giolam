@@ -360,12 +360,12 @@ export default function SalaryTableTypeC({
           </div>
           <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
           <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
-            {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
+            {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </span>
           <span className="w-[30px] text-right text-emerald-400 font-semibold text-[12px]">
-            {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
+            {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </span>
-          <span className="w-[40px] text-right font-bold text-[13px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+          <span className="w-[40px] text-right font-bold text-[13px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
         </div>
       </div>
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
@@ -464,20 +464,20 @@ export default function SalaryTableTypeC({
         {/* Wage (hours × rate) */}
         <div className="justify-self-end flex items-center h-full">
           <span className="text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
-            {baseWage > 0 ? (baseWage / 1000).toFixed(0) + 'k' : '—'}
+            {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </span>
         </div>
 
         {/* Allowance */}
         <div className="justify-self-end flex items-center h-full">
           <span className="text-right text-emerald-400 font-semibold text-[13px] sm:text-[14px]">
-            {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) + 'k' : ''}
+            {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </span>
         </div>
 
         {/* Total */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="text-right font-bold text-[14px] sm:text-[16px]">{total > 0 ? (total / 1000).toFixed(0) + 'k' : '—'}</span>
+          <span className="text-right font-bold text-[14px] sm:text-[16px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
         </div>
       </div>
       {showWeekSep && (

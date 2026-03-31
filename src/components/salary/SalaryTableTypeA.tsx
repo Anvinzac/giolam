@@ -76,11 +76,11 @@ export default function SalaryTableTypeA({
 
   const getMoon = (dateStr: string) => getMoonEmoji(new Date(dateStr + 'T00:00:00'));
 
-  const formatCompactK = (amount: number) => {
-    if (amount === 0) return '0k';
+  const formatCompact = (amount: number) => {
+    if (amount === 0) return '0';
     const isNeg = amount < 0;
     const abs = Math.abs(amount);
-    return `${isNeg ? '-' : ''}${abs / 1000}k`;
+    return `${isNeg ? '-' : ''}${abs / 1000}`;
   };
 
   const getDayColor = (dateStr: string) => {
@@ -143,14 +143,14 @@ export default function SalaryTableTypeA({
                   <span className={`text-right text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
-                    {isOff ? formatCompactK(-deduction) : (allowance > 0 ? formatCompactK(allowance) : '—')}
+                    {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
                   </span>
 
                   {/* Total */}
                   <span className={`text-right text-[15px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
-                    {formatCompactK(total)}
+                    {formatCompact(total)}
                   </span>
                 </div>
 
