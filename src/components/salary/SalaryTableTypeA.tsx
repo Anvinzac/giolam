@@ -102,7 +102,7 @@ export default function SalaryTableTypeA({
       {/* Table */}
       <div>
             {/* Column headers */}
-            <div className="grid grid-cols-[60px_1fr_55px_70px] gap-1.5 px-3 py-3 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
+            <div className="grid grid-cols-[60px_1fr_55px_70px] gap-3 pl-0 pr-3 py-3 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
               <span className="flex items-center justify-end">
                 <button
                   onClick={() => !isPreview && onAddRowAtDate && setAddingDate(prev => !prev)}
@@ -118,8 +118,8 @@ export default function SalaryTableTypeA({
                 </button>
               </span>
               <span>Ghi chú</span>
-              <span className="text-right">Phụ cấp</span>
-              <span className="text-right">Tổng</span>
+              <span>Phụ cấp</span>
+              <span>Tổng</span>
             </div>
 
         {addingDate && !isPreview && onAddRowAtDate && (
@@ -161,7 +161,7 @@ export default function SalaryTableTypeA({
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[60px_1fr_55px_70px] gap-1.5 px-3 py-3.5 items-center border-b border-border/20 ${
+                  className={`grid grid-cols-[60px_1fr_55px_70px] gap-1.5 pl-0 pr-3 py-3.5 items-center border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
                 >

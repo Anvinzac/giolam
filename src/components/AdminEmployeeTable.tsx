@@ -68,6 +68,8 @@ interface Props {
 export default function AdminEmployeeTable({ periodId, periodStart, periodEnd, offDays }: Props) {
   const [employees, setEmployees] = useState<EmployeeShift[]>([]);
   const [loading, setLoading] = useState(true);
+  const firstStickyColClass = "sticky -left-1";
+  const secondStickyColClass = "sticky left-[76px]";
 
   const dates = useMemo(() => {
     const result: string[] = [];
@@ -151,10 +153,10 @@ export default function AdminEmployeeTable({ periodId, periodStart, periodEnd, o
       <table className="text-[10px] border-collapse min-w-max">
         <thead>
           <tr>
-            <th className="sticky left-0 z-20 bg-card px-2 py-1.5 text-left font-semibold text-foreground border-b border-border min-w-[80px]">
+            <th className={`${firstStickyColClass} z-20 bg-card px-2 py-1.5 text-left font-semibold text-foreground border-b border-border min-w-[80px]`}>
               Nhân viên
             </th>
-            <th className="sticky left-[80px] z-20 bg-card px-1 py-1.5 text-left font-medium text-muted-foreground border-b border-border min-w-[50px]">
+            <th className={`${secondStickyColClass} z-20 bg-card px-1 py-1.5 text-left font-medium text-muted-foreground border-b border-border min-w-[50px]`}>
               BP
             </th>
             {dates.map(d => {
@@ -187,13 +189,13 @@ export default function AdminEmployeeTable({ periodId, periodStart, periodEnd, o
             let totalMinutes = 0;
             return (
               <tr key={emp.user_id} className="border-b border-border/50 hover:bg-muted/30">
-                <td className="sticky left-0 z-10 bg-card px-2 py-1 font-medium text-foreground whitespace-nowrap">
+                <td className={`${firstStickyColClass} z-10 bg-card px-2 py-1 font-medium text-foreground whitespace-nowrap`}>
                   {emp.full_name}
                   {emp.shift_type === "overtime" && (
                     <span className="ml-1 text-[8px] text-accent font-normal">OT</span>
                   )}
                 </td>
-                <td className="sticky left-[80px] z-10 bg-card px-1 py-1 text-muted-foreground whitespace-nowrap">
+                <td className={`${secondStickyColClass} z-10 bg-card px-1 py-1 text-muted-foreground whitespace-nowrap`}>
                   {emp.department_name}
                 </td>
                 {dates.map(d => {
