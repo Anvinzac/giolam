@@ -151,7 +151,7 @@ export default function SalaryTableTypeB({
             } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
               isMoonDay ? 'moon-accent-row' : ''
             }`}>
-              <div className="min-w-0 flex-1 pr-3">
+              <div className="min-w-0 flex-1 pr-1">
                 <div className="flex items-start gap-1">
                   {!isPreview && (
                     isDupe ? (
@@ -190,7 +190,7 @@ export default function SalaryTableTypeB({
                   </div>
                 </div>
               </div>
-              <div className="ml-2 flex shrink-0 items-start gap-3 text-right">
+              <div className="ml-1 flex shrink-0 items-start gap-2 text-right">
                 {editingCell === `${cellKey}-clock_out` && !isPreview ? (
                   <button
                     onClick={() => setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order })}

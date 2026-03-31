@@ -113,7 +113,7 @@ export default function SalaryTableTypeA({
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[75px_1fr_80px_95px] gap-1.5 px-1 py-3.5 items-center border-b border-border/20 ${
+                  className={`grid grid-cols-[60px_1fr_70px_80px] gap-1.5 px-1 py-3.5 items-center border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
                 >
@@ -133,7 +133,7 @@ export default function SalaryTableTypeA({
                   ) : (
                     <button
                       onClick={() => !isPreview && startEditRow(e)}
-                      className={`text-left text-[14px] text-muted-foreground break-words transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
+                      className={`text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
                       {e.note || rateDesc || (isOff ? 'Nghỉ' : '—')}
                     </button>

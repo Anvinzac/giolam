@@ -283,7 +283,7 @@ export default function SalaryTableTypeC({
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'moon-accent-row' : ''
       }`}>
-        <div className="min-w-0 flex-1 pr-3">
+        <div className="min-w-0 flex-1 pr-1">
           <div className="flex items-start gap-1.5">
             {!isPreview && (
               <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
@@ -329,7 +329,7 @@ export default function SalaryTableTypeC({
             </div>
           </div>
         </div>
-        <div className="ml-2 flex shrink-0 items-start gap-3 text-right">
+        <div className="ml-1 flex shrink-0 items-start gap-2 text-right">
           <div className="flex w-[40px] flex-col gap-[0.15rem] min-h-[38px] items-end">
             {editingCell === `${cellKey}-clock_in` && !isPreview ? (
               <button
@@ -358,14 +358,14 @@ export default function SalaryTableTypeC({
               </button>
             )}
           </div>
-          <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
-          <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
+          <span className="w-[24px] self-center text-right font-semibold text-[13px]">{formatHours(hours)}</span>
+          <span className="w-[34px] self-center text-right font-medium text-[13px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </span>
-          <span className="w-[30px] text-right text-emerald-400 font-semibold text-[12px]">
+          <span className="w-[30px] self-center text-right text-emerald-400 font-semibold text-[13px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </span>
-          <span className="w-[40px] text-right font-bold text-[13px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
+          <span className="w-[40px] self-center text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
         </div>
       </div>
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
