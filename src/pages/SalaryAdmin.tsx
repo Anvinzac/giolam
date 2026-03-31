@@ -22,6 +22,7 @@ import AnalogClock from '@/components/AnalogClock';
 interface Employee {
   user_id: string;
   full_name: string;
+  username?: string | null;
   shift_type: EmployeeShiftType;
   base_salary: number;
   hourly_rate: number;
@@ -36,6 +37,8 @@ interface Period {
   end_date: string;
   off_days: string[];
 }
+
+const TEMP_HIDDEN_TEST_USERNAMES = new Set(['test_loaia', 'test_loaib', 'test_loaic']);
 
 const EditableAmount = ({ 
   label, 
@@ -97,6 +100,8 @@ export default function SalaryAdmin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<'rates' | 'employees'>('employees');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   const [lightMode, setLightMode] = useState(false);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
@@ -159,6 +164,16 @@ export default function SalaryAdmin() {
     }
   }, [entries, allowances, selectedEmployee, rates, globalClockIn]);
 
+  // Auto-seed Type A entries from special day rates when employee has no entries
+  useEffect(() => {
+    if (!selectedEmployee || !selectedPeriodId || selectedEmployee.shift_type !== 'basic') return;
+    if (entries.length > 0 || rates.length === 0) return;
+    // Seed one entry per special day rate
+    for (const r of rates) {
+      addRowAtDate(r.special_date);
+    }
+  }, [selectedEmployee, selectedPeriodId, entries.length, rates]);
+
   // Auto-save draft when breakdown changes
   useEffect(() => {
     if (breakdown && selectedEmployee && !isPublished) {
@@ -211,7 +226,7 @@ export default function SalaryAdmin() {
 
         const [profilesRes, deptsRes, adminRolesRes] = await Promise.all([
           withTimeout(
-            supabase.from('profiles').select('user_id, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in'),
+            supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in'),
             10000,
             'Profile lookup timed out.',
           ),
@@ -234,9 +249,11 @@ export default function SalaryAdmin() {
         const adminIds = new Set((adminRolesRes.data || []).map(r => r.user_id));
 
         const emps: Employee[] = profiles
+          .filter((p: any) => !TEMP_HIDDEN_TEST_USERNAMES.has((p.username || '').toLowerCase()))
           .filter((p: any) => !adminIds.has(p.user_id))
           .map((p: any) => ({
             user_id: p.user_id,
+            username: p.username || null,
             full_name: p.full_name || 'Nhân viên',
             shift_type: (p.shift_type || 'basic') as EmployeeShiftType,
             base_salary: (p as any).base_salary || 0,
@@ -266,6 +283,15 @@ export default function SalaryAdmin() {
     await publish(breakdown.total, breakdown);
     toast.success(`Đã công bố lương cho ${selectedEmployee.full_name}`);
   }, [breakdown, selectedEmployee, publish]);
+
+  const handleNameChange = useCallback(async (name: string) => {
+    if (!selectedEmployee || !name.trim()) return;
+    await supabase.from('profiles').update({ full_name: name.trim() } as any).eq('user_id', selectedEmployee.user_id);
+    setSelectedEmployee(prev => prev ? { ...prev, full_name: name.trim() } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, full_name: name.trim() } : e
+    ));
+  }, [selectedEmployee]);
 
   const handleBaseSalaryChange = useCallback(async (salary: number) => {
     if (!selectedEmployee) return;
@@ -322,7 +348,25 @@ export default function SalaryAdmin() {
               <div>
                 <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
                   {!selectedEmployee && <DollarSign size={20} />}
-                  {selectedEmployee ? selectedEmployee.full_name : 'Quản lý lương'}
+                  {selectedEmployee ? (
+                    editingName && !isPreviewMode ? (
+                      <input
+                        value={nameInput}
+                        onChange={ev => setNameInput(ev.target.value)}
+                        onBlur={() => { handleNameChange(nameInput); setEditingName(false); }}
+                        onKeyDown={ev => { if (ev.key === 'Enter') { handleNameChange(nameInput); setEditingName(false); } if (ev.key === 'Escape') setEditingName(false); }}
+                        className="px-2 py-0.5 rounded bg-background border border-border text-xl font-bold min-w-0 w-full"
+                        autoFocus
+                      />
+                    ) : (
+                      <button
+                        onClick={() => { if (!isPreviewMode) { setNameInput(selectedEmployee.full_name); setEditingName(true); } }}
+                        className={`text-left ${!isPreviewMode ? 'hover:underline' : 'cursor-default'}`}
+                      >
+                        {selectedEmployee.full_name}
+                      </button>
+                    )
+                  ) : 'Quản lý lương'}
                 </h1>
                 {selectedEmployee && !isPreviewMode && (
                   <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-1 ${typeBadgeColor(selectedEmployee.shift_type)}`}>

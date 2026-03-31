@@ -40,15 +40,12 @@ export default function SalaryTableTypeA({
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
 
-  // Filter to only show special days + off days
+  // Show all persisted Type A rows, including manually added normal dates.
   const visibleEntries = useMemo(() => {
-    const specialDates = new Set(rates.map(r => r.special_date));
-    return entries.filter(e =>
-      specialDates.has(e.entry_date) ||
-      e.is_day_off ||
-      e.allowance_rate_override !== null
-    ).sort((a, b) => a.entry_date.localeCompare(b.entry_date));
-  }, [entries, rates]);
+    return [...entries].sort(
+      (a, b) => a.entry_date.localeCompare(b.entry_date) || a.sort_order - b.sort_order
+    );
+  }, [entries]);
 
   const computeRow = (e: SalaryEntry) => {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
@@ -102,8 +99,8 @@ export default function SalaryTableTypeA({
       {/* Table */}
       <div>
             {/* Column headers */}
-            <div className="grid grid-cols-[60px_1fr_55px_70px] gap-1.5 px-3 py-3 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
-              <span className="-ml-3 flex items-center justify-end pr-2">
+            <div className="grid grid-cols-[60px_1fr_55px_70px] gap-3 px-3 py-3 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
+              <span className="flex items-center justify-start">
                 <button
                   onClick={() => !isPreview && onAddRowAtDate && setAddingDate(prev => !prev)}
                   className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
@@ -161,12 +158,12 @@ export default function SalaryTableTypeA({
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[60px_1fr_55px_70px] gap-1.5 px-3 py-3.5 items-center border-b border-border/20 ${
+                  className={`grid grid-cols-[60px_1fr_55px_70px] gap-3 px-3 py-3.5 items-center border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
                 >
                   {/* Date */}
-                  <span className={`-ml-3 pr-2 font-semibold text-[14px] text-right ${getDayColor(e.entry_date)}`}>
+                  <span className={`font-semibold text-[14px] text-left ${getDayColor(e.entry_date)}`}>
                     {formatDateViet(e.entry_date)}
                   </span>
 
@@ -183,19 +180,19 @@ export default function SalaryTableTypeA({
                       onClick={() => !isPreview && startEditRow(e)}
                       className={`w-full text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
-                      {e.note || rateDesc || (isOff ? 'Nghỉ' : '—')}
+                      {rateDesc || (isOff ? 'Nghỉ' : '—')}
                     </button>
                   )}
 
                   {/* Allowance */}
-                  <span className={`text-right text-[14px] font-semibold ${
+                  <span className={`text-left text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
                   </span>
 
                   {/* Total */}
-                  <span className={`text-right text-[15px] font-bold ${
+                  <span className={`text-left text-[15px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {formatCompact(total)}
