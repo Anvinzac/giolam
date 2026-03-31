@@ -56,12 +56,13 @@ const EditableAmount = ({
   className?: string;
 }) => {
   const [editing, setEditing] = useState(false);
-  const [inputStr, setInputStr] = useState(value.toString());
+  const [inputStr, setInputStr] = useState(value === 0 ? '' : value.toString());
 
-  useEffect(() => setInputStr(value.toString()), [value]);
+  useEffect(() => setInputStr(value === 0 ? '' : value.toString()), [value]);
 
   const save = () => {
-    const parsed = parseInt(inputStr.replace(/\D/g, ''), 10);
+    const cleaned = inputStr.replace(/\D/g, '');
+    const parsed = cleaned === '' ? 0 : parseInt(cleaned, 10);
     if (!isNaN(parsed) && parsed !== value) onChange(parsed);
     setEditing(false);
   };
