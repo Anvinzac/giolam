@@ -290,47 +290,45 @@ export default function SalaryTableTypeC({
                 {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
             )}
-            <div className="min-w-0 flex-1">
-              {editingDateKey === `${cellKey}-date` && !isPreview ? (
-                <input
-                  type="date"
-                  value={editingDateValue}
-                  min={periodStart}
-                  max={periodEnd}
-                  onChange={(ev) => setEditingDateValue(ev.target.value)}
-                  onBlur={() => saveDateEdit(e)}
-                  onKeyDown={(ev) => {
-                    if (ev.key === 'Enter') saveDateEdit(e);
-                    if (ev.key === 'Escape') setEditingDateKey(null);
-                  }}
-                  className="px-1 py-1 rounded bg-background border border-border text-[10px] min-w-0 w-full"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => toggleDayOff(e)}
-                  className={`block -mt-0.5 font-semibold text-[15px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
-                >
-                  {formatDayOnly(e.entry_date)}
-                </button>
-              )}
-              {editingCell === `${cellKey}-note` && !isPreview ? (
-                <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
-                  onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                  className="mt-1 px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
-              ) : (
-                <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-                  className={`mt-1 block text-left text-[12px] leading-tight ${
-                    isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-                  } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
-                  {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
-                </button>
-              )}
-            </div>
+            {editingDateKey === `${cellKey}-date` && !isPreview ? (
+              <input
+                type="date"
+                value={editingDateValue}
+                min={periodStart}
+                max={periodEnd}
+                onChange={(ev) => setEditingDateValue(ev.target.value)}
+                onBlur={() => saveDateEdit(e)}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter') saveDateEdit(e);
+                  if (ev.key === 'Escape') setEditingDateKey(null);
+                }}
+                className="px-1 py-1 rounded bg-background border border-border text-[10px] min-w-0 w-full"
+                autoFocus
+              />
+            ) : (
+              <button
+                onClick={() => toggleDayOff(e)}
+                className={`block -mt-0.5 font-semibold text-[15px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+              >
+                {formatDayOnly(e.entry_date)}
+              </button>
+            )}
           </div>
+          {editingCell === `${cellKey}-note` && !isPreview ? (
+            <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
+              onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
+              className="mt-1 px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
+          ) : (
+            <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
+              className={`mt-0.5 block text-left text-[12px] leading-tight ${
+                isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+              } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
+              {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
+            </button>
+          )}
         </div>
         <div className="ml-1 flex shrink-0 items-start gap-2 text-right">
-          <div className="flex w-[40px] flex-col gap-[0.15rem] min-h-[38px] items-end">
+          <div className="flex w-[40px] flex-col gap-[0.15rem] min-h-[38px] items-center">
             {editingCell === `${cellKey}-clock_in` && !isPreview ? (
               <button
                 onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
@@ -340,7 +338,7 @@ export default function SalaryTableTypeC({
               </button>
             ) : (
               <button onClick={() => !isPreview && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
-                className={`w-full text-right font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                className={`w-full text-center font-medium ${!isPreview ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
             )}
@@ -353,7 +351,7 @@ export default function SalaryTableTypeC({
               </button>
             ) : (
               <button onClick={() => !isPreview && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
-                className={`w-full text-right font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
+                className={`w-full text-center font-medium ${!isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
                 {formatClockDecimal(e.clock_out)}
               </button>
             )}
@@ -605,7 +603,7 @@ export default function SalaryTableTypeC({
           <Plus size={11} />
         </button>
       </span>
-      <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
+      <div className="ml-1 flex shrink-0 items-center gap-2 text-right">
         <span className="w-[40px] text-center normal-case">Vào / Ra</span>
         <span className="w-[24px] text-right">Giờ</span>
         <span className="w-[34px] text-right">Lương</span>
