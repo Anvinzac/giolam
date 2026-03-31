@@ -155,7 +155,7 @@ export default function SalaryTableTypeC({
     return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
   };
 
-  const formatDayOnly = (dateStr: string) => `${parseInt(dateStr.slice(8, 10), 10)}`;
+  const formatDayOnly = (dateStr: string) => dateStr.slice(8, 10);
 
   const saveHourlyRate = () => {
     onHourlyRateChange(parseInt(hourlyInput) || 25000);
@@ -283,7 +283,7 @@ export default function SalaryTableTypeC({
       } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'moon-accent-row' : ''
       }`}>
-        <div className="min-w-0 flex-1 pr-1">
+        <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
             {!isPreview && (
               <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
@@ -308,7 +308,7 @@ export default function SalaryTableTypeC({
             ) : (
               <button
                 onClick={() => toggleDayOff(e)}
-                className={`block -mt-0.5 font-semibold text-[15px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+                className={`block -mt-0.5 font-semibold text-[17px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
               >
                 {formatDayOnly(e.entry_date)}
               </button>
@@ -317,10 +317,10 @@ export default function SalaryTableTypeC({
           {editingCell === `${cellKey}-note` && !isPreview ? (
             <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
               onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-              className="mt-1 px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
+              className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
           ) : (
             <button onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
-              className={`mt-0.5 block text-left text-[12px] leading-tight ${
+              className={`block text-left text-[12px] leading-tight ${
                 isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
               } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
               {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
