@@ -103,7 +103,7 @@ export default function SalaryTableTypeA({
       <div>
             {/* Column headers */}
             <div className="grid grid-cols-[60px_1fr_55px_70px] gap-1.5 px-3 py-3 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
-              <span className="flex items-center justify-start">
+              <span className="flex items-center justify-end">
                 <button
                   onClick={() => !isPreview && onAddRowAtDate && setAddingDate(prev => !prev)}
                   className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
@@ -166,7 +166,7 @@ export default function SalaryTableTypeA({
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
                 >
                   {/* Date */}
-                  <span className={`font-semibold text-[14px] ${getDayColor(e.entry_date)}`}>
+                  <span className={`font-semibold text-[14px] text-right ${getDayColor(e.entry_date)}`}>
                     {formatDateViet(e.entry_date)}
                   </span>
 
