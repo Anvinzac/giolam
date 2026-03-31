@@ -13,7 +13,8 @@ import { useSpecialDayRates } from '@/hooks/useSpecialDayRates';
 import { useEmployeeAllowances } from '@/hooks/useEmployeeAllowances';
 import { useSalaryEntries } from '@/hooks/useSalaryEntries';
 import { useSalaryRecord } from '@/hooks/useSalaryRecord';
-import { calcDailyBase, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, formatVND } from '@/lib/salaryCalculations';
+import { calcDailyBase, calcHoursFromTimes, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, formatVND } from '@/lib/salaryCalculations';
+import { generateDateRange } from '@/lib/salaryPaging';
 import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/types/salary';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
@@ -165,15 +166,25 @@ export default function SalaryAdmin() {
     }
   }, [entries, allowances, selectedEmployee, rates, globalClockIn]);
 
-  // Auto-seed Type A entries from special day rates when employee has no entries
+  // Auto-seed entries when employee has none
   useEffect(() => {
-    if (!selectedEmployee || !selectedPeriodId || selectedEmployee.shift_type !== 'basic') return;
-    if (entries.length > 0 || rates.length === 0) return;
-    // Seed one entry per special day rate
-    for (const r of rates) {
-      addRowAtDate(r.special_date);
+    if (!selectedEmployee || !selectedPeriodId || !selectedPeriod) return;
+    if (entries.length > 0) return;
+
+    if (selectedEmployee.shift_type === 'basic') {
+      // Type A: seed from special day rates only
+      if (rates.length === 0) return;
+      for (const r of rates) {
+        addRowAtDate(r.special_date);
+      }
+    } else if (selectedEmployee.shift_type === 'overtime') {
+      // Type B: seed all days in period
+      const allDates = generateDateRange(selectedPeriod.start_date, selectedPeriod.end_date);
+      for (const dateStr of allDates) {
+        addRowAtDate(dateStr);
+      }
     }
-  }, [selectedEmployee, selectedPeriodId, entries.length, rates]);
+  }, [selectedEmployee, selectedPeriodId, selectedPeriod, entries.length, rates]);
 
   // Auto-save draft when breakdown changes
   useEffect(() => {
@@ -320,7 +331,17 @@ export default function SalaryAdmin() {
     setEmployees(prev => prev.map(e =>
       e.user_id === selectedEmployee.user_id ? { ...e, default_clock_in: time } : e
     ));
-  }, [selectedEmployee]);
+    // Update clock_in for all non-off entries that use the default
+    for (const e of entries) {
+      if (!e.is_day_off) {
+        const newHours = calcHoursFromTimes(time, e.clock_out);
+        updateEntry(e.entry_date, e.sort_order, {
+          clock_in: time,
+          total_hours: newHours,
+        });
+      }
+    }
+  }, [selectedEmployee, entries, updateEntry]);
 
   const typeBadgeColor = (t: EmployeeShiftType) => {
     switch (t) {
