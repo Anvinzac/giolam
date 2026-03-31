@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Edit3 } from 'lucide-react';
+import { Edit3, Plus } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, getRateForDate, formatDateViet, VIET_DAYS } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
@@ -15,22 +15,28 @@ interface SalaryTableTypeAProps {
   allowances: EmployeeAllowance[];
   baseSalary: number;
   onEntryUpdate: (entryDate: string, sortOrder: number, updates: Partial<SalaryEntry>) => void;
+  onAddRowAtDate?: (entryDate: string) => void;
   onAllowanceToggle: (key: AllowanceKey) => void;
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
   onAddAllowance?: (label: string, amount: number) => void;
+  periodStart?: string;
+  periodEnd?: string;
   breakdown: SalaryBreakdown | null;
   isPreview?: boolean;
 }
 
 export default function SalaryTableTypeA({
   entries, rates, allowances, baseSalary,
-  onEntryUpdate, onAllowanceToggle, onAllowanceUpdate, onAddAllowance, breakdown, isPreview = false,
+  onEntryUpdate, onAddRowAtDate, onAllowanceToggle, onAllowanceUpdate, onAddAllowance,
+  periodStart, periodEnd, breakdown, isPreview = false,
 }: SalaryTableTypeAProps) {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
   const [editRate, setEditRate] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [expandedOff, setExpandedOff] = useState<string | null>(null);
+  const [addingDate, setAddingDate] = useState(false);
+  const [newRowDate, setNewRowDate] = useState(periodStart || '');
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
 
@@ -97,11 +103,53 @@ export default function SalaryTableTypeA({
       <div>
             {/* Column headers */}
             <div className="grid grid-cols-[60px_1fr_55px_70px] gap-1.5 px-3 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
-              <span>Ngày</span>
+              <span className="flex items-center">
+                <button
+                  onClick={() => !isPreview && onAddRowAtDate && setAddingDate(prev => !prev)}
+                  className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
+                    !isPreview && onAddRowAtDate
+                      ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
+                      : 'border-border/30 bg-muted/20 cursor-default'
+                  }`}
+                  aria-label="Thêm ngày"
+                >
+                  <span>Ngày</span>
+                  <Plus size={11} />
+                </button>
+              </span>
               <span>Ghi chú</span>
               <span className="text-right">Phụ cấp</span>
-              <span className="text-right">Tổng ngày</span>
+              <span className="text-right">Tổng</span>
             </div>
+
+        {addingDate && !isPreview && onAddRowAtDate && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20">
+            <input
+              type="date"
+              value={newRowDate}
+              min={periodStart}
+              max={periodEnd}
+              onChange={(ev) => setNewRowDate(ev.target.value)}
+              className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0"
+              autoFocus
+            />
+            <button
+              onClick={() => {
+                onAddRowAtDate(newRowDate);
+                setAddingDate(false);
+              }}
+              className="px-2 py-1 rounded bg-muted text-[10px] text-foreground hover:bg-muted/80 transition-colors"
+            >
+              Thêm
+            </button>
+            <button
+              onClick={() => setAddingDate(false)}
+              className="px-2 py-1 rounded text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Hủy
+            </button>
+          </div>
+        )}
 
         <div className="divide-y divide-border/30">
           {visibleEntries.map((e, idx) => {

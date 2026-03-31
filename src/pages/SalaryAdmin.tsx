@@ -489,9 +489,12 @@ export default function SalaryAdmin() {
                 allowances={allowances}
                 baseSalary={selectedEmployee.base_salary}
                 onEntryUpdate={updateEntry}
+                onAddRowAtDate={addRowAtDate}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
                 onAddAllowance={addAllowance}
+                periodStart={selectedPeriod.start_date}
+                periodEnd={selectedPeriod.end_date}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
               />
