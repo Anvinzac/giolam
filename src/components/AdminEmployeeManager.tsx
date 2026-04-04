@@ -20,6 +20,8 @@ interface Dept {
   name: string;
 }
 
+const TEMP_HIDDEN_TEST_USERNAMES = new Set(['test_loaia', 'test_loaib', 'test_loaic']);
+
 export default function AdminEmployeeManager() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Dept[]>([]);
@@ -52,7 +54,7 @@ export default function AdminEmployeeManager() {
         supabase.from("profiles").select("*"),
         supabase.from("departments").select("id, name"),
       ]);
-      setEmployees((profiles as Employee[]) || []);
+      setEmployees(((profiles as Employee[]) || []).filter(emp => !TEMP_HIDDEN_TEST_USERNAMES.has((emp.username || "").toLowerCase())));
       setDepartments((depts as Dept[]) || []);
       setLoading(false);
     };
@@ -120,7 +122,7 @@ export default function AdminEmployeeManager() {
 
     // Refresh
     const { data: profiles } = await supabase.from("profiles").select("*");
-    setEmployees((profiles as Employee[]) || []);
+    setEmployees(((profiles as Employee[]) || []).filter(emp => !TEMP_HIDDEN_TEST_USERNAMES.has((emp.username || "").toLowerCase())));
   };
 
   const getDeptName = (id: string | null) => departments.find((d) => d.id === id)?.name || "—";

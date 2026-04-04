@@ -74,20 +74,36 @@ export function getVietnameseDescription(dayType: DayType, ratePercent: number):
 export function generateDefaultSpecialDays(
   startDate: string,
   endDate: string,
-  periodId: string
+  periodId: string,
+  offDays: string[] = []
 ): SpecialDayRate[] {
   const rates: SpecialDayRate[] = [];
   const start = new Date(startDate + 'T12:00:00'); // Use mid-day to seed
   const end = new Date(endDate + 'T12:00:00');
   const seen = new Map<string, SpecialDayRate>(); 
+  const offDaySet = new Set(offDays);
   let sortIdx = 0;
 
   let d = new Date(start);
   while (d <= end) {
+    const dateStr = toISODateString(d);
+    if (offDaySet.has(dateStr)) {
+      seen.set(dateStr, {
+        period_id: periodId,
+        special_date: dateStr,
+        day_type: 'public_holiday',
+        description_vi: 'Quán nghỉ',
+        rate_percent: DEFAULT_RATES.public_holiday,
+        sort_order: sortIdx++,
+      });
+      d.setDate(d.getDate() + 1);
+      d.setHours(12, 0, 0, 0); // Keep at mid-day
+      continue;
+    }
+
     const dayType = getSpecialDayType(d);
     
     if (dayType) {
-      const dateStr = toISODateString(d);
       const rate = DEFAULT_RATES[dayType];
       const existing = seen.get(dateStr);
 
@@ -184,11 +200,11 @@ export function computeTotalSalaryTypeA(
     key: a.allowance_key,
     label: a.label,
     amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
-    enabled: a.allowance_key === 'gui_xe' ? (guiXeAmount > 0) : a.is_enabled
+    enabled: a.is_enabled
   }));
 
   const enabledAllowancesSum = allowances.reduce((sum, a) => {
-    if (a.allowance_key === 'gui_xe') return sum + (guiXeAmount > 0 ? guiXeAmount : 0);
+    if (a.allowance_key === 'gui_xe') return sum + (a.is_enabled ? guiXeAmount : 0);
     return a.is_enabled ? sum + a.amount : sum;
   }, 0);
 
@@ -232,11 +248,11 @@ export function computeTotalSalaryTypeB(
     key: a.allowance_key,
     label: a.label,
     amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
-    enabled: a.allowance_key === 'gui_xe' ? (guiXeAmount > 0) : a.is_enabled
+    enabled: a.is_enabled
   }));
 
   const enabledAllowancesSum = allowances.reduce((sum, a) => {
-    if (a.allowance_key === 'gui_xe') return sum + (guiXeAmount > 0 ? guiXeAmount : 0);
+    if (a.allowance_key === 'gui_xe') return sum + (a.is_enabled ? guiXeAmount : 0);
     return a.is_enabled ? sum + a.amount : sum;
   }, 0);
 
@@ -278,11 +294,11 @@ export function computeTotalSalaryTypeC(
     key: a.allowance_key,
     label: a.label,
     amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
-    enabled: a.allowance_key === 'gui_xe' ? true : a.is_enabled
+    enabled: a.is_enabled
   }));
 
   const enabledAllowancesSum = allowances.reduce((sum, a) => {
-    if (a.allowance_key === 'gui_xe') return sum + guiXeAmount;
+    if (a.allowance_key === 'gui_xe') return sum + (a.is_enabled ? guiXeAmount : 0);
     return a.is_enabled ? sum + a.amount : sum;
   }, 0);
 

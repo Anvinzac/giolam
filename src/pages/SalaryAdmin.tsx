@@ -120,7 +120,8 @@ export default function SalaryAdmin() {
   const { rates, updateRate, addRate, removeRate } = useSpecialDayRates(
     selectedPeriodId,
     selectedPeriod?.start_date,
-    selectedPeriod?.end_date
+    selectedPeriod?.end_date,
+    selectedPeriod?.off_days || []
   );
   const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
     selectedEmployee?.user_id || null,

@@ -6,7 +6,8 @@ import { generateDefaultSpecialDays } from '@/lib/salaryCalculations';
 export function useSpecialDayRates(
   periodId: string | null,
   periodStart?: string,
-  periodEnd?: string
+  periodEnd?: string,
+  offDays: string[] = []
 ) {
   const [rates, setRates] = useState<SpecialDayRate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,14 +25,42 @@ export function useSpecialDayRates(
     if (error) { console.error('Failed to fetch rates:', error); setLoading(false); return; }
 
     if (data && data.length > 0) {
-      setRates(data as SpecialDayRate[]);
+      const existingRates = data as SpecialDayRate[];
+      const existingDates = new Set(existingRates.map(rate => rate.special_date));
+      const missingOffDays = offDays.filter(date => !existingDates.has(date));
+
+      if (missingOffDays.length > 0) {
+        const holidayRows = missingOffDays.map((date, idx) => ({
+          period_id: periodId,
+          special_date: date,
+          day_type: 'public_holiday' as const,
+          description_vi: 'Quán nghỉ',
+          rate_percent: 0,
+          sort_order: existingRates.length + idx,
+        }));
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('special_day_rates')
+          .insert(holidayRows)
+          .select();
+
+        if (!insertErr && inserted) {
+          setRates([...existingRates, ...(inserted as SpecialDayRate[])].sort(
+            (a, b) => a.special_date.localeCompare(b.special_date) || a.sort_order - b.sort_order
+          ));
+          setLoading(false);
+          return;
+        }
+      }
+
+      setRates(existingRates);
       setLoading(false);
       return;
     }
 
     // Auto-generate defaults if none exist
     if (periodStart && periodEnd) {
-      const defaults = generateDefaultSpecialDays(periodStart, periodEnd, periodId);
+      const defaults = generateDefaultSpecialDays(periodStart, periodEnd, periodId, offDays);
       if (defaults.length > 0) {
         const { data: inserted, error: insertErr } = await supabase
           .from('special_day_rates')
@@ -43,7 +72,7 @@ export function useSpecialDayRates(
       }
     }
     setLoading(false);
-  }, [periodId, periodStart, periodEnd]);
+  }, [periodId, periodStart, periodEnd, offDays]);
 
   useEffect(() => { fetchRates(); }, [fetchRates]);
 

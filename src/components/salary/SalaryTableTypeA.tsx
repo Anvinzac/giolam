@@ -99,11 +99,11 @@ export default function SalaryTableTypeA({
       {/* Table */}
       <div>
             {/* Column headers */}
-            <div className="grid grid-cols-[60px_1fr_55px_70px] gap-3 px-3 py-3 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
-              <span className="flex items-center justify-start">
+            <div className="flex items-center gap-2 pl-3 pr-0 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
+              <span className="w-[52px] flex items-center justify-end">
                 <button
                   onClick={() => !isPreview && onAddRowAtDate && setAddingDate(prev => !prev)}
-                  className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
+                  className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider whitespace-nowrap ${
                     !isPreview && onAddRowAtDate
                       ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
                       : 'border-border/30 bg-muted/20 cursor-default'
@@ -114,9 +114,9 @@ export default function SalaryTableTypeA({
                   <Plus size={11} />
                 </button>
               </span>
-              <span>Ghi chú</span>
-              <span>Phụ cấp</span>
-              <span>Tổng</span>
+              <span className="flex-1 text-center">Ghi chú</span>
+              <span className="w-[46px] text-right">Phụ cấp</span>
+              <span className="w-[62px] text-right">Tổng</span>
             </div>
 
         {addingDate && !isPreview && onAddRowAtDate && (
@@ -158,12 +158,12 @@ export default function SalaryTableTypeA({
             return (
               <div key={`${e.entry_date}-${e.sort_order}`}>
                 <div
-                  className={`grid grid-cols-[60px_1fr_55px_70px] gap-3 px-3 py-3.5 items-center border-b border-border/20 ${
+                  className={`flex items-center gap-2 pl-3 pr-0 py-3.5 border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
                 >
                   {/* Date */}
-                  <span className={`font-semibold text-[14px] text-left ${getDayColor(e.entry_date)}`}>
+                  <span className={`w-[52px] font-semibold text-[14px] text-left ${getDayColor(e.entry_date)}`}>
                     {formatDateViet(e.entry_date)}
                   </span>
 
@@ -172,27 +172,27 @@ export default function SalaryTableTypeA({
                     <input
                       value={editNote}
                       onChange={ev => setEditNote(ev.target.value)}
-                      className="px-2 py-1 rounded bg-background border border-border text-[14px] min-w-0 w-full"
+                      className="flex-1 px-2 py-1 rounded bg-background border border-border text-[14px] min-w-0 w-full"
                       autoFocus
                     />
                   ) : (
                     <button
                       onClick={() => !isPreview && startEditRow(e)}
-                      className={`w-full text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
+                      className={`flex-1 text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
                       {rateDesc || (isOff ? 'Nghỉ' : '—')}
                     </button>
                   )}
 
                   {/* Allowance */}
-                  <span className={`text-left text-[14px] font-semibold ${
+                  <span className={`w-[46px] text-right text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
                   </span>
 
                   {/* Total */}
-                  <span className={`text-left text-[15px] font-bold ${
+                  <span className={`w-[62px] text-right text-[15px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {formatCompact(total)}

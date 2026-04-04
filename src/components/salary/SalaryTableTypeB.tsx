@@ -103,7 +103,7 @@ export default function SalaryTableTypeB({
     return `${amount / 1000}`;
   };
 
-  const formatDayOnly = (dateStr: string) => `${parseInt(dateStr.slice(8, 10), 10)}`;
+  const formatDayOnly = (dateStr: string) => dateStr.slice(8, 10);
 
   const renderPage = (pageEntries: SalaryEntry[]) => (
     <div>
