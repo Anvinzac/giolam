@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -19,6 +19,7 @@ import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/type
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import AnalogClock from '@/components/AnalogClock';
+import CSVImportModal, { ParsedRow } from '@/components/salary/CSVImportModal';
 
 interface Employee {
   user_id: string;
@@ -113,6 +114,7 @@ export default function SalaryAdmin() {
   const [pickingGlobalClockIn, setPickingGlobalClockIn] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [showCSVImport, setShowCSVImport] = useState(false);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -343,6 +345,25 @@ export default function SalaryAdmin() {
       }
     }
   }, [selectedEmployee, entries, updateEntry]);
+
+  const handleCSVImport = useCallback(async (rows: ParsedRow[]) => {
+    if (!selectedEmployee || !selectedPeriodId) return;
+    for (const row of rows) {
+      await new Promise<void>(resolve => {
+        updateEntry(row.entry_date, row.sort_order, {
+          is_day_off: row.is_day_off,
+          off_percent: row.off_percent,
+          note: row.note,
+          clock_in: row.clock_in,
+          clock_out: row.clock_out,
+          total_hours: row.total_hours,
+          allowance_rate_override: row.allowance_rate_override,
+        });
+        resolve();
+      });
+    }
+    toast.success(`Đã nhập ${rows.length} dòng từ CSV`);
+  }, [selectedEmployee, selectedPeriodId, updateEntry]);
 
   const typeBadgeColor = (t: EmployeeShiftType) => {
     switch (t) {
@@ -614,23 +635,46 @@ export default function SalaryAdmin() {
               />
             )}
 
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => setIsPreviewMode(!isPreviewMode)}
-                className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                  isPreviewMode ? 'bg-primary/20 text-primary ring-1 ring-primary/30' : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-              >
-                {isPreviewMode ? 'Đóng xem trước' : 'Xem trước bản NV'}
-              </button>
-              <div className="flex-1">
-                <PublishButton
-                  isPublished={isPublished}
-                  isSaving={isSaving}
-                  onPublish={handlePublish}
-                />
+            <div className="mt-4 space-y-2">
+              {/* CSV Import */}
+              {!isPreviewMode && (
+                <button
+                  onClick={() => setShowCSVImport(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted/60 border border-border/50 text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
+                >
+                  <Upload size={15} />
+                  Nhập từ CSV
+                </button>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsPreviewMode(!isPreviewMode)}
+                  className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                    isPreviewMode ? 'bg-primary/20 text-primary ring-1 ring-primary/30' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {isPreviewMode ? 'Đóng xem trước' : 'Xem trước bản NV'}
+                </button>
+                <div className="flex-1">
+                  <PublishButton
+                    isPublished={isPublished}
+                    isSaving={isSaving}
+                    onPublish={handlePublish}
+                  />
+                </div>
               </div>
             </div>
+
+            {/* CSV Import Modal */}
+            {showCSVImport && selectedPeriod && (
+              <CSVImportModal
+                shiftType={selectedEmployee.shift_type}
+                periodStart={selectedPeriod.start_date}
+                periodEnd={selectedPeriod.end_date}
+                onImport={handleCSVImport}
+                onClose={() => setShowCSVImport(false)}
+              />
+            )}
           </>
         )}
       </div>

@@ -24,7 +24,32 @@
 </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        .app-loader {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #09090b;
+        }
+        .app-loader-spinner {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+          animation: app-loader-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes app-loader-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(0.9); }
+        }
+      </style>
+      <div class="app-loader">
+        <div class="app-loader-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
