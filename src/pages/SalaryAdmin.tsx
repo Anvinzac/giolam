@@ -51,27 +51,21 @@ interface DepartmentEmployeePagesProps {
 
 function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }: DepartmentEmployeePagesProps) {
   const [currentPage, setCurrentPage] = useState(0);
+  const [dragStartX, setDragStartX] = useState(0);
 
-  // Group employees by department
   const departments = useMemo(() => {
-    console.log('Total employees:', employees.length);
-    console.log('Employees with department_name:', employees.filter(e => e.department_name).map(e => ({ name: e.full_name, dept: e.department_name })));
-    console.log('Employees with department_id:', employees.filter(e => e.department_id).map(e => ({ name: e.full_name, id: e.department_id })));
-    
-    const kitchen = employees.filter(e => 
-      e.department_name?.toLowerCase().includes('kitchen') || 
+    const kitchen = employees.filter(e =>
+      e.department_name?.toLowerCase().includes('kitchen') ||
       e.department_name?.toLowerCase().includes('bếp') ||
-      e.department_id === 'd0000000-0000-0000-0000-000000000001' // Kitchen department ID from seed
+      e.department_id === 'd0000000-0000-0000-0000-000000000001'
     );
-    const service = employees.filter(e => 
-      e.department_name?.toLowerCase().includes('service') || 
-      e.department_name?.toLowerCase().includes('phục vụ') || 
+    const service = employees.filter(e =>
+      e.department_name?.toLowerCase().includes('service') ||
+      e.department_name?.toLowerCase().includes('phục vụ') ||
       e.department_name?.toLowerCase().includes('reception') ||
-      e.department_id === 'd0000000-0000-0000-0000-000000000002' // Service/Reception department ID from seed
+      e.department_id === 'd0000000-0000-0000-0000-000000000002'
     );
     const other = employees.filter(e => !kitchen.includes(e) && !service.includes(e));
-
-    console.log('Kitchen:', kitchen.length, 'Service:', service.length, 'Other:', other.length);
 
     return [
       { name: 'Kitchen', label: 'Bếp', employees: kitchen },
@@ -80,18 +74,12 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }
     ].filter(dept => dept.employees.length > 0);
   }, [employees]);
 
+  const goTo = (idx: number) => setCurrentPage(Math.max(0, Math.min(departments.length - 1, idx)));
+
   if (departments.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="glass-card p-8 text-center text-muted-foreground text-sm">
-          Chưa có nhân viên
-        </div>
-        {/* Debug info */}
-        <div className="glass-card p-4 text-xs text-muted-foreground">
-          <p>Total employees loaded: {employees.length}</p>
-          <p>Check console for debug logs</p>
-          <p className="mt-2">Create employees via Supabase Dashboard or use the seed function</p>
-        </div>
+      <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+        Chưa có nhân viên
       </div>
     );
   }
@@ -103,7 +91,7 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }
         {departments.map((dept, idx) => (
           <button
             key={dept.name}
-            onClick={() => setCurrentPage(idx)}
+            onClick={() => goTo(idx)}
             className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               currentPage === idx
                 ? 'gradient-gold text-primary-foreground'
@@ -114,52 +102,54 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }
           </button>
         ))}
       </div>
-      
-      {/* Debug: Show if no departments */}
-      {departments.length === 0 && (
-        <div className="text-center text-xs text-muted-foreground py-4">
-          No departments found. Employees: {employees.length}
-        </div>
-      )}
 
-      {/* Employee list for current department */}
-      <motion.div
-        key={currentPage}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        transition={{ duration: 0.2 }}
-        className="space-y-2"
+      {/* Swipeable employee list */}
+      <div
+        className="overflow-hidden"
+        onTouchStart={e => setDragStartX(e.touches[0].clientX)}
+        onTouchEnd={e => {
+          const delta = dragStartX - e.changedTouches[0].clientX;
+          if (Math.abs(delta) > 50) goTo(currentPage + (delta > 0 ? 1 : -1));
+        }}
       >
-        {departments[currentPage].employees.map(emp => (
-          <motion.button
-            key={emp.user_id}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onSelectEmployee(emp)}
-            className="w-full glass-card p-3 flex items-center justify-between text-left"
-          >
-            <div>
-              <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
-              {emp.department_name && (
-                <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
-              )}
-            </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeBadgeColor(emp.shift_type)}`}>
-              {EMPLOYEE_TYPE_LABELS[emp.shift_type]}
-            </span>
-          </motion.button>
-        ))}
-      </motion.div>
+        <motion.div
+          key={currentPage}
+          initial={{ opacity: 0, x: currentPage === 0 ? 0 : 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -40 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="space-y-2"
+        >
+          {departments[currentPage].employees.map(emp => (
+            <motion.button
+              key={emp.user_id}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onSelectEmployee(emp)}
+              className="w-full glass-card p-3 flex items-center justify-between text-left"
+            >
+              <div>
+                <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
+                {emp.department_name && (
+                  <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
+                )}
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeBadgeColor(emp.shift_type)}`}>
+                {EMPLOYEE_TYPE_LABELS[emp.shift_type]}
+              </span>
+            </motion.button>
+          ))}
+        </motion.div>
+      </div>
 
-      {/* Swipe indicator dots */}
+      {/* Indicator dots */}
       {departments.length > 1 && (
-        <div className="flex justify-center gap-1.5 pt-2">
+        <div className="flex justify-center gap-1.5 pt-1">
           {departments.map((_, idx) => (
             <button
               key={idx}
-              onClick={() => setCurrentPage(idx)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                currentPage === idx ? 'bg-primary w-6' : 'bg-muted-foreground/30'
+              onClick={() => goTo(idx)}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                currentPage === idx ? 'bg-primary w-6' : 'bg-muted-foreground/30 w-2'
               }`}
             />
           ))}
@@ -571,7 +561,7 @@ export default function SalaryAdmin() {
                         onChange={ev => setNameInput(ev.target.value)}
                         onBlur={() => { handleNameChange(nameInput); setEditingName(false); }}
                         onKeyDown={ev => { if (ev.key === 'Enter') { handleNameChange(nameInput); setEditingName(false); } if (ev.key === 'Escape') setEditingName(false); }}
-                        className="px-2 py-0.5 rounded bg-background border border-border text-xl font-bold min-w-0 w-full"
+                        className="px-2 py-0.5 rounded bg-background border border-border text-xl font-bold text-foreground flex-1 max-w-[250px]"
                         autoFocus
                       />
                     ) : (
