@@ -66,32 +66,32 @@
   }
 
   html.light {
-    /* Light mode - Professional palette with Cyan & Lime accents */
+    /* Light mode - Warm yellowish palette for reduced brightness */
 
-    /* Core backgrounds - neutral with slight cool tone */
-    --background: 210 35% 97%;
-    --foreground: 210 20% 20%;
+    /* Core backgrounds - warm beige/cream tones */
+    --background: 42 25% 94%;
+    --foreground: 30 15% 25%;
 
-    /* Card surfaces - very subtle tints */
-    --card: 0 0% 100%;
-    --card-foreground: 210 20% 20%;
+    /* Card surfaces - slightly lighter warm tone */
+    --card: 42 20% 97%;
+    --card-foreground: 30 15% 25%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 20% 20%;
+    --popover: 42 20% 97%;
+    --popover-foreground: 30 15% 25%;
 
     /* Primary - Keep the gold */
     --primary: 42 90% 55%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Cyan accent (muted) */
-    --secondary: 190 60% 55%;
+    /* Secondary - Warm amber */
+    --secondary: 35 70% 60%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Muted - Light gray for secondary text */
-    --muted: 210 15% 82%;
-    --muted-foreground: 210 15% 45%;
+    /* Muted - Warm gray for secondary text */
+    --muted: 40 15% 85%;
+    --muted-foreground: 35 10% 45%;
 
-    /* Accent - Cyan bright */
+    /* Accent - Cyan bright (contrast) */
     --accent: 190 75% 50%;
     --accent-foreground: 0 0% 100%;
 
@@ -99,15 +99,15 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 20% 88%;
-    --input: 210 20% 92%;
+    --border: 40 20% 88%;
+    --input: 40 20% 92%;
     --ring: 42 90% 55%;
 
     /* Custom LunarFlow tokens for light */
     --lunar-gold: 42 90% 55%;
     --lunar-gold-glow: 42 100% 70%;
-    --lunar-navy: 210 35% 25%;
-    --lunar-deep: 210 40% 35%;
+    --lunar-navy: 35 30% 30%;
+    --lunar-deep: 35 35% 35%;
     --saturday: 180 70% 40%;
     --saturday-foreground: 180 70% 8%;
     --sunday: 270 65% 55%;
@@ -116,18 +116,18 @@
     --newmoon-glow: 130 75% 50%;
     --off-day: 0 84% 75%;
     --off-day-foreground: 0 84% 30%;
-    --glass: 0 0% 100%;
-    --glass-border: 210 20% 88%;
+    --glass: 42 20% 97%;
+    --glass-border: 40 20% 88%;
     --success: 130 75% 45%;
     --success-foreground: 130 75% 8%;
 
-    --sidebar-background: 210 30% 96%;
-    --sidebar-foreground: 210 20% 20%;
+    --sidebar-background: 42 22% 96%;
+    --sidebar-foreground: 30 15% 25%;
     --sidebar-primary: 42 90% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 190 60% 55%;
+    --sidebar-accent: 35 70% 60%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 20% 88%;
+    --sidebar-border: 40 20% 88%;
     --sidebar-ring: 42 90% 55%;
   }
 }
@@ -153,9 +153,9 @@
   }
 
   html.light .glass-card {
-    background: hsl(0 0% 100%);
-    border: 1px solid hsl(210 20% 88%);
-    box-shadow: 0 1px 3px hsl(210 20% 20% / 0.08);
+    background: hsl(42 20% 97%);
+    border: 1px solid hsl(40 20% 88%);
+    box-shadow: 0 1px 3px hsl(30 15% 25% / 0.08);
     border-radius: 1rem;
     transition-property: all;
     transition-duration: 300ms;
@@ -166,18 +166,18 @@
   }
 
   html.light .glass-card-hover {
-    background: hsl(0 0% 100%);
-    border: 1px solid hsl(210 20% 88%);
-    box-shadow: 0 1px 3px hsl(210 20% 20% / 0.08);
+    background: hsl(42 20% 97%);
+    border: 1px solid hsl(40 20% 88%);
+    box-shadow: 0 1px 3px hsl(30 15% 25% / 0.08);
     border-radius: 1rem;
     transition-property: all;
     transition-duration: 300ms;
   }
 
   html.light .glass-card-hover:hover {
-    background: hsl(210 30% 98%);
-    border-color: hsl(190 75% 50% / 0.3);
-    box-shadow: 0 4px 12px hsl(190 75% 50% / 0.12);
+    background: hsl(42 25% 95%);
+    border-color: hsl(42 90% 55% / 0.3);
+    box-shadow: 0 4px 12px hsl(42 90% 55% / 0.12);
   }
 
   .lunar-glow {

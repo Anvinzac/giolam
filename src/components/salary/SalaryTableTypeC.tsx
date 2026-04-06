@@ -9,6 +9,7 @@ import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
 import AnalogClock from '../AnalogClock';
+import DateInput from './DateInput';
 
 interface SalaryTableTypeCProps {
   entries: SalaryEntry[];
@@ -291,12 +292,13 @@ export default function SalaryTableTypeC({
               </button>
             )}
             {editingDateKey === `${cellKey}-date` && !isPreview ? (
-              <input
-                type="date"
+              <DateInput
                 value={editingDateValue}
+                onChange={setEditingDateValue}
                 min={periodStart}
                 max={periodEnd}
-                onChange={(ev) => setEditingDateValue(ev.target.value)}
+                periodStart={periodStart}
+                periodEnd={periodEnd}
                 onBlur={() => saveDateEdit(e)}
                 onKeyDown={(ev) => {
                   if (ev.key === 'Enter') saveDateEdit(e);
@@ -381,12 +383,13 @@ export default function SalaryTableTypeC({
             )}
             <div className="min-w-0 flex-1">
               {editingDateKey === `${cellKey}-date` && !isPreview ? (
-                <input
-                  type="date"
+                <DateInput
                   value={editingDateValue}
+                  onChange={setEditingDateValue}
                   min={periodStart}
                   max={periodEnd}
-                  onChange={(ev) => setEditingDateValue(ev.target.value)}
+                  periodStart={periodStart}
+                  periodEnd={periodEnd}
                   onBlur={() => saveDateEdit(e)}
                   onKeyDown={(ev) => {
                     if (ev.key === 'Enter') saveDateEdit(e);

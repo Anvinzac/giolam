@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Edit3, Plus } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
@@ -8,6 +8,7 @@ import OffPercentSnapper from './OffPercentSnapper';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
+import DateInput from './DateInput';
 
 interface SalaryTableTypeAProps {
   entries: SalaryEntry[];
@@ -37,6 +38,8 @@ export default function SalaryTableTypeA({
   const [expandedOff, setExpandedOff] = useState<string | null>(null);
   const [addingDate, setAddingDate] = useState(false);
   const [newRowDate, setNewRowDate] = useState(periodStart || '');
+  const [newRowIsOff, setNewRowIsOff] = useState(true); // Default to off-day
+  const lastTapRef = useRef<{ date: string; time: number } | null>(null);
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
 
@@ -78,6 +81,25 @@ export default function SalaryTableTypeA({
   };
 
   const getMoon = (dateStr: string) => getMoonEmoji(new Date(dateStr + 'T00:00:00'));
+
+  const handleDateTap = (entryDate: string, sortOrder: number) => {
+    const now = Date.now();
+    const last = lastTapRef.current;
+    
+    if (last && last.date === entryDate && now - last.time < 300) {
+      // Double tap detected - toggle off day
+      const entry = visibleEntries.find(e => e.entry_date === entryDate && e.sort_order === sortOrder);
+      if (entry) {
+        onEntryUpdate(entryDate, sortOrder, {
+          is_day_off: !entry.is_day_off,
+          off_percent: entry.is_day_off ? 0 : 100,
+        });
+      }
+      lastTapRef.current = null;
+    } else {
+      lastTapRef.current = { date: entryDate, time: now };
+    }
+  };
 
   const formatCompact = (amount: number) => {
     if (amount === 0) return '0';
@@ -121,26 +143,49 @@ export default function SalaryTableTypeA({
 
         {addingDate && !isPreview && onAddRowAtDate && (
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20">
-            <input
-              type="date"
+            <DateInput
               value={newRowDate}
+              onChange={setNewRowDate}
               min={periodStart}
               max={periodEnd}
-              onChange={(ev) => setNewRowDate(ev.target.value)}
-              className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0"
+              periodStart={periodStart || ''}
+              periodEnd={periodEnd || ''}
+              className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-20"
               autoFocus
             />
+            <label className="flex items-center gap-1.5 text-[11px] text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newRowIsOff}
+                onChange={(e) => setNewRowIsOff(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-border"
+              />
+              <span>Nghỉ</span>
+            </label>
             <button
               onClick={() => {
                 onAddRowAtDate(newRowDate);
+                if (newRowIsOff) {
+                  // Set as off-day after adding
+                  setTimeout(() => {
+                    onEntryUpdate(newRowDate, 0, {
+                      is_day_off: true,
+                      off_percent: 100,
+                    });
+                  }, 100);
+                }
                 setAddingDate(false);
+                setNewRowIsOff(true); // Reset to default
               }}
               className="px-2 py-1 rounded bg-muted text-[10px] text-foreground hover:bg-muted/80 transition-colors"
             >
               Thêm
             </button>
             <button
-              onClick={() => setAddingDate(false)}
+              onClick={() => {
+                setAddingDate(false);
+                setNewRowIsOff(true); // Reset to default
+              }}
               className="px-2 py-1 rounded text-[10px] text-muted-foreground hover:text-foreground transition-colors"
             >
               Hủy
@@ -163,9 +208,12 @@ export default function SalaryTableTypeA({
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
                 >
                   {/* Date */}
-                  <span className={`w-[52px] font-semibold text-[14px] text-left ${getDayColor(e.entry_date)}`}>
+                  <button
+                    onClick={() => handleDateTap(e.entry_date, e.sort_order)}
+                    className={`w-[52px] font-semibold text-[14px] text-left ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
+                  >
                     {formatDateViet(e.entry_date)}
-                  </span>
+                  </button>
 
                   {/* Note */}
                   {isEditing ? (

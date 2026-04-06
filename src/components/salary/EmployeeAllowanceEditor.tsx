@@ -31,20 +31,20 @@ export default function EmployeeAllowanceEditor({
   const startEdit = (a: EmployeeAllowance) => {
     setEditingKey(a.allowance_key);
     setEditLabel(a.label);
-    setEditAmount(a.amount.toString());
+    setEditAmount((a.amount / 1000).toString());
   };
 
   const saveEdit = (key: AllowanceKey) => {
     onUpdate(key, {
       label: editLabel,
-      amount: parseInt(editAmount) || 0,
+      amount: (parseInt(editAmount) || 0) * 1000,
     });
     setEditingKey(null);
   };
 
   const handleAddNew = () => {
     if (newLabel.trim() && onAddAllowance) {
-      onAddAllowance(newLabel, parseInt(newAmount) || 0);
+      onAddAllowance(newLabel, (parseInt(newAmount) || 0) * 1000);
       setNewLabel('');
       setNewAmount('');
       setAddingNew(false);
@@ -89,6 +89,7 @@ export default function EmployeeAllowanceEditor({
             className="w-24 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground text-right"
             inputMode="numeric"
           />
+          <span className="text-[10px] text-muted-foreground">×1000</span>
           <button
             onClick={handleAddNew}
             className="px-2 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"
@@ -145,6 +146,7 @@ export default function EmployeeAllowanceEditor({
                 className="w-24 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground text-right"
                 inputMode="numeric"
               />
+              <span className="text-[10px] text-muted-foreground">×1000</span>
               <button
                 onClick={() => saveEdit(a.allowance_key)}
                 className="px-2 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"

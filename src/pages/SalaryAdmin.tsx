@@ -42,13 +42,141 @@ interface Period {
 
 const TEMP_HIDDEN_TEST_USERNAMES = new Set(['test_loaia', 'test_loaib', 'test_loaic']);
 
+// Department-based employee pages component
+interface DepartmentEmployeePagesProps {
+  employees: Employee[];
+  onSelectEmployee: (emp: Employee) => void;
+  typeBadgeColor: (t: EmployeeShiftType) => string;
+}
+
+function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }: DepartmentEmployeePagesProps) {
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // Group employees by department
+  const departments = useMemo(() => {
+    console.log('Total employees:', employees.length);
+    console.log('Employees with department_name:', employees.filter(e => e.department_name).map(e => ({ name: e.full_name, dept: e.department_name })));
+    console.log('Employees with department_id:', employees.filter(e => e.department_id).map(e => ({ name: e.full_name, id: e.department_id })));
+    
+    const kitchen = employees.filter(e => 
+      e.department_name?.toLowerCase().includes('kitchen') || 
+      e.department_name?.toLowerCase().includes('bếp') ||
+      e.department_id === 'd0000000-0000-0000-0000-000000000001' // Kitchen department ID from seed
+    );
+    const service = employees.filter(e => 
+      e.department_name?.toLowerCase().includes('service') || 
+      e.department_name?.toLowerCase().includes('phục vụ') || 
+      e.department_name?.toLowerCase().includes('reception') ||
+      e.department_id === 'd0000000-0000-0000-0000-000000000002' // Service/Reception department ID from seed
+    );
+    const other = employees.filter(e => !kitchen.includes(e) && !service.includes(e));
+
+    console.log('Kitchen:', kitchen.length, 'Service:', service.length, 'Other:', other.length);
+
+    return [
+      { name: 'Kitchen', label: 'Bếp', employees: kitchen },
+      { name: 'Service', label: 'Phục vụ', employees: service },
+      { name: 'Other', label: 'Khác', employees: other },
+    ].filter(dept => dept.employees.length > 0);
+  }, [employees]);
+
+  if (departments.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+          Chưa có nhân viên
+        </div>
+        {/* Debug info */}
+        <div className="glass-card p-4 text-xs text-muted-foreground">
+          <p>Total employees loaded: {employees.length}</p>
+          <p>Check console for debug logs</p>
+          <p className="mt-2">Create employees via Supabase Dashboard or use the seed function</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Department tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+        {departments.map((dept, idx) => (
+          <button
+            key={dept.name}
+            onClick={() => setCurrentPage(idx)}
+            className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              currentPage === idx
+                ? 'gradient-gold text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            {dept.label} ({dept.employees.length})
+          </button>
+        ))}
+      </div>
+      
+      {/* Debug: Show if no departments */}
+      {departments.length === 0 && (
+        <div className="text-center text-xs text-muted-foreground py-4">
+          No departments found. Employees: {employees.length}
+        </div>
+      )}
+
+      {/* Employee list for current department */}
+      <motion.div
+        key={currentPage}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.2 }}
+        className="space-y-2"
+      >
+        {departments[currentPage].employees.map(emp => (
+          <motion.button
+            key={emp.user_id}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onSelectEmployee(emp)}
+            className="w-full glass-card p-3 flex items-center justify-between text-left"
+          >
+            <div>
+              <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
+              {emp.department_name && (
+                <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
+              )}
+            </div>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeBadgeColor(emp.shift_type)}`}>
+              {EMPLOYEE_TYPE_LABELS[emp.shift_type]}
+            </span>
+          </motion.button>
+        ))}
+      </motion.div>
+
+      {/* Swipe indicator dots */}
+      {departments.length > 1 && (
+        <div className="flex justify-center gap-1.5 pt-2">
+          {departments.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentPage(idx)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                currentPage === idx ? 'bg-primary w-6' : 'bg-muted-foreground/30'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const EditableAmount = ({ 
   label, 
   value, 
   onChange, 
   isPreview, 
   suffix = '',
-  className = ''
+  className = '',
+  inThousands = false,
 }: { 
   label?: string; 
   value: number; 
@@ -56,16 +184,22 @@ const EditableAmount = ({
   isPreview: boolean; 
   suffix?: string;
   className?: string;
+  inThousands?: boolean;
 }) => {
   const [editing, setEditing] = useState(false);
-  const [inputStr, setInputStr] = useState(value === 0 ? '' : value.toString());
+  const displayValue = inThousands ? value / 1000 : value;
+  const [inputStr, setInputStr] = useState(displayValue === 0 ? '' : displayValue.toString());
 
-  useEffect(() => setInputStr(value === 0 ? '' : value.toString()), [value]);
+  useEffect(() => {
+    const newDisplay = inThousands ? value / 1000 : value;
+    setInputStr(newDisplay === 0 ? '' : newDisplay.toString());
+  }, [value, inThousands]);
 
   const save = () => {
     const cleaned = inputStr.replace(/\D/g, '');
     const parsed = cleaned === '' ? 0 : parseInt(cleaned, 10);
-    if (!isNaN(parsed) && parsed !== value) onChange(parsed);
+    const actualValue = inThousands ? parsed * 1000 : parsed;
+    if (!isNaN(parsed) && actualValue !== value) onChange(actualValue);
     setEditing(false);
   };
 
@@ -79,7 +213,10 @@ const EditableAmount = ({
           className="w-24 px-2 py-1 rounded bg-background border border-border text-[14px] text-right"
           inputMode="numeric"
           autoFocus
+          onKeyDown={e => e.key === 'Enter' && save()}
+          placeholder={inThousands ? "x1000" : ""}
         />
+        {inThousands && <span className="text-[11px] text-muted-foreground">×1000</span>}
         <button onClick={save} className="text-[13px] px-2.5 py-1 rounded gradient-gold text-primary-foreground font-semibold">OK</button>
         <button onClick={() => setEditing(false)} className="text-[13px] text-muted-foreground ml-1 p-1">Hủy</button>
       </div>
@@ -115,6 +252,7 @@ export default function SalaryAdmin() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [showCSVImport, setShowCSVImport] = useState(false);
+  const [showShiftTypePicker, setShowShiftTypePicker] = useState(false);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -141,7 +279,10 @@ export default function SalaryAdmin() {
   // Sync global clock-in
   useEffect(() => {
     if (selectedEmployee) {
-      setGlobalClockIn(selectedEmployee.default_clock_in || '17:00');
+      const raw = selectedEmployee.default_clock_in || '17:00';
+      // Strip seconds if present (HH:MM:SS -> HH:MM)
+      const time = raw.length > 5 ? raw.slice(0, 5) : raw;
+      setGlobalClockIn(time);
     }
   }, [selectedEmployee]);
 
@@ -365,6 +506,37 @@ export default function SalaryAdmin() {
     toast.success(`Đã nhập ${rows.length} dòng từ CSV`);
   }, [selectedEmployee, selectedPeriodId, updateEntry]);
 
+  const handleShiftTypeChange = useCallback(async (newType: EmployeeShiftType) => {
+    if (!selectedEmployee || !selectedPeriodId) return;
+    
+    // Update database
+    await supabase.from('profiles').update({ shift_type: newType } as any).eq('user_id', selectedEmployee.user_id);
+    
+    // Update local state
+    setSelectedEmployee(prev => prev ? { ...prev, shift_type: newType } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, shift_type: newType } : e
+    ));
+    
+    // Clear all salary entries for this employee in this period
+    const { error } = await supabase
+      .from('salary_entries')
+      .delete()
+      .eq('user_id', selectedEmployee.user_id)
+      .eq('period_id', selectedPeriodId);
+    
+    if (error) {
+      console.error('Error clearing salary entries:', error);
+      toast.error('Lỗi khi xóa dữ liệu lương cũ');
+    } else {
+      toast.success(`Đã đổi loại sang ${EMPLOYEE_TYPE_LABELS[newType]} và xóa dữ liệu lương cũ`);
+      // Force re-render by updating retry key
+      setRetryKey(k => k + 1);
+    }
+    
+    setShowShiftTypePicker(false);
+  }, [selectedEmployee, selectedPeriodId]);
+
   const typeBadgeColor = (t: EmployeeShiftType) => {
     switch (t) {
       case 'basic': return 'bg-amber-500/20 text-amber-400';
@@ -413,9 +585,12 @@ export default function SalaryAdmin() {
                   ) : 'Quản lý lương'}
                 </h1>
                 {selectedEmployee && !isPreviewMode && (
-                  <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-1 ${typeBadgeColor(selectedEmployee.shift_type)}`}>
+                  <button
+                    onClick={() => setShowShiftTypePicker(true)}
+                    className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-1 transition-all hover:ring-2 hover:ring-primary/50 ${typeBadgeColor(selectedEmployee.shift_type)}`}
+                  >
                     {EMPLOYEE_TYPE_LABELS[selectedEmployee.shift_type]}
-                  </span>
+                  </button>
                 )}
               </div>
               
@@ -427,6 +602,7 @@ export default function SalaryAdmin() {
                     isPreview={isPreviewMode} 
                     suffix="đ/giờ"
                     className="items-end"
+                    inThousands={true}
                  />
               )}
             </div>
@@ -453,6 +629,7 @@ export default function SalaryAdmin() {
                   value={selectedEmployee.base_salary} 
                   onChange={handleBaseSalaryChange} 
                   isPreview={isPreviewMode} 
+                  inThousands={true}
                />
                <div className="flex flex-col items-center">
                  <span className="text-[11px] text-muted-foreground mb-0.5">Lương ngày</span>
@@ -538,33 +715,13 @@ export default function SalaryAdmin() {
           />
         )}
 
-        {/* Employee list */}
+        {/* Employee list - Department-based swipeable pages */}
         {!selectedEmployee && tab === 'employees' && (
-          <div className="space-y-2">
-            {employees.map(emp => (
-              <motion.button
-                key={emp.user_id}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSelectedEmployee(emp)}
-                className="w-full glass-card p-3 flex items-center justify-between text-left"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
-                  {emp.department_name && (
-                    <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
-                  )}
-                </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeBadgeColor(emp.shift_type)}`}>
-                  {EMPLOYEE_TYPE_LABELS[emp.shift_type]}
-                </span>
-              </motion.button>
-            ))}
-            {employees.length === 0 && (
-              <div className="glass-card p-8 text-center text-muted-foreground text-sm">
-                Chưa có nhân viên
-              </div>
-            )}
-          </div>
+          <DepartmentEmployeePages
+            employees={employees}
+            onSelectEmployee={setSelectedEmployee}
+            typeBadgeColor={typeBadgeColor}
+          />
         )}
 
         {/* Selected employee salary table */}
@@ -674,6 +831,49 @@ export default function SalaryAdmin() {
                 onImport={handleCSVImport}
                 onClose={() => setShowCSVImport(false)}
               />
+            )}
+
+            {/* Shift Type Picker Modal */}
+            {showShiftTypePicker && selectedEmployee && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShiftTypePicker(false)}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="glass-card p-6 max-w-sm w-full"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <h3 className="text-lg font-bold text-foreground mb-4">Chọn loại nhân viên</h3>
+                  <div className="space-y-2">
+                    {(['basic', 'overtime', 'notice_only'] as EmployeeShiftType[]).map(type => (
+                      <button
+                        key={type}
+                        onClick={() => handleShiftTypeChange(type)}
+                        className={`w-full p-3 rounded-xl text-left transition-all ${
+                          selectedEmployee.shift_type === type
+                            ? 'gradient-gold text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80 text-foreground'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{EMPLOYEE_TYPE_LABELS[type]}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeBadgeColor(type)}`}>
+                            {type}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setShowShiftTypePicker(false)}
+                    className="w-full mt-4 py-2 rounded-xl bg-muted text-muted-foreground hover:bg-muted/80 text-sm font-medium"
+                  >
+                    Hủy
+                  </button>
+                  <p className="text-xs text-muted-foreground mt-3 text-center">
+                    ⚠️ Đổi loại sẽ xóa toàn bộ dữ liệu lương hiện tại
+                  </p>
+                </motion.div>
+              </div>
             )}
           </>
         )}
