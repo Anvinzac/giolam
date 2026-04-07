@@ -159,37 +159,39 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }
   );
 }
 
-const EditableAmount = ({ 
-  label, 
-  value, 
-  onChange, 
-  isPreview, 
+const EditableAmount = ({
+  label,
+  value,
+  onChange,
+  isPreview,
   suffix = '',
   className = '',
-  inThousands = false,
-}: { 
-  label?: string; 
-  value: number; 
-  onChange: (val: number) => void; 
-  isPreview: boolean; 
+}: {
+  label?: string;
+  value: number;
+  onChange: (val: number) => void;
+  isPreview: boolean;
   suffix?: string;
   className?: string;
-  inThousands?: boolean;
 }) => {
   const [editing, setEditing] = useState(false);
-  const displayValue = inThousands ? value / 1000 : value;
-  const [inputStr, setInputStr] = useState(displayValue === 0 ? '' : displayValue.toString());
+  const shortVal = value === 0 ? '' : (value / 1000).toString();
+  const [rawInput, setRawInput] = useState(shortVal);
 
   useEffect(() => {
-    const newDisplay = inThousands ? value / 1000 : value;
-    setInputStr(newDisplay === 0 ? '' : newDisplay.toString());
-  }, [value, inThousands]);
+    setRawInput(value === 0 ? '' : (value / 1000).toString());
+  }, [value]);
+
+  const fmtDot = (n: number) => n.toLocaleString('vi-VN');
+  const num = rawInput ? parseInt(rawInput, 10) : 0;
+  const typedFormatted = num > 0 ? fmtDot(num) : '';
+  const ghostFormatted = num > 0 ? '.000' : '000';
 
   const save = () => {
-    const cleaned = inputStr.replace(/\D/g, '');
-    const parsed = cleaned === '' ? 0 : parseInt(cleaned, 10);
-    const actualValue = inThousands ? parsed * 1000 : parsed;
-    if (!isNaN(parsed) && actualValue !== value) onChange(actualValue);
+    const cleaned = rawInput.replace(/\D/g, '');
+    let parsed = cleaned === '' ? 0 : parseInt(cleaned, 10);
+    if (parsed > 0) parsed = parsed * 1000;
+    if (!isNaN(parsed) && parsed !== value) onChange(parsed);
     setEditing(false);
   };
 
@@ -197,16 +199,20 @@ const EditableAmount = ({
     return (
       <div className={`flex items-center gap-1 ${className}`}>
         {label && <span className="text-[13px] text-muted-foreground mr-1">{label}</span>}
-        <input 
-          value={inputStr} 
-          onChange={e => setInputStr(e.target.value.replace(/\D/g, ''))}
-          className="w-24 px-2 py-1 rounded bg-background border border-border text-[14px] text-right"
-          inputMode="numeric"
-          autoFocus
-          onKeyDown={e => e.key === 'Enter' && save()}
-          placeholder={inThousands ? "x1000" : ""}
-        />
-        {inThousands && <span className="text-[11px] text-muted-foreground">×1000</span>}
+        <div className="flex items-center px-2 py-1 rounded bg-background border border-border relative">
+          {/* Hidden real input for keyboard */}
+          <input
+            value={rawInput}
+            onChange={e => setRawInput(e.target.value.replace(/\D/g, ''))}
+            className="absolute inset-0 opacity-0 text-[16px]"
+            inputMode="numeric"
+            autoFocus
+            onKeyDown={e => e.key === 'Enter' && save()}
+          />
+          {/* Visible formatted display */}
+          <span className="text-[16px] text-foreground pointer-events-none">{typedFormatted}</span>
+          <span className="text-[16px] text-muted-foreground/40 pointer-events-none">{ghostFormatted}</span>
+        </div>
         <button onClick={save} className="text-[13px] px-2.5 py-1 rounded gradient-gold text-primary-foreground font-semibold">OK</button>
         <button onClick={() => setEditing(false)} className="text-[13px] text-muted-foreground ml-1 p-1">Hủy</button>
       </div>
@@ -587,12 +593,11 @@ export default function SalaryAdmin() {
               {/* Hourly Rate right side inline with name */}
               {selectedEmployee && selectedEmployee.shift_type !== 'basic' && (
                  <EditableAmount 
-                    value={selectedEmployee.hourly_rate} 
-                    onChange={handleHourlyRateChange} 
-                    isPreview={isPreviewMode} 
+                    value={selectedEmployee.hourly_rate}
+                    onChange={handleHourlyRateChange}
+                    isPreview={isPreviewMode}
                     suffix="đ/giờ"
                     className="items-end"
-                    inThousands={true}
                  />
               )}
             </div>
@@ -616,10 +621,9 @@ export default function SalaryAdmin() {
               <div className="grid grid-cols-3 items-end gap-x-4 gap-y-3">
                <EditableAmount 
                   label="Lương cơ bản"
-                  value={selectedEmployee.base_salary} 
-                  onChange={handleBaseSalaryChange} 
-                  isPreview={isPreviewMode} 
-                  inThousands={true}
+                  value={selectedEmployee.base_salary}
+                  onChange={handleBaseSalaryChange}
+                  isPreview={isPreviewMode}
                />
                <div className="flex flex-col items-center">
                  <span className="text-[11px] text-muted-foreground mb-0.5">Lương ngày</span>

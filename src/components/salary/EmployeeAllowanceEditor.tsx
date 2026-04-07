@@ -26,6 +26,12 @@ export default function EmployeeAllowanceEditor({
   const [newLabel, setNewLabel] = useState('');
   const [newAmount, setNewAmount] = useState('');
 
+  const fmtDot = (n: number) => n.toLocaleString('vi-VN');
+  const fmtInput = (raw: string) => {
+    const n = raw ? parseInt(raw, 10) : 0;
+    return { typed: n > 0 ? fmtDot(n) : '', ghost: n > 0 ? '.000' : '000' };
+  };
+
   const visible = isAdmin ? allowances : allowances.filter(a => a.is_enabled);
 
   const startEdit = (a: EmployeeAllowance) => {
@@ -35,16 +41,20 @@ export default function EmployeeAllowanceEditor({
   };
 
   const saveEdit = (key: AllowanceKey) => {
+    let amt = parseInt(editAmount) || 0;
+    if (amt > 0) amt = amt * 1000;
     onUpdate(key, {
       label: editLabel,
-      amount: (parseInt(editAmount) || 0) * 1000,
+      amount: amt,
     });
     setEditingKey(null);
   };
 
   const handleAddNew = () => {
     if (newLabel.trim() && onAddAllowance) {
-      onAddAllowance(newLabel, (parseInt(newAmount) || 0) * 1000);
+      let amt = parseInt(newAmount) || 0;
+      if (amt > 0) amt = amt * 1000;
+      onAddAllowance(newLabel, amt);
       setNewLabel('');
       setNewAmount('');
       setAddingNew(false);
@@ -79,17 +89,19 @@ export default function EmployeeAllowanceEditor({
             value={newLabel}
             onChange={e => setNewLabel(e.target.value)}
             placeholder="Tên phụ cấp"
-            className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground"
+            className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-border text-[16px] text-foreground"
             autoFocus
           />
-          <input
-            value={newAmount}
-            onChange={e => setNewAmount(e.target.value.replace(/\D/g, ''))}
-            placeholder="0"
-            className="w-24 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground text-right"
-            inputMode="numeric"
-          />
-          <span className="text-[10px] text-muted-foreground">×1000</span>
+          <div className="flex items-center px-2 py-1 rounded-lg bg-background border border-border relative">
+            <input
+              value={newAmount}
+              onChange={e => setNewAmount(e.target.value.replace(/\D/g, ''))}
+              className="absolute inset-0 opacity-0 text-[16px]"
+              inputMode="numeric"
+            />
+            <span className="text-[16px] text-foreground pointer-events-none">{fmtInput(newAmount).typed}</span>
+            <span className="text-[16px] text-muted-foreground/40 pointer-events-none">{fmtInput(newAmount).ghost}</span>
+          </div>
           <button
             onClick={handleAddNew}
             className="px-2 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"
@@ -138,16 +150,19 @@ export default function EmployeeAllowanceEditor({
               <input
                 value={editLabel}
                 onChange={e => setEditLabel(e.target.value)}
-                className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground"
+                className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-border text-[16px] text-foreground"
               />
-              <input
-                value={editAmount}
-                onChange={e => setEditAmount(e.target.value.replace(/\D/g, ''))}
-                className="w-24 px-2 py-1 rounded-lg bg-background border border-border text-xs text-foreground text-right"
-                inputMode="numeric"
-              />
-              <span className="text-[10px] text-muted-foreground">×1000</span>
-              <button
+              <div className="flex items-center px-2 py-1 rounded-lg bg-background border border-border relative">
+                <input
+                  value={editAmount}
+                  onChange={e => setEditAmount(e.target.value.replace(/\D/g, ''))}
+                  className="absolute inset-0 opacity-0 text-[16px]"
+                  inputMode="numeric"
+                />
+                <span className="text-[16px] text-foreground pointer-events-none">{fmtInput(editAmount).typed}</span>
+                <span className="text-[16px] text-muted-foreground/40 pointer-events-none">{fmtInput(editAmount).ghost}</span>
+              </div>
+                  <button
                 onClick={() => saveEdit(a.allowance_key)}
                 className="px-2 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"
               >
