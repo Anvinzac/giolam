@@ -202,6 +202,21 @@ export default function Login() {
             >
               {loading ? "..." : "Đăng nhập"}
             </motion.button>
+
+            {/* Demo account */}
+            <div className="text-center pt-2">
+              <p className="text-xs text-muted-foreground mb-2">Hoặc dùng tài khoản demo</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername("nhanvien_a");
+                  setPassword("test123");
+                }}
+                className="text-xs text-primary/70 hover:text-primary underline underline-offset-2 transition-colors"
+              >
+                Tài khoản demo (nhân viên)
+              </button>
+            </div>
           </form>
         )}
       </motion.div>
