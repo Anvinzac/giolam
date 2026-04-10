@@ -378,7 +378,7 @@ export default function SalaryAdmin() {
 
         const [profilesRes, deptsRes, adminRolesRes] = await Promise.all([
           withTimeout(
-            supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in'),
+            supabase.from('profiles').select('user_id, username, full_name, shift_type, department_id, default_clock_in'),
             10000,
             'Profile lookup timed out.',
           ),
