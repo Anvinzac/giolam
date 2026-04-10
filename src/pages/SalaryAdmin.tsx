@@ -316,24 +316,12 @@ export default function SalaryAdmin() {
     if (seedingRef.current === seedKey) return;
 
     if (selectedEmployee.shift_type === 'basic') {
-      // Type A: seed from special day rates, mark off-days automatically
+      // Type A: seed from special day rates, skip off-days (not applicable)
       if (rates.length === 0) return;
       seedingRef.current = seedKey;
-      const offDaySet = new Set(selectedPeriod.off_days || []);
-      const offDayDates: string[] = [];
       for (const r of rates) {
+        if (r.day_type === 'public_holiday') continue;
         addRowAtDate(r.special_date);
-        if (offDaySet.has(r.special_date) || r.day_type === 'public_holiday') {
-          offDayDates.push(r.special_date);
-        }
-      }
-      // Mark off-days after entries are created
-      if (offDayDates.length > 0) {
-        setTimeout(() => {
-          for (const d of offDayDates) {
-            updateEntry(d, 0, { is_day_off: true, off_percent: 100 });
-          }
-        }, 2000);
       }
     } else if (selectedEmployee.shift_type === 'overtime') {
       // Type B: seed all days in period
