@@ -100,8 +100,8 @@ export const DEFAULT_RATES: Record<DayType, number> = {
 export const DAY_TYPE_LABELS: Record<DayType, string> = {
   saturday: 'Thứ Bảy',
   sunday: 'Chủ Nhật',
-  day_before_new_moon: 'Trước Mùng 1',
-  day_before_full_moon: 'Trước Rằm',
+  day_before_new_moon: 'Ngày chay',
+  day_before_full_moon: 'Ngày chay',
   new_moon: 'Mùng 1',
   full_moon: 'Rằm',
   public_holiday: 'Ngày lễ',

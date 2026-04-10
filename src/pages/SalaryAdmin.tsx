@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -307,18 +307,37 @@ export default function SalaryAdmin() {
   }, [entries, allowances, selectedEmployee, rates, globalClockIn]);
 
   // Auto-seed entries when employee has none
+  const seedingRef = useRef<string | null>(null);
   useEffect(() => {
     if (!selectedEmployee || !selectedPeriodId || !selectedPeriod) return;
     if (entries.length > 0) return;
+    // Prevent duplicate seeding for same employee+period
+    const seedKey = `${selectedEmployee.user_id}|${selectedPeriodId}`;
+    if (seedingRef.current === seedKey) return;
 
     if (selectedEmployee.shift_type === 'basic') {
-      // Type A: seed from special day rates only
+      // Type A: seed from special day rates, mark off-days automatically
       if (rates.length === 0) return;
+      seedingRef.current = seedKey;
+      const offDaySet = new Set(selectedPeriod.off_days || []);
+      const offDayDates: string[] = [];
       for (const r of rates) {
         addRowAtDate(r.special_date);
+        if (offDaySet.has(r.special_date) || r.day_type === 'public_holiday') {
+          offDayDates.push(r.special_date);
+        }
+      }
+      // Mark off-days after entries are created
+      if (offDayDates.length > 0) {
+        setTimeout(() => {
+          for (const d of offDayDates) {
+            updateEntry(d, 0, { is_day_off: true, off_percent: 100 });
+          }
+        }, 2000);
       }
     } else if (selectedEmployee.shift_type === 'overtime') {
       // Type B: seed all days in period
+      seedingRef.current = seedKey;
       const allDates = generateDateRange(selectedPeriod.start_date, selectedPeriod.end_date);
       for (const dateStr of allDates) {
         addRowAtDate(dateStr);
