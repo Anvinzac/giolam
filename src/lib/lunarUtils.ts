@@ -13,16 +13,16 @@ export function isFullMoon(date: Date): boolean {
   const d = new Date(date);
   d.setHours(12, 0, 0, 0); // Check mid-day to be safe
   const phase = getLunarPhase(d);
-  // Full moon is at 0.5 phase
-  return Math.abs(phase - 0.5) < 0.04;
+  // Full moon is at 0.5 phase — tight threshold for exactly 1 day
+  return Math.abs(phase - 0.5) < 0.017;
 }
 
 export function isNewMoon(date: Date): boolean {
   const d = new Date(date);
   d.setHours(12, 0, 0, 0);
   const phase = getLunarPhase(d);
-  // New moon is at 0.0 or 1.0 phase
-  return phase < 0.04 || phase > 0.96;
+  // New moon is at 0.0 or 1.0 phase — tight threshold for exactly 1 day
+  return phase < 0.017 || phase > 0.983;
 }
 
 export function isDayBeforeFullMoon(date: Date): boolean {
