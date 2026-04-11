@@ -101,6 +101,21 @@ export function generateDefaultSpecialDays(
       continue;
     }
 
+    // Hardcoded special day: Phục Sinh (April 3rd) at 30%
+    if (d.getMonth() === 3 && d.getDate() === 3) {
+      seen.set(dateStr, {
+        period_id: periodId,
+        special_date: dateStr,
+        day_type: 'custom',
+        description_vi: 'Phục Sinh + 30%',
+        rate_percent: 30,
+        sort_order: sortIdx++,
+      });
+      d.setDate(d.getDate() + 1);
+      d.setHours(12, 0, 0, 0);
+      continue;
+    }
+
     const dayType = getSpecialDayType(d);
     
     if (dayType) {
