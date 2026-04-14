@@ -150,7 +150,7 @@ export default function SalaryTableTypeB({
               e.is_day_off ? 'opacity-50' : ''
             } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
               isMoonDay ? 'moon-accent-row' : ''
-            }`}>
+            } ${showWeekSep ? 'relative' : ''}`}>
               <div className="min-w-0 flex-1 pr-1">
                 <div className="flex items-start gap-1">
                   {!isPreview && (
@@ -179,10 +179,10 @@ export default function SalaryTableTypeB({
                       />
                     ) : (
                       <button
-                        onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
+                        onClick={() => !isPreview && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
                         className={`mt-1 block text-left text-[12px] leading-tight ${
                           isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-                        } ${!isPreview ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+                        } ${!isPreview && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
                       >
                         {e.note || rateDesc || '—'}
                       </button>
@@ -190,8 +190,8 @@ export default function SalaryTableTypeB({
                   </div>
                 </div>
               </div>
-              <div className="ml-1 flex shrink-0 items-start gap-2 text-right">
-                {editingCell === `${cellKey}-clock_out` && !isPreview ? (
+              <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
+                {editingCell === `${cellKey}-clock_out` && !isPreview && !e.is_day_off ? (
                   <button
                     onClick={() => setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order })}
                     className="w-[38px] rounded border border-border bg-background px-1 py-1 text-right text-[10px] text-accent"
@@ -201,13 +201,13 @@ export default function SalaryTableTypeB({
                 ) : (
                   <button
                     onClick={() => {
-                      if (!isPreview) {
+                      if (!isPreview && !e.is_day_off) {
                         setEditingCell(`${cellKey}-clock_out`);
                         setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order });
                       }
                     }}
                     className={`w-[38px] text-right text-sm font-medium ${
-                      !isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'
+                      !isPreview && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                     }`}
                   >
                     {formatClockDecimal(e.clock_out)}
@@ -224,12 +224,15 @@ export default function SalaryTableTypeB({
                   {formatCompact(total)}
                 </span>
               </div>
+              {showWeekSep && (
+                <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
+              )}
             </div>
             <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
               e.is_day_off ? 'opacity-50' : ''
             } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
               isMoonDay ? 'moon-accent-row' : ''
-            }`}>
+            } ${showWeekSep ? 'relative' : ''}`}>
               {/* Date + note */}
               <div className="pr-4 sm:pr-2">
                 <div className="flex items-start gap-1">
@@ -253,7 +256,7 @@ export default function SalaryTableTypeB({
               </div>
 
               {/* Note */}
-              {editingCell === `${cellKey}-note` && !isPreview ? (
+              {editingCell === `${cellKey}-note` && !isPreview && !e.is_day_off ? (
                 <input
                   value={cellValue}
                   onChange={ev => setCellValue(ev.target.value)}
@@ -264,11 +267,11 @@ export default function SalaryTableTypeB({
                 />
               ) : (
                 <button
-                  onClick={() => !isPreview && startCellEdit(`${cellKey}-note`, e.note || '')}
+                  onClick={() => !isPreview && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
                   className={`text-left truncate text-sm transition-colors ${
                     isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
                   } ${
-                    !isPreview ? 'hover:text-foreground' : 'cursor-default'
+                    !isPreview && !e.is_day_off ? 'hover:text-foreground' : 'cursor-default'
                   }`}
                 >
                   {e.note || rateDesc || '—'}
@@ -276,7 +279,7 @@ export default function SalaryTableTypeB({
               )}
 
               {/* Clock out */}
-              {editingCell === `${cellKey}-clock_out` && !isPreview ? (
+              {editingCell === `${cellKey}-clock_out` && !isPreview && !e.is_day_off ? (
                 <button
                   onClick={() => setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order })}
                   className="w-full rounded border border-border bg-background px-1 py-1.5 text-right text-sm text-accent"
@@ -286,13 +289,13 @@ export default function SalaryTableTypeB({
               ) : (
                 <button
                   onClick={() => {
-                    if (!isPreview) {
+                    if (!isPreview && !e.is_day_off) {
                       setEditingCell(`${cellKey}-clock_out`);
                       setPickingClockOut({ entryDate: e.entry_date, sortOrder: e.sort_order });
                     }
                   }}
                   className={`justify-self-end text-right text-sm font-medium ${
-                    !isPreview ? 'text-accent hover:underline' : 'text-accent cursor-default'
+                    !isPreview && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                   }`}
                 >
                   {formatClockDecimal(e.clock_out)}
@@ -318,12 +321,10 @@ export default function SalaryTableTypeB({
               <span className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                 {formatCompact(total)}
               </span>
+              {showWeekSep && (
+                <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
+              )}
             </div>
-            {showWeekSep && (
-              <div className="py-1.5">
-                <div className="h-[2px] rounded-full week-separator" />
-              </div>
-            )}
             </div>
           );
         })}
