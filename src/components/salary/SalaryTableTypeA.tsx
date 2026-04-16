@@ -217,12 +217,21 @@ export default function SalaryTableTypeA({
 
                   {/* Note */}
                   {isEditing ? (
-                    <input
-                      value={editNote}
-                      onChange={ev => setEditNote(ev.target.value)}
-                      className="flex-1 px-2 py-1 rounded bg-background border border-border text-[14px] min-w-0 w-full"
-                      autoFocus
-                    />
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        value={editNote}
+                        onChange={ev => setEditNote(ev.target.value)}
+                        className="w-full px-2 py-1 pr-7 rounded bg-background border border-border text-[14px]"
+                        autoFocus
+                      />
+                      {editNote && (
+                        <button
+                          onMouseDown={ev => { ev.preventDefault(); setEditNote(''); }}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5 text-sm"
+                          tabIndex={-1}
+                        >✕</button>
+                      )}
+                    </div>
                   ) : (
                     <button
                       onClick={() => !isPreview && startEditRow(e)}

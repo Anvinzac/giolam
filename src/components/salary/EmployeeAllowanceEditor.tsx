@@ -94,13 +94,22 @@ export default function EmployeeAllowanceEditor({
           layout
           className="flex items-center gap-2 p-2 rounded-xl bg-muted/50"
         >
-          <input
-            value={newLabel}
-            onChange={e => setNewLabel(e.target.value)}
-            placeholder="Tên phụ cấp"
-            className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-border text-[16px] text-foreground"
-            autoFocus
-          />
+          <div className="relative flex-1 min-w-0">
+            <input
+              value={newLabel}
+              onChange={e => setNewLabel(e.target.value)}
+              placeholder="Tên phụ cấp"
+              className="w-full px-2 py-1 pr-7 rounded-lg bg-background border border-border text-[16px] text-foreground"
+              autoFocus
+            />
+            {newLabel && (
+              <button
+                onMouseDown={e => { e.preventDefault(); setNewLabel(''); }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5"
+                tabIndex={-1}
+              >✕</button>
+            )}
+          </div>
           <div className="flex items-center px-2 py-1 rounded-lg bg-background border border-border relative">
             <input
               value={newAmount}
@@ -157,13 +166,22 @@ export default function EmployeeAllowanceEditor({
           {/* Label — tapping enters text edit mode */}
           {editingLabelKey === a.allowance_key ? (
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              <input
-                value={editLabel}
-                onChange={e => setEditLabel(e.target.value)}
-                className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-primary/60 text-[16px] text-foreground"
-                autoFocus
-                onKeyDown={e => { if (e.key === 'Enter') saveLabelEdit(a.allowance_key); if (e.key === 'Escape') setEditingLabelKey(null); }}
-              />
+              <div className="relative flex-1 min-w-0">
+                <input
+                  value={editLabel}
+                  onChange={e => setEditLabel(e.target.value)}
+                  className="w-full px-2 py-1 pr-7 rounded-lg bg-background border border-primary/60 text-[16px] text-foreground"
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') saveLabelEdit(a.allowance_key); if (e.key === 'Escape') setEditingLabelKey(null); }}
+                />
+                {editLabel && (
+                  <button
+                    onMouseDown={e => { e.preventDefault(); setEditLabel(''); }}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5"
+                    tabIndex={-1}
+                  >✕</button>
+                )}
+              </div>
               <button
                 onClick={() => saveLabelEdit(a.allowance_key)}
                 className="px-2.5 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold flex-shrink-0"

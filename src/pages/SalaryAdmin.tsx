@@ -609,14 +609,23 @@ export default function SalaryAdmin() {
                   {!selectedEmployee && <DollarSign size={20} />}
                   {selectedEmployee ? (
                     editingName && !isPreviewMode ? (
-                      <input
-                        value={nameInput}
-                        onChange={ev => setNameInput(ev.target.value)}
-                        onBlur={() => { handleNameChange(nameInput); setEditingName(false); }}
-                        onKeyDown={ev => { if (ev.key === 'Enter') { handleNameChange(nameInput); setEditingName(false); } if (ev.key === 'Escape') setEditingName(false); }}
-                        className="px-2 py-0.5 rounded bg-background border border-border text-xl font-bold text-foreground flex-1 max-w-[250px]"
-                        autoFocus
-                      />
+                      <div className="relative flex-1 max-w-[250px]">
+                        <input
+                          value={nameInput}
+                          onChange={ev => setNameInput(ev.target.value)}
+                          onBlur={() => { handleNameChange(nameInput); setEditingName(false); }}
+                          onKeyDown={ev => { if (ev.key === 'Enter') { handleNameChange(nameInput); setEditingName(false); } if (ev.key === 'Escape') setEditingName(false); }}
+                          className="w-full px-2 py-0.5 pr-7 rounded bg-background border border-border text-xl font-bold text-foreground"
+                          autoFocus
+                        />
+                        {nameInput && (
+                          <button
+                            onMouseDown={e => { e.preventDefault(); setNameInput(''); }}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5 text-sm"
+                            tabIndex={-1}
+                          >✕</button>
+                        )}
+                      </div>
                     ) : (
                       <button
                         onClick={() => { if (!isPreviewMode) { setNameInput(selectedEmployee.full_name); setEditingName(true); } }}
