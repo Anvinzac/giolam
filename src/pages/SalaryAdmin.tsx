@@ -175,11 +175,14 @@ const EditableAmount = ({
   className?: string;
 }) => {
   const [editing, setEditing] = useState(false);
-  const shortVal = value === 0 ? '' : (value / 1000).toString();
-  const [rawInput, setRawInput] = useState(shortVal);
+  // Always produce a clean integer (no decimal) so save() never strips a dot mid-number.
+  // Values stored without the ×1000 convention (e.g. 4350 instead of 4_350_000) round
+  // to the nearest thousand-unit so the editor stays consistent.
+  const toShort = (v: number) => v === 0 ? '' : Math.round(v / 1000).toString();
+  const [rawInput, setRawInput] = useState(() => toShort(value));
 
   useEffect(() => {
-    setRawInput(value === 0 ? '' : (value / 1000).toString());
+    setRawInput(toShort(value));
   }, [value]);
 
   const fmtDot = (n: number) => n.toLocaleString('vi-VN');
