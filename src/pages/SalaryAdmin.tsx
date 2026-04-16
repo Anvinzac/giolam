@@ -674,8 +674,8 @@ export default function SalaryAdmin() {
           {/* Salary summary row */}
           {selectedEmployee && selectedEmployee.shift_type !== 'notice_only' && (
             <div className="mt-2 pl-[44px] pr-2">
-              <div className="grid grid-cols-3 items-end gap-x-4 gap-y-3">
-               <EditableAmount 
+              <div className="grid grid-cols-3 items-start gap-x-4">
+               <EditableAmount
                   label="Lương cơ bản"
                   value={selectedEmployee.base_salary}
                   onChange={handleBaseSalaryChange}
@@ -688,14 +688,12 @@ export default function SalaryAdmin() {
                  </span>
                </div>
                {selectedEmployee.shift_type === 'overtime' ? (
-                 <div className="flex flex-col items-end justify-self-end">
+                 <div className="flex flex-col items-end">
                    <span className="text-[11px] text-muted-foreground mb-0.5">Giờ vào</span>
                    <button
                      onClick={() => !isPreviewMode && setPickingGlobalClockIn(true)}
-                     className={`rounded-xl border px-3 py-2 text-[18px] font-bold leading-none ${
-                       isPreviewMode
-                         ? 'border-border/40 bg-muted/20 text-accent cursor-default'
-                         : 'border-border/70 bg-muted/40 text-accent hover:bg-muted/70 transition-colors'
+                     className={`text-[15px] font-bold text-accent ${
+                       isPreviewMode ? 'cursor-default' : 'hover:opacity-70 transition-opacity'
                      }`}
                    >
                      {globalClockIn}
