@@ -132,7 +132,7 @@ export default function EmployeeAllowanceEditor({
           {/* Toggle */}
           {isAdmin && (
             <button
-              onClick={() => onToggle(a.allowance_key)}
+              onClick={() => { if (editingKey === a.allowance_key) setEditingKey(null); onToggle(a.allowance_key); }}
               className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
                 a.is_enabled ? 'bg-primary' : 'bg-border'
               }`}
