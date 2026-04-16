@@ -194,19 +194,9 @@ export function computeTotalSalaryTypeA(
     }
   }
 
-  // To match computeRow precisely for totalDailyWages:
-  for (const e of entries) {
-    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const allowance = roundToThousand(dailyBase * rate / 100);
-    let deduction = 0;
-    if (e.is_day_off) {
-      if (e.off_percent > 0) {
-        deduction = calcDayOffDeduction(dailyBase, e.off_percent);
-      }
-    }
-    const total = e.is_day_off ? (e.off_percent > 0 ? -deduction : 0) : dailyBase + allowance;
-    totalDailyWages += total;
-  }
+  // Type A total: baseSalary + special day premiums - deductions
+  // (baseSalary already covers all regular workdays; entries only track special days)
+  totalDailyWages = baseSalary + totalAllowancesFromRates - totalDeductions;
 
   // Calculate gui_xe automatically: (28 - off_days) * 10000
   const guiXeAmount = (28 - offDays) * 10000;
