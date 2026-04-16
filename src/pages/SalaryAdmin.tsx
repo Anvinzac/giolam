@@ -645,23 +645,18 @@ export default function SalaryAdmin() {
                   </button>
                 )}
               </div>
-              
-              {/* Hourly Rate right side inline with name */}
+
+              {/* Hourly rate inline with name (Type B / C only) */}
               {selectedEmployee && selectedEmployee.shift_type !== 'basic' && (
-                 <EditableAmount 
-                    value={selectedEmployee.hourly_rate}
-                    onChange={handleHourlyRateChange}
-                    isPreview={isPreviewMode}
-                    suffix="đ/giờ"
-                    className="items-end"
-                 />
+                <EditableAmount
+                  value={selectedEmployee.hourly_rate}
+                  onChange={handleHourlyRateChange}
+                  isPreview={isPreviewMode}
+                  suffix="đ/giờ"
+                  className="items-end"
+                />
               )}
             </div>
-            <motion.button whileTap={{ scale: 0.9 }}
-              onClick={() => setLightMode(!lightMode)}
-              className={`p-2 rounded-xl ml-2 ${lightMode ? 'bg-amber-500/20 text-amber-400' : 'bg-muted text-muted-foreground'}`}>
-              {lightMode ? <Sun size={20} /> : <Moon size={20} />}
-            </motion.button>
             {!selectedEmployee && (
               <motion.button whileTap={{ scale: 0.9 }}
                 onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
@@ -851,7 +846,7 @@ export default function SalaryAdmin() {
                   Nhập từ CSV
                 </button>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-stretch">
                 <button
                   onClick={() => setIsPreviewMode(!isPreviewMode)}
                   className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
@@ -860,6 +855,13 @@ export default function SalaryAdmin() {
                 >
                   {isPreviewMode ? 'Đóng xem trước' : 'Xem trước bản NV'}
                 </button>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setLightMode(!lightMode)}
+                  className={`px-3 rounded-xl ${lightMode ? 'bg-amber-500/20 text-amber-400' : 'bg-muted text-muted-foreground'}`}
+                >
+                  {lightMode ? <Sun size={20} /> : <Moon size={20} />}
+                </motion.button>
                 <div className="flex-1">
                   <PublishButton
                     isPublished={isPublished}
