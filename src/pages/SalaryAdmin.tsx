@@ -249,6 +249,7 @@ export default function SalaryAdmin() {
   const [retryKey, setRetryKey] = useState(0);
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [showShiftTypePicker, setShowShiftTypePicker] = useState(false);
+  const [salaryColumnsAvailable, setSalaryColumnsAvailable] = useState(true);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -383,12 +384,7 @@ export default function SalaryAdmin() {
         setPeriods(periodsData);
         if (periodsData.length > 0) setSelectedPeriodId(periodsData[0].id);
 
-        const [profilesRes, deptsRes, adminRolesRes] = await Promise.all([
-          withTimeout(
-            supabase.from('profiles').select('user_id, username, full_name, shift_type, department_id, default_clock_in'),
-            10000,
-            'Profile lookup timed out.',
-          ),
+        const [deptsRes, adminRolesRes] = await Promise.all([
           withTimeout(
             supabase.from('departments').select('id, name'),
             10000,
@@ -400,6 +396,26 @@ export default function SalaryAdmin() {
             'Admin role lookup timed out.',
           ),
         ]);
+
+        // Some environments may not have salary columns on `profiles` yet. If the
+        // select errors, retry with a minimal column set so the employee list
+        // still loads instead of going empty.
+        let profilesRes: any = await withTimeout(
+          supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in'),
+          10000,
+          'Profile lookup timed out.',
+        );
+        if (profilesRes?.error) {
+          console.warn('Profile lookup (with salary columns) failed, retrying:', profilesRes.error);
+          setSalaryColumnsAvailable(false);
+          profilesRes = await withTimeout(
+            supabase.from('profiles').select('user_id, username, full_name, shift_type, department_id, default_clock_in'),
+            10000,
+            'Profile lookup timed out.',
+          );
+        } else {
+          setSalaryColumnsAvailable(true);
+        }
         if (!isMounted) return;
 
         const profiles = (profilesRes as any).data || [];
@@ -454,21 +470,45 @@ export default function SalaryAdmin() {
 
   const handleBaseSalaryChange = useCallback(async (salary: number) => {
     if (!selectedEmployee) return;
-    await supabase.from('profiles').update({ base_salary: salary } as any).eq('user_id', selectedEmployee.user_id);
+    if (!salaryColumnsAvailable) {
+      toast.error("DB chưa có cột base_salary. Hãy chạy migration/SQL để thêm cột trước.");
+      return;
+    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ base_salary: salary } as any)
+      .eq('user_id', selectedEmployee.user_id);
+    if (error) {
+      console.error('Failed to update base_salary:', error);
+      toast.error(error.message || 'Lỗi lưu lương cơ bản');
+      return;
+    }
     setSelectedEmployee(prev => prev ? { ...prev, base_salary: salary } : null);
     setEmployees(prev => prev.map(e =>
       e.user_id === selectedEmployee.user_id ? { ...e, base_salary: salary } : e
     ));
-  }, [selectedEmployee]);
+  }, [selectedEmployee, salaryColumnsAvailable]);
 
   const handleHourlyRateChange = useCallback(async (rate: number) => {
     if (!selectedEmployee) return;
-    await supabase.from('profiles').update({ hourly_rate: rate } as any).eq('user_id', selectedEmployee.user_id);
+    if (!salaryColumnsAvailable) {
+      toast.error("DB chưa có cột hourly_rate. Hãy chạy migration/SQL để thêm cột trước.");
+      return;
+    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ hourly_rate: rate } as any)
+      .eq('user_id', selectedEmployee.user_id);
+    if (error) {
+      console.error('Failed to update hourly_rate:', error);
+      toast.error(error.message || 'Lỗi lưu lương giờ');
+      return;
+    }
     setSelectedEmployee(prev => prev ? { ...prev, hourly_rate: rate } : null);
     setEmployees(prev => prev.map(e =>
       e.user_id === selectedEmployee.user_id ? { ...e, hourly_rate: rate } : e
     ));
-  }, [selectedEmployee]);
+  }, [selectedEmployee, salaryColumnsAvailable]);
 
   const handleGlobalClockInChange = useCallback(async (time: string) => {
     if (!selectedEmployee) return;

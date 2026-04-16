@@ -40,12 +40,17 @@ export default function SalaryTableTypeC({
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
 }: SalaryTableTypeCProps) {
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const tableGridClass = separateClockColumns 
-    ? 'sm:grid-cols-[75px_minmax(110px,1fr)_50px_50px_40px_55px_55px_70px]'
-    : 'sm:grid-cols-[75px_minmax(110px,1fr)_84px_40px_55px_55px_70px]';
-  const tableGapClass = 'sm:gap-1.5 sm:px-2';
   const [compact, setCompact] = useState(false);
   const [separateClockColumns, setSeparateClockColumns] = useState(false);
+  // When we separate clock columns, we temporarily swap the "note" column into a quick clock-in picker
+  // for a single active row (so the whole table doesn't explode into chips at once).
+  const [chipRowKey, setChipRowKey] = useState<string | null>(null);
+  const [chipBaseByRowKey, setChipBaseByRowKey] = useState<Record<string, string>>({});
+  const chipAutoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tableGridClass = separateClockColumns 
+    ? 'sm:grid-cols-[75px_minmax(170px,1fr)_50px_50px_40px_55px_55px_70px]'
+    : 'sm:grid-cols-[75px_minmax(110px,1fr)_84px_40px_55px_55px_70px]';
+  const tableGapClass = 'sm:gap-1.5 sm:px-2';
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);
   const [hourlyInput, setHourlyInput] = useState(hourlyRate.toString());
@@ -79,6 +84,7 @@ export default function SalaryTableTypeC({
   useEffect(() => {
     return () => {
       if (pendingDateTapRef.current) clearTimeout(pendingDateTapRef.current);
+      if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
     };
   }, []);
 
@@ -161,6 +167,49 @@ export default function SalaryTableTypeC({
 
   const formatDayOnly = (dateStr: string) => dateStr.slice(8, 10);
 
+  const parseTimeToMinutes = (time: string) => {
+    const [h, m] = time.split(':');
+    const hh = parseInt(h, 10);
+    const mm = parseInt(m, 10);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+    return hh * 60 + mm;
+  };
+
+  const formatMinutesToTime = (minutes: number) => {
+    const clamped = Math.max(0, Math.min(23 * 60 + 59, minutes));
+    const hh = `${Math.floor(clamped / 60)}`.padStart(2, '0');
+    const mm = `${clamped % 60}`.padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const addMinutes = (time: string, deltaMinutes: number) => {
+    const base = parseTimeToMinutes(time);
+    if (base === null) return time;
+    return formatMinutesToTime(base + deltaMinutes);
+  };
+
+  const ensureChipBase = (rowKey: string, fallback: string) => {
+    setChipBaseByRowKey(prev => (prev[rowKey] ? prev : { ...prev, [rowKey]: fallback }));
+  };
+
+  const startChipAutoHide = (rowKey: string) => {
+    if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
+    chipAutoHideTimerRef.current = setTimeout(() => {
+      setChipRowKey((current) => (current === rowKey ? null : current));
+    }, 3000);
+  };
+
+  const showRowChips = (rowKey: string, baseTime: string) => {
+    setChipRowKey(rowKey);
+    ensureChipBase(rowKey, baseTime);
+    startChipAutoHide(rowKey);
+  };
+
+  useEffect(() => {
+    // If user turns off split mode, chips should disappear immediately.
+    if (!separateClockColumns && chipRowKey) setChipRowKey(null);
+  }, [separateClockColumns, chipRowKey]);
+
   const saveHourlyRate = () => {
     onHourlyRateChange(parseInt(hourlyInput) || 25000);
     setEditingHourly(false);
@@ -242,6 +291,13 @@ export default function SalaryTableTypeC({
   };
 
   const toggleDayOff = (e: SalaryEntry) => {
+    const rowKey = `${e.entry_date}-${e.sort_order}`;
+    if (e.is_day_off) {
+      // Newly activated row: pop chips briefly.
+      showRowChips(rowKey, defaultClockIn);
+    } else if (chipRowKey === rowKey) {
+      setChipRowKey(null);
+    }
     onEntryUpdate(e.entry_date, e.sort_order, {
       is_day_off: !e.is_day_off,
       ...(e.is_day_off
@@ -256,6 +312,9 @@ export default function SalaryTableTypeC({
 
   const activateEmptyDay = (dateStr: string) => {
     if (scheduledOffDays.has(dateStr)) return;
+    const rowKey = `${dateStr}-0`;
+    // Newly activated row: pop chips briefly.
+    showRowChips(rowKey, defaultClockIn);
     const totalHours = calcHoursFromTimes(defaultClockIn, defaultClockOut);
     onEntryUpdate(dateStr, 0, {
       is_day_off: false,
@@ -273,6 +332,7 @@ export default function SalaryTableTypeC({
     const cellKey = `${e.entry_date}-${e.sort_order}`;
     const isScheduledOffDay = scheduledOffDays.has(e.entry_date);
     const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    const showClockChips = separateClockColumns && !isPreview && !e.is_day_off && !isScheduledOffDay && chipRowKey === cellKey;
 
     // Show week separator after Sunday, if not the last row
     const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
@@ -419,16 +479,78 @@ export default function SalaryTableTypeC({
           </div>
         </div>
 
-        {/* Note */}
-        {editingCell === `${cellKey}-note` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
-          <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
+        {/* Note / Quick Clock Chips */}
+        {showClockChips ? (
+          <div className="hidden sm:flex sm:ml-1 mr-1 sm:mr-2 items-center min-w-0 w-full">
+            <div
+              className="flex items-center gap-1.5 min-w-0 w-full overflow-x-auto whitespace-nowrap"
+              onPointerDown={() => startChipAutoHide(cellKey)}
+            >
+              {(() => {
+                const base = chipBaseByRowKey[cellKey] || defaultClockIn;
+                const candidates = [
+                  addMinutes(base, -60),
+                  addMinutes(base, -30),
+                  base,
+                  addMinutes(base, 30),
+                  addMinutes(base, 60),
+                ];
+                const unique = Array.from(new Set(candidates));
+                const selected = e.clock_in || base;
+                const nextOut = e.clock_out || defaultClockOut;
+                return unique.map((t) => {
+                  const isSelected = selected === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        if (isPreview || e.is_day_off || isScheduledOffDay) return;
+                        onEntryUpdate(e.entry_date, e.sort_order, {
+                          clock_in: t,
+                          clock_out: nextOut,
+                          total_hours: calcHoursFromTimes(t, nextOut),
+                        });
+                        // Treat selection as "done": collapse back to notice text.
+                        setChipRowKey((current) => (current === cellKey ? null : current));
+                      }}
+                      className={`inline-flex items-center justify-center rounded-full border px-2 py-1 text-[11px] font-semibold transition-colors ${
+                        isSelected
+                          ? 'border-emerald-400/60 bg-emerald-400/15 text-emerald-300'
+                          : 'border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      }`}
+                      aria-label={`Đặt giờ vào: ${t}`}
+                    >
+                      {formatClockDecimal(t)}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        ) : editingCell === `${cellKey}-note` && !isPreview && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
+          <input
+            value={cellValue}
+            onChange={ev => setCellValue(ev.target.value)}
             onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-            className="hidden sm:block sm:ml-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full" autoFocus />
+            className="hidden sm:block sm:ml-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full"
+            autoFocus
+          />
         ) : (
-          <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && startCellEdit(`${cellKey}-note`, e.note || '')}
+          <button
+            onClick={() => {
+              if (isPreview || e.is_day_off || isScheduledOffDay) return;
+              if (separateClockColumns) {
+                // Manual re-open: still auto-hide after a short delay.
+                showRowChips(cellKey, e.clock_in || defaultClockIn);
+                return;
+              }
+              startCellEdit(`${cellKey}-note`, e.note || '');
+            }}
             className={`hidden sm:block sm:ml-1 text-left whitespace-nowrap overflow-hidden text-ellipsis text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
               isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-            } ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
+            } ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+          >
             {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
           </button>
         )}
@@ -686,7 +808,7 @@ export default function SalaryTableTypeC({
           <Plus size={11} />
         </button>
       </span>
-      <span className="hidden sm:block text-center">Ghi chú</span>
+      <span className="hidden sm:block text-center">{separateClockColumns ? 'Chọn giờ' : 'Ghi chú'}</span>
       {separateClockColumns ? (
         <>
           <span className="text-center">Vào</span>
