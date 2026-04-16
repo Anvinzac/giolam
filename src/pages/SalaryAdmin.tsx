@@ -195,37 +195,37 @@ const EditableAmount = ({
     setEditing(false);
   };
 
-  if (editing && !isPreview) {
-    return (
-      <div className={`flex items-center gap-1 ${className}`}>
-        {label && <span className="text-[13px] text-muted-foreground mr-1">{label}</span>}
-        <div className="flex items-center px-2 py-1 rounded bg-background border border-border relative">
-          {/* Hidden real input for keyboard */}
-          <input
-            value={rawInput}
-            onChange={e => setRawInput(e.target.value.replace(/\D/g, ''))}
-            className="absolute inset-0 opacity-0 text-[16px]"
-            inputMode="numeric"
-            autoFocus
-            onKeyDown={e => e.key === 'Enter' && save()}
-          />
-          {/* Visible formatted display */}
-          <span className="text-[16px] text-foreground pointer-events-none">{typedFormatted}</span>
-          <span className="text-[16px] text-muted-foreground/40 pointer-events-none">{ghostFormatted}</span>
-        </div>
-        <button onClick={save} className="text-[13px] px-2.5 py-1 rounded gradient-gold text-primary-foreground font-semibold">OK</button>
-        <button onClick={() => setEditing(false)} className="text-[13px] text-muted-foreground ml-1 p-1">Hủy</button>
-      </div>
-    );
-  }
-
+  // Always render as flex-col to preserve the grid cell shape when editing
   return (
     <div className={`flex flex-col ${className}`}>
-        {label && <span className="text-[11px] text-muted-foreground mb-0.5">{label}</span>}
-        <button onClick={() => !isPreview && setEditing(true)} 
-          className={`text-[15px] font-bold text-accent text-left ${!isPreview ? 'hover:underline' : 'cursor-default'}`}>
+      {label && <span className="text-[11px] text-muted-foreground mb-0.5">{label}</span>}
+      {editing && !isPreview ? (
+        <>
+          <div className="flex items-center rounded border border-primary/60 bg-background relative overflow-hidden">
+            <input
+              value={rawInput}
+              onChange={e => setRawInput(e.target.value.replace(/\D/g, ''))}
+              className="absolute inset-0 opacity-0 text-[16px] w-full"
+              inputMode="numeric"
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && save()}
+            />
+            <span className="text-[15px] font-bold text-foreground pointer-events-none px-2 py-0.5">{typedFormatted}</span>
+            <span className="text-[15px] font-bold text-muted-foreground/40 pointer-events-none">{ghostFormatted}</span>
+          </div>
+          <div className="flex gap-1.5 mt-1.5">
+            <button onClick={save} className="flex-1 text-[12px] py-1 rounded gradient-gold text-primary-foreground font-semibold">OK</button>
+            <button onClick={() => setEditing(false)} className="text-[12px] py-1 px-2 rounded bg-muted text-muted-foreground">Hủy</button>
+          </div>
+        </>
+      ) : (
+        <button
+          onClick={() => !isPreview && setEditing(true)}
+          className={`text-[15px] font-bold text-accent text-left ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+        >
           {formatVND(value).replace(' đ', '')}{suffix}
         </button>
+      )}
     </div>
   );
 };

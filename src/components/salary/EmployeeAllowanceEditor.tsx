@@ -145,41 +145,45 @@ export default function EmployeeAllowanceEditor({
             </button>
           )}
 
+          {/* Label — always plain text, never editable inline */}
+          <span className="flex-1 text-sm text-foreground truncate min-w-0">{a.label}</span>
+
+          {/* Amount — tapping opens inline edit for amount only */}
           {editingKey === a.allowance_key ? (
-            <div className="flex-1 flex items-center gap-1.5">
-              <input
-                value={editLabel}
-                onChange={e => setEditLabel(e.target.value)}
-                className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-border text-[16px] text-foreground"
-              />
-              <div className="flex items-center px-2 py-1 rounded-lg bg-background border border-border relative">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="flex items-center px-2 py-1 rounded-lg bg-background border border-primary/60 relative">
                 <input
                   value={editAmount}
                   onChange={e => setEditAmount(e.target.value.replace(/\D/g, ''))}
                   className="absolute inset-0 opacity-0 text-[16px]"
                   inputMode="numeric"
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') saveEdit(a.allowance_key); if (e.key === 'Escape') setEditingKey(null); }}
                 />
                 <span className="text-[16px] text-foreground pointer-events-none">{fmtInput(editAmount).typed}</span>
                 <span className="text-[16px] text-muted-foreground/40 pointer-events-none">{fmtInput(editAmount).ghost}</span>
               </div>
-                  <button
+              <button
                 onClick={() => saveEdit(a.allowance_key)}
-                className="px-2 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"
+                className="px-2.5 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold flex-shrink-0"
               >
                 OK
+              </button>
+              <button
+                onClick={() => setEditingKey(null)}
+                className="text-xs text-muted-foreground flex-shrink-0 px-1"
+              >
+                ✕
               </button>
             </div>
           ) : (
             <button
               onClick={() => isAdmin && startEdit(a)}
-              className="flex-1 flex items-center justify-between min-w-0"
+              className={`text-sm font-medium flex-shrink-0 ml-2 text-right ${
+                isAdmin ? 'hover:text-accent transition-colors' : 'cursor-default'
+              } ${a.is_enabled ? 'text-foreground' : 'text-muted-foreground'}`}
             >
-              <span className="text-sm text-foreground truncate">{a.label}</span>
-              <span className={`text-sm font-medium flex-shrink-0 ml-2 ${
-                a.is_enabled ? 'text-foreground' : 'text-muted-foreground'
-              }`}>
-                {formatVND(a.amount)}
-              </span>
+              {formatVND(a.amount)}
             </button>
           )}
         </motion.div>
