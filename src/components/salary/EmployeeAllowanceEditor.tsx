@@ -19,7 +19,8 @@ export default function EmployeeAllowanceEditor({
   onAddAllowance,
   isAdmin = true,
 }: EmployeeAllowanceEditorProps) {
-  const [editingKey, setEditingKey] = useState<AllowanceKey | null>(null);
+  const [editingKey, setEditingKey] = useState<AllowanceKey | null>(null);      // amount edit
+  const [editingLabelKey, setEditingLabelKey] = useState<AllowanceKey | null>(null); // label edit
   const [editLabel, setEditLabel] = useState('');
   const [editAmount, setEditAmount] = useState('');
   const [addingNew, setAddingNew] = useState(false);
@@ -34,20 +35,28 @@ export default function EmployeeAllowanceEditor({
 
   const visible = isAdmin ? allowances : allowances.filter(a => a.is_enabled);
 
-  const startEdit = (a: EmployeeAllowance) => {
+  const startAmountEdit = (a: EmployeeAllowance) => {
+    setEditingLabelKey(null); // close label edit if open
     setEditingKey(a.allowance_key);
-    setEditLabel(a.label);
     setEditAmount((a.amount / 1000).toString());
   };
 
-  const saveEdit = (key: AllowanceKey) => {
+  const startLabelEdit = (a: EmployeeAllowance) => {
+    setEditingKey(null); // close amount edit if open
+    setEditingLabelKey(a.allowance_key);
+    setEditLabel(a.label);
+  };
+
+  const saveAmountEdit = (key: AllowanceKey) => {
     let amt = parseInt(editAmount) || 0;
     if (amt > 0) amt = amt * 1000;
-    onUpdate(key, {
-      label: editLabel,
-      amount: amt,
-    });
+    onUpdate(key, { amount: amt });
     setEditingKey(null);
+  };
+
+  const saveLabelEdit = (key: AllowanceKey) => {
+    if (editLabel.trim()) onUpdate(key, { label: editLabel.trim() });
+    setEditingLabelKey(null);
   };
 
   const handleAddNew = () => {
@@ -132,7 +141,7 @@ export default function EmployeeAllowanceEditor({
           {/* Toggle */}
           {isAdmin && (
             <button
-              onClick={() => { if (editingKey === a.allowance_key) setEditingKey(null); onToggle(a.allowance_key); }}
+              onClick={() => { if (editingKey === a.allowance_key) setEditingKey(null); if (editingLabelKey === a.allowance_key) setEditingLabelKey(null); onToggle(a.allowance_key); }}
               className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
                 a.is_enabled ? 'bg-primary' : 'bg-border'
               }`}
@@ -145,10 +154,39 @@ export default function EmployeeAllowanceEditor({
             </button>
           )}
 
-          {/* Label — always plain text, never editable inline */}
-          <span className="flex-1 text-sm text-foreground truncate min-w-0">{a.label}</span>
+          {/* Label — tapping enters text edit mode */}
+          {editingLabelKey === a.allowance_key ? (
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <input
+                value={editLabel}
+                onChange={e => setEditLabel(e.target.value)}
+                className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-background border border-primary/60 text-[16px] text-foreground"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') saveLabelEdit(a.allowance_key); if (e.key === 'Escape') setEditingLabelKey(null); }}
+              />
+              <button
+                onClick={() => saveLabelEdit(a.allowance_key)}
+                className="px-2.5 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold flex-shrink-0"
+              >
+                OK
+              </button>
+              <button
+                onClick={() => setEditingLabelKey(null)}
+                className="text-xs text-muted-foreground flex-shrink-0 px-1"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => isAdmin && startLabelEdit(a)}
+              className={`flex-1 text-sm text-foreground truncate min-w-0 text-left ${isAdmin ? 'hover:text-accent transition-colors' : 'cursor-default'}`}
+            >
+              {a.label}
+            </button>
+          )}
 
-          {/* Amount — tapping opens inline edit for amount only */}
+          {/* Amount — tapping opens inline edit for number */}
           {editingKey === a.allowance_key ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <div className="flex items-center px-2 py-1 rounded-lg bg-background border border-primary/60 relative">
@@ -158,13 +196,13 @@ export default function EmployeeAllowanceEditor({
                   className="absolute inset-0 opacity-0 text-[16px]"
                   inputMode="numeric"
                   autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') saveEdit(a.allowance_key); if (e.key === 'Escape') setEditingKey(null); }}
+                  onKeyDown={e => { if (e.key === 'Enter') saveAmountEdit(a.allowance_key); if (e.key === 'Escape') setEditingKey(null); }}
                 />
                 <span className="text-[16px] text-foreground pointer-events-none">{fmtInput(editAmount).typed}</span>
                 <span className="text-[16px] text-muted-foreground/40 pointer-events-none">{fmtInput(editAmount).ghost}</span>
               </div>
               <button
-                onClick={() => saveEdit(a.allowance_key)}
+                onClick={() => saveAmountEdit(a.allowance_key)}
                 className="px-2.5 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold flex-shrink-0"
               >
                 OK
@@ -177,14 +215,17 @@ export default function EmployeeAllowanceEditor({
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => isAdmin && startEdit(a)}
-              className={`text-sm font-medium flex-shrink-0 ml-2 text-right ${
-                isAdmin ? 'hover:text-accent transition-colors' : 'cursor-default'
-              } ${a.is_enabled ? 'text-foreground' : 'text-muted-foreground'}`}
-            >
-              {formatVND(a.amount)}
-            </button>
+            // Hide amount when label is being edited to keep row compact
+            editingLabelKey !== a.allowance_key && (
+              <button
+                onClick={() => isAdmin && startAmountEdit(a)}
+                className={`text-sm font-medium flex-shrink-0 ml-2 text-right ${
+                  isAdmin ? 'hover:text-accent transition-colors' : 'cursor-default'
+                } ${a.is_enabled ? 'text-foreground' : 'text-muted-foreground'}`}
+              >
+                {formatVND(a.amount)}
+              </button>
+            )
           )}
         </motion.div>
       ))}
