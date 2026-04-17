@@ -87,33 +87,13 @@ export default function PeriodDatePicker({
 
   const getCellBgAndEmoji = (dateStr: string): { bg: string; emoji: string | null } => {
     const rate = rateMap.get(dateStr);
-    if (rate) {
-      switch (rate.day_type) {
-        case 'new_moon':
-          return { bg: 'bg-amber-500/15', emoji: '🌑' };
-        case 'full_moon':
-          return { bg: 'bg-indigo-400/15', emoji: '🌕' };
-        case 'day_before_new_moon':
-        case 'day_before_full_moon':
-          return { bg: 'bg-amber-500/7', emoji: null };
-        case 'public_holiday':
-          return { bg: 'bg-rose-500/10', emoji: null };
-        default:
-          return { bg: '', emoji: null };
-      }
-    }
-    // Not in rates — check getMoonEmoji as fallback
+    if (rate?.day_type === 'new_moon') return { bg: 'bg-amber-500/15', emoji: '🌑' };
+    if (rate?.day_type === 'full_moon') return { bg: 'bg-indigo-400/15', emoji: '🌕' };
+    // Fallback: compute lunar phase for dates not in rates
     const moon = getMoonEmoji(new Date(dateStr + 'T00:00:00'));
-    if (moon === '🌑' || moon === '🌕') {
-      return { bg: '', emoji: moon };
-    }
+    if (moon === '🌑') return { bg: 'bg-amber-500/15', emoji: '🌑' };
+    if (moon === '🌕') return { bg: 'bg-indigo-400/15', emoji: '🌕' };
     return { bg: '', emoji: null };
-  };
-
-  const getPublicHolidayColor = (dateStr: string): string => {
-    const rate = rateMap.get(dateStr);
-    if (rate?.day_type === 'public_holiday') return 'text-rose-400';
-    return '';
   };
 
   const handleCellClick = (dateStr: string) => {
@@ -173,7 +153,6 @@ export default function PeriodDatePicker({
               const entry = entryMap.get(dateStr);
               const { bg, emoji } = getCellBgAndEmoji(dateStr);
               const textColor = getDayTextColor(dateStr);
-              const holidayColor = getPublicHolidayColor(dateStr);
 
               const isAdded = !!entry;
               const isOff = entry?.is_day_off === true;
@@ -210,7 +189,6 @@ export default function PeriodDatePicker({
                     'relative flex flex-col items-center justify-start rounded py-0.5 min-h-[36px]',
                     bg,
                     textColor,
-                    holidayColor,
                     cellStateClasses,
                     interactClasses,
                   ]
@@ -248,10 +226,6 @@ export default function PeriodDatePicker({
               <div className="flex items-center gap-1">
                 <span className="text-[11px]">🌕</span>
                 <span className="text-[10px] text-muted-foreground">Rằm</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500/20 border border-rose-500/30" />
-                <span className="text-[10px] text-muted-foreground">Lễ</span>
               </div>
             </div>
             <button
