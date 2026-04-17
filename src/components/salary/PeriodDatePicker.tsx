@@ -118,7 +118,7 @@ export default function PeriodDatePicker({
 
   const handleCellClick = (dateStr: string) => {
     const entry = entryMap.get(dateStr);
-    if (entry) return; // already added — do nothing
+    if (entry?.is_day_off) return; // off-day — not re-addable
     onSelect(dateStr);
   };
 
@@ -188,11 +188,13 @@ export default function PeriodDatePicker({
               let interactClasses = '';
 
               if (isOff) {
+                // Off-day: grayed out, not re-addable
                 cellStateClasses = 'opacity-35';
                 interactClasses = 'cursor-default';
               } else if (isWorkday) {
+                // Working day: ringed but still tappable for a duplicate/note row
                 cellStateClasses = 'ring-1 ring-primary/40 bg-primary/10';
-                interactClasses = 'cursor-default';
+                interactClasses = 'cursor-pointer hover:bg-primary/20 active:scale-90 transition-transform';
               } else {
                 // Free date — tappable
                 interactClasses =
@@ -203,7 +205,7 @@ export default function PeriodDatePicker({
                 <button
                   key={dateStr}
                   onClick={() => handleCellClick(dateStr)}
-                  disabled={isAdded}
+                  disabled={isOff}
                   className={[
                     'relative flex flex-col items-center justify-start rounded py-0.5 min-h-[36px]',
                     bg,
