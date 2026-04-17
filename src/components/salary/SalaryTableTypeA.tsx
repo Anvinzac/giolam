@@ -15,12 +15,14 @@ interface SalaryTableTypeAProps {
   rates: SpecialDayRate[];
   allowances: EmployeeAllowance[];
   baseSalary: number;
+  hourlyRate: number;
   onEntryUpdate: (entryDate: string, sortOrder: number, updates: Partial<SalaryEntry>) => void;
   onAddRowAtDate?: (entryDate: string) => void;
   onRemoveEntry?: (id: string) => void;
   onAllowanceToggle: (key: AllowanceKey) => void;
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
   onAddAllowance?: (label: string, amount: number) => void;
+  onHourlyRateChange?: (rate: number) => void;
   periodStart?: string;
   periodEnd?: string;
   breakdown: SalaryBreakdown | null;
@@ -28,13 +30,15 @@ interface SalaryTableTypeAProps {
 }
 
 export default function SalaryTableTypeA({
-  entries, rates, allowances, baseSalary,
+  entries, rates, allowances, baseSalary, hourlyRate,
   onEntryUpdate, onAddRowAtDate, onRemoveEntry, onAllowanceToggle, onAllowanceUpdate, onAddAllowance,
+  onHourlyRateChange,
   periodStart, periodEnd, breakdown, isPreview = false,
 }: SalaryTableTypeAProps) {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
   const [editRate, setEditRate] = useState('');
+  const [editHours, setEditHours] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [expandedOff, setExpandedOff] = useState<string | null>(null);
   const [addingDate, setAddingDate] = useState(false);
@@ -52,9 +56,10 @@ export default function SalaryTableTypeA({
   const computeRow = (e: SalaryEntry) => {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const allowance = roundToThousand(dailyBase * rate / 100);
+    const extraWage = e.total_hours ? roundToThousand(e.total_hours * hourlyRate) : 0;
     const deduction = e.is_day_off ? roundToThousand(dailyBase * e.off_percent / 100) : 0;
-    const total = e.is_day_off ? -(deduction) : dailyBase + allowance;
-    return { rate, allowance, deduction, total };
+    const total = e.is_day_off ? -(deduction) : dailyBase + allowance + extraWage;
+    return { rate, allowance, extraWage, deduction, total };
   };
 
   const totalFromEntries = useMemo(() => {
@@ -70,6 +75,7 @@ export default function SalaryTableTypeA({
     setEditingRow(rowKey(e));
     setEditNote(e.note || '');
     setEditRate(e.allowance_rate_override?.toString() || '');
+    setEditHours(e.total_hours?.toString() || '');
   };
 
   const saveEditRow = (e: SalaryEntry) => {
@@ -77,6 +83,8 @@ export default function SalaryTableTypeA({
     if (editRate !== '') {
       updates.allowance_rate_override = parseFloat(editRate);
     }
+    const parsedHours = parseFloat(editHours);
+    updates.total_hours = (!editHours || isNaN(parsedHours) || parsedHours <= 0) ? null : parsedHours;
     onEntryUpdate(e.entry_date, e.sort_order, updates);
     setEditingRow(null);
   };
@@ -138,8 +146,9 @@ export default function SalaryTableTypeA({
                 </button>
               </span>
               <span className="flex-1 text-center">Ghi chú</span>
-              <span className="w-[46px] text-right">Phụ cấp</span>
-              <span className="w-[62px] text-right">Tổng</span>
+              <span className="w-[40px] text-right">Phụ cấp</span>
+              <span className="w-[44px] text-right">Giờ +</span>
+              <span className="w-[58px] text-right">Tổng</span>
             </div>
 
         {addingDate && !isPreview && onAddRowAtDate && (
@@ -158,7 +167,7 @@ export default function SalaryTableTypeA({
 
         <div className="divide-y divide-border/30">
           {visibleEntries.map((e, idx) => {
-            const { rate, allowance, deduction, total } = computeRow(e);
+            const { rate, allowance, extraWage, deduction, total } = computeRow(e);
             const key = rowKey(e);
             const isEditing = editingRow === key && !isPreview;
             const isOff = e.is_day_off;
@@ -220,14 +229,21 @@ export default function SalaryTableTypeA({
                   )}
 
                   {/* Allowance */}
-                  <span className={`w-[46px] text-right text-[14px] font-semibold ${
+                  <span className={`w-[40px] text-right text-[13px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
                   </span>
 
+                  {/* Extra wage */}
+                  <span className={`w-[44px] text-right text-[13px] font-medium ${
+                    extraWage > 0 ? 'text-accent' : 'text-muted-foreground/40'
+                  }`}>
+                    {isOff ? '—' : (extraWage > 0 ? formatCompact(extraWage) : '—')}
+                  </span>
+
                   {/* Total */}
-                  <span className={`w-[62px] text-right text-[15px] font-bold ${
+                  <span className={`w-[58px] text-right text-[15px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {formatCompact(total)}
@@ -236,24 +252,46 @@ export default function SalaryTableTypeA({
 
                 {/* Edit save bar */}
                 {isEditing && (
-                  <div className="flex gap-2 px-3 pb-3 pt-1">
-                    <button onClick={() => {
-                      onEntryUpdate(e.entry_date, e.sort_order, {
-                        is_day_off: !e.is_day_off,
-                        off_percent: e.is_day_off ? 0 : 100,
-                      });
-                    }} className={`text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                      isOff ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {isOff ? 'Đang nghỉ' : 'Đánh nghỉ'}
-                    </button>
-                    <div className="flex-1" />
-                    <button onClick={() => saveEditRow(e)} className="text-[11px] px-4 py-1.5 rounded-lg gradient-gold text-primary-foreground font-semibold">
-                      Lưu
-                    </button>
-                    <button onClick={() => setEditingRow(null)} className="text-[11px] px-3 py-1.5 rounded-lg bg-muted text-muted-foreground">
-                      Hủy
-                    </button>
+                  <div className="space-y-2 px-3 pb-3 pt-1">
+                    {/* Hours row */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground shrink-0">Giờ thêm</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={editHours}
+                        onChange={ev => setEditHours(ev.target.value)}
+                        placeholder="0"
+                        className="w-[64px] px-2 py-1 rounded bg-background border border-border text-[13px] text-right"
+                      />
+                      <span className="text-[11px] text-muted-foreground">giờ</span>
+                      {editHours && parseFloat(editHours) > 0 && (
+                        <span className="text-[11px] text-accent ml-1">
+                          = {formatCompact(roundToThousand(parseFloat(editHours) * hourlyRate))}k
+                        </span>
+                      )}
+                    </div>
+                    {/* Action buttons */}
+                    <div className="flex gap-2">
+                      <button onClick={() => {
+                        onEntryUpdate(e.entry_date, e.sort_order, {
+                          is_day_off: !e.is_day_off,
+                          off_percent: e.is_day_off ? 0 : 100,
+                        });
+                      }} className={`text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                        isOff ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {isOff ? 'Đang nghỉ' : 'Đánh nghỉ'}
+                      </button>
+                      <div className="flex-1" />
+                      <button onClick={() => saveEditRow(e)} className="text-[11px] px-4 py-1.5 rounded-lg gradient-gold text-primary-foreground font-semibold">
+                        Lưu
+                      </button>
+                      <button onClick={() => setEditingRow(null)} className="text-[11px] px-3 py-1.5 rounded-lg bg-muted text-muted-foreground">
+                        Hủy
+                      </button>
+                    </div>
                   </div>
                 )}
 

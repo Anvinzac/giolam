@@ -160,43 +160,37 @@ export function computeTotalSalaryTypeA(
   entries: SalaryEntry[],
   allowances: EmployeeAllowance[],
   baseSalary: number,
+  hourlyRate: number,
   rates: SpecialDayRate[]
 ): SalaryBreakdown {
   const dailyBase = calcDailyBase(baseSalary);
   let totalDailyWages = 0;
   let totalAllowancesFromRates = 0;
   let totalDeductions = 0;
+  let totalExtraWages = 0;
   let offDays = 0;
 
   for (const e of entries) {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const allowanceAmt = roundToThousand((dailyBase * rate) / 100);
-    let rowTotal = dailyBase + allowanceAmt;
+    const extraWage = e.total_hours ? roundToThousand(e.total_hours * hourlyRate) : 0;
     let deduction = 0;
     if (e.is_day_off) {
       if (e.off_percent > 0) {
         deduction = calcDayOffDeduction(dailyBase, e.off_percent);
-        rowTotal = -deduction;
-      } else {
-        // Full day off, 0 logic or deduction
-        rowTotal = 0;
       }
       offDays++;
     }
 
-    // Accumulate actual row calculations (if it matches Type A)
-    // Wait, Type A is simpler:
-    // allowance = roundToThousand(dailyBase * rate / 100)
-    // deduction = e.is_day_off && e.off_percent > 0 ? calcDayOffDeduction(...) : 0;
     totalAllowancesFromRates += allowanceAmt;
+    totalExtraWages += extraWage;
     if (e.is_day_off && e.off_percent > 0) {
       totalDeductions += deduction;
     }
   }
 
-  // Type A total: baseSalary + special day premiums - deductions
-  // (baseSalary already covers all regular workdays; entries only track special days)
-  totalDailyWages = baseSalary + totalAllowancesFromRates - totalDeductions;
+  // Type A total: baseSalary + special day premiums + extra wages - deductions
+  totalDailyWages = baseSalary + totalAllowancesFromRates + totalExtraWages - totalDeductions;
 
   // Calculate gui_xe automatically: (28 - off_days) * 10000
   const guiXeAmount = (28 - offDays) * 10000;

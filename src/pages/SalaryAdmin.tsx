@@ -300,7 +300,7 @@ export default function SalaryAdmin() {
     if (!selectedEmployee || entries.length === 0) return null;
     switch (selectedEmployee.shift_type) {
       case 'basic':
-        return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, rates);
+        return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates);
       case 'overtime':
         return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn);
       case 'notice_only':
@@ -697,6 +697,14 @@ export default function SalaryAdmin() {
                      {globalClockIn}
                    </button>
                  </div>
+               ) : selectedEmployee.shift_type === 'basic' ? (
+                 <EditableAmount
+                   label="Lương giờ"
+                   value={selectedEmployee.hourly_rate}
+                   onChange={handleHourlyRateChange}
+                   isPreview={isPreviewMode}
+                   suffix="đ/giờ"
+                 />
                ) : (
                  <div />
                )}
@@ -779,12 +787,14 @@ export default function SalaryAdmin() {
                 rates={rates}
                 allowances={allowances}
                 baseSalary={selectedEmployee.base_salary}
+                hourlyRate={selectedEmployee.hourly_rate}
                 onEntryUpdate={updateEntry}
                 onAddRowAtDate={addRowAtDate}
                 onRemoveEntry={removeEntry}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
                 onAddAllowance={addAllowance}
+                onHourlyRateChange={handleHourlyRateChange}
                 periodStart={selectedPeriod.start_date}
                 periodEnd={selectedPeriod.end_date}
                 breakdown={breakdown}
