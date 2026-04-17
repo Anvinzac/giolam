@@ -65,7 +65,11 @@ export default function PeriodDatePicker({
   };
 
   return (
-    <div className="overflow-hidden border-b border-border/20">
+    <>
+      {/* Backdrop — closes picker on outside tap */}
+      <div className="fixed inset-0 z-10" onClick={onClose} />
+
+    <div className="overflow-hidden border-b border-border/20 relative z-20">
       <motion.div
         initial={{ height: 0, opacity: 0 }}
         animate={{ height: 'auto', opacity: 1 }}
@@ -127,5 +131,6 @@ export default function PeriodDatePicker({
         </div>
       </motion.div>
     </div>
+    </>
   );
 }
