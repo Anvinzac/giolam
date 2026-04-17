@@ -119,10 +119,10 @@ export default function SalaryTableTypeA({
 
   return (
     <div className="space-y-3">
-      {/* Table */}
-      <div>
+      {/* Table — bleed to screen edges like Type B/C */}
+      <div className="-mx-4 sm:mx-0">
             {/* Column headers */}
-            <div className="flex items-center gap-2 pl-3 pr-0 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
+            <div className="flex items-center gap-2 pl-3 pr-3 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
               <span className="w-[52px] flex items-center justify-end">
                 <button
                   onClick={() => !isPreview && onAddRowAtDate && setAddingDate(prev => !prev)}
@@ -171,7 +171,7 @@ export default function SalaryTableTypeA({
             return (
               <div key={key}>
                 <div
-                  className={`flex items-center gap-2 pl-3 pr-0 py-3.5 border-b border-border/20 ${
+                  className={`flex items-center gap-2 pl-3 pr-3 py-3.5 border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
                   } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
                 >
