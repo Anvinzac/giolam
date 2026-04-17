@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Edit3, Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, getRateForDate, formatDateViet, VIET_DAYS } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
@@ -17,6 +17,7 @@ interface SalaryTableTypeAProps {
   baseSalary: number;
   onEntryUpdate: (entryDate: string, sortOrder: number, updates: Partial<SalaryEntry>) => void;
   onAddRowAtDate?: (entryDate: string) => void;
+  onRemoveEntry?: (id: string) => void;
   onAllowanceToggle: (key: AllowanceKey) => void;
   onAllowanceUpdate: (key: AllowanceKey, updates: { label?: string; amount?: number }) => void;
   onAddAllowance?: (label: string, amount: number) => void;
@@ -28,7 +29,7 @@ interface SalaryTableTypeAProps {
 
 export default function SalaryTableTypeA({
   entries, rates, allowances, baseSalary,
-  onEntryUpdate, onAddRowAtDate, onAllowanceToggle, onAllowanceUpdate, onAddAllowance,
+  onEntryUpdate, onAddRowAtDate, onRemoveEntry, onAllowanceToggle, onAllowanceUpdate, onAddAllowance,
   periodStart, periodEnd, breakdown, isPreview = false,
 }: SalaryTableTypeAProps) {
   const [editingRow, setEditingRow] = useState<string | null>(null);
@@ -63,18 +64,20 @@ export default function SalaryTableTypeA({
     }, 0);
   }, [visibleEntries, dailyBase, rates]);
 
+  const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
+
   const startEditRow = (e: SalaryEntry) => {
-    setEditingRow(e.entry_date);
+    setEditingRow(rowKey(e));
     setEditNote(e.note || '');
     setEditRate(e.allowance_rate_override?.toString() || '');
   };
 
-  const saveEditRow = (entryDate: string) => {
+  const saveEditRow = (e: SalaryEntry) => {
     const updates: Partial<SalaryEntry> = { note: editNote || null };
     if (editRate !== '') {
       updates.allowance_rate_override = parseFloat(editRate);
     }
-    onEntryUpdate(entryDate, 0, updates);
+    onEntryUpdate(e.entry_date, e.sort_order, updates);
     setEditingRow(null);
   };
 
@@ -156,12 +159,17 @@ export default function SalaryTableTypeA({
         <div className="divide-y divide-border/30">
           {visibleEntries.map((e, idx) => {
             const { rate, allowance, deduction, total } = computeRow(e);
-            const isEditing = editingRow === e.entry_date && !isPreview;
+            const key = rowKey(e);
+            const isEditing = editingRow === key && !isPreview;
             const isOff = e.is_day_off;
-            const rateDesc = rates.find(r => r.special_date === e.entry_date)?.description_vi;
+            const matchedRate = rates.find(r => r.special_date === e.entry_date);
+            const rateDesc = matchedRate?.description_vi;
+            // Show delete for manually added rows: no matching rate OR a duplicate sort_order
+            const isDeletable = !isPreview && onRemoveEntry && e.id &&
+              (!matchedRate || e.sort_order > 0);
 
             return (
-              <div key={`${e.entry_date}-${e.sort_order}`}>
+              <div key={key}>
                 <div
                   className={`flex items-center gap-2 pl-3 pr-0 py-3.5 border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
@@ -197,7 +205,17 @@ export default function SalaryTableTypeA({
                       onClick={() => !isPreview && startEditRow(e)}
                       className={`flex-1 text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
-                      {rateDesc || (isOff ? 'Nghỉ' : '—')}
+                      {isOff ? `Nghỉ -${e.off_percent}%` : (rateDesc || '—')}
+                    </button>
+                  )}
+
+                  {/* Delete button for manually-added rows */}
+                  {isDeletable && !isEditing && (
+                    <button
+                      onClick={() => onRemoveEntry!(e.id!)}
+                      className="w-7 flex items-center justify-center text-destructive/40 hover:text-destructive transition-colors shrink-0"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   )}
 
@@ -220,7 +238,7 @@ export default function SalaryTableTypeA({
                 {isEditing && (
                   <div className="flex gap-2 px-3 pb-3 pt-1">
                     <button onClick={() => {
-                      onEntryUpdate(e.entry_date, 0, {
+                      onEntryUpdate(e.entry_date, e.sort_order, {
                         is_day_off: !e.is_day_off,
                         off_percent: e.is_day_off ? 0 : 100,
                       });
@@ -230,7 +248,7 @@ export default function SalaryTableTypeA({
                       {isOff ? 'Đang nghỉ' : 'Đánh nghỉ'}
                     </button>
                     <div className="flex-1" />
-                    <button onClick={() => saveEditRow(e.entry_date)} className="text-[11px] px-4 py-1.5 rounded-lg gradient-gold text-primary-foreground font-semibold">
+                    <button onClick={() => saveEditRow(e)} className="text-[11px] px-4 py-1.5 rounded-lg gradient-gold text-primary-foreground font-semibold">
                       Lưu
                     </button>
                     <button onClick={() => setEditingRow(null)} className="text-[11px] px-3 py-1.5 rounded-lg bg-muted text-muted-foreground">
@@ -240,20 +258,20 @@ export default function SalaryTableTypeA({
                 )}
 
                 {/* Off percent snapper */}
-                {isOff && expandedOff === e.entry_date && !isPreview && (
+                {isOff && expandedOff === key && !isPreview && (
                   <div className="px-3 pb-3 pt-1">
                     <OffPercentSnapper
                       value={e.off_percent}
-                      onChange={(v) => onEntryUpdate(e.entry_date, 0, { off_percent: v })}
+                      onChange={(v) => onEntryUpdate(e.entry_date, e.sort_order, { off_percent: v })}
                     />
                   </div>
                 )}
                 {isOff && !isEditing && !isPreview && (
                   <button
-                    onClick={() => setExpandedOff(expandedOff === e.entry_date ? null : e.entry_date)}
+                    onClick={() => setExpandedOff(expandedOff === key ? null : key)}
                     className="w-full text-[10px] text-center text-muted-foreground py-1 hover:text-foreground transition-colors"
                   >
-                    {expandedOff === e.entry_date ? 'Ẩn' : `Nghỉ ${e.off_percent}% · Nhấn để chỉnh`}
+                    {expandedOff === key ? 'Ẩn' : `Nghỉ ${e.off_percent}% · Nhấn để chỉnh`}
                   </button>
                 )}
                 {isOff && isPreview && (

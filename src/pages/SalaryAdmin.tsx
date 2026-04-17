@@ -781,6 +781,7 @@ export default function SalaryAdmin() {
                 baseSalary={selectedEmployee.base_salary}
                 onEntryUpdate={updateEntry}
                 onAddRowAtDate={addRowAtDate}
+                onRemoveEntry={removeEntry}
                 onAllowanceToggle={toggleAllowance}
                 onAllowanceUpdate={updateAllowance}
                 onAddAllowance={addAllowance}
