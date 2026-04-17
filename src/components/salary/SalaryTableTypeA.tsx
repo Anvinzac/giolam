@@ -147,8 +147,8 @@ export default function SalaryTableTypeA({
               </span>
               <span className="flex-1 text-center">Ghi chú</span>
               <span className="w-[40px] text-right">Phụ cấp</span>
-              <span className="w-[44px] text-right">Giờ +</span>
               <span className="w-[58px] text-right">Tổng</span>
+              <span className="w-[44px] text-right pr-1">Giờ +</span>
             </div>
 
         {addingDate && !isPreview && onAddRowAtDate && (
@@ -235,18 +235,18 @@ export default function SalaryTableTypeA({
                     {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
                   </span>
 
-                  {/* Extra wage */}
-                  <span className={`w-[44px] text-right text-[13px] font-medium ${
-                    extraWage > 0 ? 'text-accent' : 'text-muted-foreground/40'
-                  }`}>
-                    {isOff ? '—' : (extraWage > 0 ? formatCompact(extraWage) : '—')}
-                  </span>
-
                   {/* Total */}
                   <span className={`w-[58px] text-right text-[15px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {formatCompact(total)}
+                  </span>
+
+                  {/* Extra wage */}
+                  <span className={`w-[44px] text-right pr-1 text-[13px] font-medium ${
+                    extraWage > 0 ? 'text-accent' : 'text-muted-foreground/40'
+                  }`}>
+                    {isOff ? '—' : (extraWage > 0 ? formatCompact(extraWage) : '—')}
                   </span>
                 </div>
 
