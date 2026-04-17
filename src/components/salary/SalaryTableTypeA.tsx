@@ -8,7 +8,7 @@ import OffPercentSnapper from './OffPercentSnapper';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
-import DateInput from './DateInput';
+import PeriodDatePicker from './PeriodDatePicker';
 
 interface SalaryTableTypeAProps {
   entries: SalaryEntry[];
@@ -37,8 +37,6 @@ export default function SalaryTableTypeA({
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [expandedOff, setExpandedOff] = useState<string | null>(null);
   const [addingDate, setAddingDate] = useState(false);
-  const [newRowDate, setNewRowDate] = useState(periodStart || '');
-  const [newRowIsOff, setNewRowIsOff] = useState(true); // Default to off-day
   const lastTapRef = useRef<{ date: string; time: number } | null>(null);
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
@@ -142,55 +140,17 @@ export default function SalaryTableTypeA({
             </div>
 
         {addingDate && !isPreview && onAddRowAtDate && (
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20">
-            <DateInput
-              value={newRowDate}
-              onChange={setNewRowDate}
-              min={periodStart}
-              max={periodEnd}
-              periodStart={periodStart || ''}
-              periodEnd={periodEnd || ''}
-              className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-20"
-              autoFocus
-            />
-            <label className="flex items-center gap-1.5 text-[11px] text-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={newRowIsOff}
-                onChange={(e) => setNewRowIsOff(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-border"
-              />
-              <span>Nghỉ</span>
-            </label>
-            <button
-              onClick={() => {
-                onAddRowAtDate(newRowDate);
-                if (newRowIsOff) {
-                  // Set as off-day after adding
-                  setTimeout(() => {
-                    onEntryUpdate(newRowDate, 0, {
-                      is_day_off: true,
-                      off_percent: 100,
-                    });
-                  }, 100);
-                }
-                setAddingDate(false);
-                setNewRowIsOff(true); // Reset to default
-              }}
-              className="px-2 py-1 rounded bg-muted text-[10px] text-foreground hover:bg-muted/80 transition-colors"
-            >
-              Thêm
-            </button>
-            <button
-              onClick={() => {
-                setAddingDate(false);
-                setNewRowIsOff(true); // Reset to default
-              }}
-              className="px-2 py-1 rounded text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Hủy
-            </button>
-          </div>
+          <PeriodDatePicker
+            periodStart={periodStart || ''}
+            periodEnd={periodEnd || ''}
+            rates={rates}
+            entries={entries}
+            onSelect={(date) => {
+              onAddRowAtDate(date);
+              setAddingDate(false);
+            }}
+            onClose={() => setAddingDate(false)}
+          />
         )}
 
         <div className="divide-y divide-border/30">
