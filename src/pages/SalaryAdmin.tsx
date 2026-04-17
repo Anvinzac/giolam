@@ -704,6 +704,7 @@ export default function SalaryAdmin() {
                    onChange={handleHourlyRateChange}
                    isPreview={isPreviewMode}
                    suffix="đ/giờ"
+                   className="items-end"
                  />
                ) : (
                  <div />
