@@ -85,15 +85,12 @@ export default function PeriodDatePicker({
     return '';
   };
 
-  const getCellBgAndEmoji = (dateStr: string): { bg: string; emoji: string | null } => {
+  const getMoonIcon = (dateStr: string): string | null => {
     const rate = rateMap.get(dateStr);
-    if (rate?.day_type === 'new_moon') return { bg: 'bg-amber-500/15', emoji: '🌑' };
-    if (rate?.day_type === 'full_moon') return { bg: 'bg-indigo-400/15', emoji: '🌕' };
-    // Fallback: compute lunar phase for dates not in rates
+    if (rate?.day_type === 'new_moon') return '🌑';
+    if (rate?.day_type === 'full_moon') return '🌕';
     const moon = getMoonEmoji(new Date(dateStr + 'T00:00:00'));
-    if (moon === '🌑') return { bg: 'bg-amber-500/15', emoji: '🌑' };
-    if (moon === '🌕') return { bg: 'bg-indigo-400/15', emoji: '🌕' };
-    return { bg: '', emoji: null };
+    return (moon === '🌑' || moon === '🌕') ? moon : null;
   };
 
   const handleCellClick = (dateStr: string) => {
@@ -151,10 +148,9 @@ export default function PeriodDatePicker({
               }
 
               const entry = entryMap.get(dateStr);
-              const { bg, emoji } = getCellBgAndEmoji(dateStr);
+              const moonIcon = getMoonIcon(dateStr);
               const textColor = getDayTextColor(dateStr);
 
-              const isAdded = !!entry;
               const isOff = entry?.is_day_off === true;
               const isWorkday = entry && !entry.is_day_off;
 
@@ -163,53 +159,39 @@ export default function PeriodDatePicker({
               const month = d.getMonth() + 1;
               const isFirstOfMonth = dayNum === 1;
 
-              let cellStateClasses = '';
-              let interactClasses = '';
-
-              if (isOff) {
-                // Off-day: grayed out, not re-addable
-                cellStateClasses = 'opacity-35';
-                interactClasses = 'cursor-default';
-              } else if (isWorkday) {
-                // Working day: ringed but still tappable for a duplicate/note row
-                cellStateClasses = 'ring-1 ring-primary/40 bg-primary/10';
-                interactClasses = 'cursor-pointer hover:bg-primary/20 active:scale-90 transition-transform';
-              } else {
-                // Free date — tappable
-                interactClasses =
-                  'cursor-pointer hover:bg-muted/50 active:scale-90 transition-transform';
-              }
-
               return (
                 <button
                   key={dateStr}
                   onClick={() => handleCellClick(dateStr)}
                   disabled={isOff}
                   className={[
-                    'relative flex flex-col items-center justify-start rounded py-0.5 min-h-[36px]',
-                    bg,
-                    textColor,
-                    cellStateClasses,
-                    interactClasses,
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
+                    'relative flex flex-col items-center py-1 transition-opacity active:scale-90',
+                    isOff
+                      ? 'opacity-25 cursor-default'
+                      : 'cursor-pointer hover:opacity-70',
+                    !isOff ? textColor : '',
+                  ].filter(Boolean).join(' ')}
                 >
-                  {/* Superscript month label for 1st of month */}
+                  {/* Month label on 1st */}
                   {isFirstOfMonth && (
-                    <span className="absolute top-0 left-0.5 text-[8px] leading-none text-muted-foreground font-medium">
+                    <span className="absolute top-0 left-0.5 text-[7px] leading-none text-muted-foreground/60">
                       {String(month).padStart(2, '0')}
                     </span>
                   )}
 
                   {/* Day number */}
-                  <span className={`text-[13px] font-medium leading-tight ${isFirstOfMonth ? 'mt-2' : 'mt-1'}`}>
+                  <span className={`text-[13px] font-semibold leading-tight ${isFirstOfMonth ? 'mt-2' : ''}`}>
                     {dayNum}
                   </span>
 
                   {/* Moon emoji */}
-                  {emoji && (
-                    <span className="text-[9px] leading-none">{emoji}</span>
+                  {moonIcon && (
+                    <span className="text-[8px] leading-none mt-0.5">{moonIcon}</span>
+                  )}
+
+                  {/* Dot for already-added working days */}
+                  {isWorkday && (
+                    <span className="w-1 h-1 rounded-full bg-primary/70 mt-0.5" />
                   )}
                 </button>
               );
