@@ -253,6 +253,14 @@
   50% { transform: translateY(-10px); }
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .week-separator {
   background: linear-gradient(
     90deg,

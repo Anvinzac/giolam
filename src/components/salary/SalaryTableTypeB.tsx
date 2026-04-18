@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatDateViet } from '@/lib/salaryCalculations';
-import { splitIntoPages } from '@/lib/salaryPaging';
+import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatDateViet, formatVND } from '@/lib/salaryCalculations';
+import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
@@ -42,10 +42,26 @@ function formatMinutesToTime(totalMins: number): string {
   const clamped = Math.max(0, Math.min(1439, totalMins));
   return `${Math.floor(clamped / 60).toString().padStart(2, '0')}:${(clamped % 60).toString().padStart(2, '0')}`;
 }
+// Offsets (minutes) from the row's clock-in time to suggest as clock-out chips.
+// The first 4 and last 4 are "extra" — hidden behind a fade mask so the user
+// must scroll to reveal them; the middle 6 are the defaults initially visible.
+const CHIP_OFFSETS_LEFT = [-120, -90, -60, -30];
+const CHIP_OFFSETS_CORE = [30, 60, 90, 120, 150, 180];
+const CHIP_OFFSETS_RIGHT = [210, 240, 270, 300];
+const CHIP_OFFSETS_ALL = [
+  ...CHIP_OFFSETS_LEFT,
+  ...CHIP_OFFSETS_CORE,
+  ...CHIP_OFFSETS_RIGHT,
+];
+const CHIP_CORE_START_INDEX = CHIP_OFFSETS_LEFT.length;
+
 function getClockOutChips(clockIn: string): string[] {
   const base = parseTimeToMinutes(clockIn);
-  return [30, 60, 90, 120, 150, 180].map(offset => formatMinutesToTime(base + offset));
+  return CHIP_OFFSETS_ALL.map(offset => formatMinutesToTime(base + offset));
 }
+
+const CHIP_FADE_MASK =
+  'linear-gradient(to right, transparent 0, black 28px, black calc(100% - 28px), transparent 100%)';
 
 export default function SalaryTableTypeB({
   entries, rates, allowances, baseSalary, hourlyRate,
@@ -71,12 +87,47 @@ export default function SalaryTableTypeB({
   // Chip state for sequential clock-out entry
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
   const chipAutoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Scroller refs keyed by "{cellKey}-{variant}" so we can align each chip row
+  // so the first *core* chip sits near the left edge (extras to the left live
+  // behind the fade mask and are discoverable by scrolling back).
+  const chipScrollRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const registerChipScroller = (key: string) => (el: HTMLDivElement | null) => {
+    if (el) chipScrollRefs.current.set(key, el);
+    else chipScrollRefs.current.delete(key);
+  };
+
+  useEffect(() => {
+    if (!chipRowKey) return;
+    // Align the just-activated row's chip scroller so the first core chip is
+    // at the left edge. Use rAF so refs are populated after the render.
+    const raf = requestAnimationFrame(() => {
+      chipScrollRefs.current.forEach((scroller, key) => {
+        if (!scroller) return;
+        if (!key.startsWith(chipRowKey)) return;
+        const coreChip = scroller.querySelector<HTMLElement>('[data-chip-core-start="true"]');
+        if (coreChip) {
+          scroller.scrollLeft = coreChip.offsetLeft - scroller.offsetLeft;
+        }
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [chipRowKey]);
 
   // Double-tap ref for day-off toggle on date
   const lastTapRef = useRef<{ key: string; time: number } | null>(null);
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
   const pages = useMemo(() => splitIntoPages(periodStart, periodEnd, entries), [periodStart, periodEnd, entries]);
+
+  const guiXeSummary = useMemo(() => {
+    const fromBreakdown = breakdown?.allowances?.find(a => a.key === 'gui_xe');
+    const offDaysCount = entries.reduce((sum, e) => sum + (e.is_day_off ? 1 : 0), 0);
+    const computedAmount = (28 - offDaysCount) * 10000;
+    return {
+      amount: fromBreakdown?.amount ?? computedAmount,
+      enabled: fromBreakdown?.enabled ?? (allowances.find(a => a.allowance_key === 'gui_xe')?.is_enabled ?? false),
+    };
+  }, [breakdown, entries, allowances]);
 
   // ── Chip helpers ────────────────────────────────────────────────────────────
   const startChipAutoHide = (rowKey: string) => {
@@ -141,6 +192,19 @@ export default function SalaryTableTypeB({
     }
   };
 
+  const activateEmptyDay = (entryDate: string) => {
+    if (readOnly) return;
+    const rowKey = `${entryDate}-0`;
+    onEntryUpdate(entryDate, 0, {
+      is_day_off: false,
+      clock_in: globalClockIn,
+      clock_out: null,
+      total_hours: null,
+      note: null,
+    });
+    showRowChips(rowKey);
+  };
+
   const computeRow = (e: SalaryEntry) => {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const allowance = roundToThousand(dailyBase * rate / 100);
@@ -190,30 +254,104 @@ export default function SalaryTableTypeB({
   const renderChips = (entry: SalaryEntry, pageEntries: SalaryEntry[]) => {
     const baseTime = entry.clock_in || globalClockIn;
     const chips = getClockOutChips(baseTime);
+    const cellKey = `${entry.entry_date}-${entry.sort_order}`;
     return (
-      <div className="flex shrink-0 items-center gap-1 overflow-x-auto py-0.5 pr-1">
-        {chips.map(time => (
-          <motion.button
-            key={time}
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            onClick={() => handleChipSelect(entry, pageEntries, time)}
-            className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
-              entry.clock_out === time
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10'
-            }`}
-          >
-            {formatClockDecimal(time)}
-          </motion.button>
-        ))}
+      <div
+        className="relative flex-1 min-w-0"
+        style={{ maskImage: CHIP_FADE_MASK, WebkitMaskImage: CHIP_FADE_MASK }}
+      >
+        <div
+          ref={registerChipScroller(`${cellKey}-mobile`)}
+          className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
+        >
+          {chips.map((time, i) => (
+            <motion.button
+              key={time}
+              data-chip-core-start={i === CHIP_CORE_START_INDEX ? 'true' : undefined}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              onClick={() => handleChipSelect(entry, pageEntries, time)}
+              className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
+                entry.clock_out === time
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10'
+              }`}
+            >
+              {formatClockDecimal(time)}
+            </motion.button>
+          ))}
+        </div>
       </div>
     );
   };
 
   // ── Page renderer ──────────────────────────────────────────────────────────
-  const renderPage = (pageEntries: SalaryEntry[]) => (
+  const renderEmptyRow = (dateStr: string, idx: number) => (
+    <div key={`empty-${dateStr}`}>
+      <div className={`flex items-start justify-between gap-2 py-3.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden ${
+        idx % 2 !== 0 ? 'bg-muted/20' : ''
+      }`}>
+        <div className="min-w-0 flex-1 pr-1">
+          <button
+            onClick={() => activateEmptyDay(dateStr)}
+            className={`block font-semibold text-[15px] leading-none ${getDayColor(dateStr)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
+          >
+            {formatDayOnly(dateStr)}
+          </button>
+          <button
+            onClick={() => activateEmptyDay(dateStr)}
+            className={`mt-1 block text-left text-[12px] leading-tight text-muted-foreground ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+          >
+            —
+          </button>
+        </div>
+        <div className="ml-1 flex shrink-0 items-center gap-3 text-right text-muted-foreground">
+          <span className="w-[38px] text-right text-sm font-medium">—</span>
+          <span className="w-[24px] text-right font-semibold text-[12px]">—</span>
+          <span className="w-[34px] text-right font-medium text-[12px]">—</span>
+          <span className="w-[30px] text-right font-semibold text-[12px]">—</span>
+          <span className="w-[40px] text-right font-bold text-[14px]">—</span>
+        </div>
+      </div>
+
+      <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
+        idx % 2 !== 0 ? 'bg-muted/20' : ''
+      }`}>
+        <button
+          onClick={() => activateEmptyDay(dateStr)}
+          className={`text-left font-semibold text-[14px] ${getDayColor(dateStr)} ${!readOnly ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
+        >
+          {formatDateViet(dateStr).split(' ')[0]}
+        </button>
+        <button
+          onClick={() => activateEmptyDay(dateStr)}
+          className={`text-left text-muted-foreground ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+        >
+          —
+        </button>
+        <span className="text-right text-muted-foreground">—</span>
+        <span className="text-right text-muted-foreground font-semibold">—</span>
+        <span className="text-right text-muted-foreground font-medium">—</span>
+        <span className="text-right text-muted-foreground font-semibold">—</span>
+        <span className="text-right text-muted-foreground font-bold">—</span>
+      </div>
+    </div>
+  );
+
+  const renderPage = (page: { startDate: string; endDate: string; entries: SalaryEntry[] }) => {
+    const pageDates = generateDateRange(page.startDate, page.endDate);
+    const pageRows = pageDates.flatMap((dateStr) => {
+      const dateEntries = page.entries.filter(entry => entry.entry_date === dateStr);
+      return dateEntries.length > 0
+        ? dateEntries.map(entry => ({ dateStr, entry }))
+        : [{ dateStr, entry: null }];
+    });
+    const orderedEntries = pageRows
+      .filter((row): row is { dateStr: string; entry: SalaryEntry } => row.entry !== null)
+      .map(row => row.entry);
+
+    return (
     <div>
       {/* Mobile column headers */}
       <div className="flex items-center justify-between gap-2 py-3 pl-3 pr-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 sm:hidden">
@@ -238,7 +376,9 @@ export default function SalaryTableTypeB({
       </div>
 
       <div className="divide-y divide-border/20">
-        {pageEntries.map((e, idx) => {
+        {pageRows.map((row, idx) => {
+          if (!row.entry) return renderEmptyRow(row.dateStr, idx);
+          const e = row.entry;
           const { rate, allowance, hours, extraWage, total } = computeRow(e);
           const cellKey = `${e.entry_date}-${e.sort_order}`;
           const isDupe = e.sort_order > 0;
@@ -252,9 +392,9 @@ export default function SalaryTableTypeB({
           const canDelete = canDeleteRow(e);
 
           const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
-          const nextEntry = pageEntries[idx + 1];
-          const isLastSundayRow = isSunday && (!nextEntry || nextEntry.entry_date !== e.entry_date);
-          const showWeekSep = isLastSundayRow && nextEntry !== undefined;
+          const nextRow = pageRows[idx + 1];
+          const isLastSundayRow = isSunday && (!nextRow || nextRow.dateStr !== e.entry_date);
+          const showWeekSep = isLastSundayRow && nextRow !== undefined;
 
           return (
             <div key={cellKey}>
@@ -321,7 +461,7 @@ export default function SalaryTableTypeB({
 
                 {/* Right: chips OR normal columns */}
                 {chipsActive ? (
-                  renderChips(e, pageEntries)
+                  renderChips(e, orderedEntries)
                 ) : (
                   <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
                     {/* RA (clock-out) */}
@@ -418,23 +558,32 @@ export default function SalaryTableTypeB({
 
                 {/* Clock out — or chips spanning remaining columns */}
                 {chipsActive ? (
-                  <div className="col-span-5 flex items-center gap-1 overflow-x-auto py-0.5">
-                    {getClockOutChips(e.clock_in || globalClockIn).map(time => (
-                      <motion.button
-                        key={time}
-                        initial={{ opacity: 0, scale: 0.85 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                        onClick={() => handleChipSelect(e, pageEntries, time)}
-                        className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
-                          e.clock_out === time
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10'
-                        }`}
-                      >
-                        {formatClockDecimal(time)}
-                      </motion.button>
-                    ))}
+                  <div
+                    className="col-span-5 relative min-w-0"
+                    style={{ maskImage: CHIP_FADE_MASK, WebkitMaskImage: CHIP_FADE_MASK }}
+                  >
+                    <div
+                      ref={registerChipScroller(`${cellKey}-desktop`)}
+                      className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
+                    >
+                      {getClockOutChips(e.clock_in || globalClockIn).map((time, i) => (
+                        <motion.button
+                          key={time}
+                          data-chip-core-start={i === CHIP_CORE_START_INDEX ? 'true' : undefined}
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                          onClick={() => handleChipSelect(e, orderedEntries, time)}
+                          className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
+                            e.clock_out === time
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10'
+                          }`}
+                        >
+                          {formatClockDecimal(time)}
+                        </motion.button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -497,6 +646,7 @@ export default function SalaryTableTypeB({
       </div>
     </div>
   );
+  };
 
   return (
     <div className="space-y-3">
@@ -504,7 +654,7 @@ export default function SalaryTableTypeB({
       <div className="-mx-4 sm:mx-0">
         {pages.length > 0 ? (
           <SwipeablePages
-            pages={pages.map(p => renderPage(p.entries))}
+            pages={pages.map(p => renderPage(p))}
             labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
@@ -517,13 +667,38 @@ export default function SalaryTableTypeB({
       </div>
 
       {/* Allowances */}
-      <EmployeeAllowanceEditor
-        allowances={allowances}
-        onToggle={onAllowanceToggle}
-        onUpdate={onAllowanceUpdate}
-        onAddAllowance={onAddAllowance}
-        isAdmin={mode === 'admin'}
-      />
+      {mode === 'employee' ? (
+        <div className="glass-card p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Gửi xe (tự động)
+            </h4>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+              guiXeSummary.enabled
+                ? 'text-success bg-success/10 border-success/30'
+                : 'text-muted-foreground bg-muted/30 border-muted-foreground/20'
+            }`}>
+              {guiXeSummary.enabled ? 'Đang áp dụng' : 'Đang tắt'}
+            </span>
+          </div>
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-[11px] text-muted-foreground">
+              Tính theo công thức cố định (cập nhật theo ngày nghỉ).
+            </p>
+            <div className="text-sm font-semibold text-foreground">
+              {formatVND(guiXeSummary.amount)}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <EmployeeAllowanceEditor
+          allowances={allowances}
+          onToggle={onAllowanceToggle}
+          onUpdate={onAllowanceUpdate}
+          onAddAllowance={onAddAllowance}
+          isAdmin={mode === 'admin'}
+        />
+      )}
 
       {/* Total */}
       <TotalSalaryDisplay
@@ -535,6 +710,7 @@ export default function SalaryTableTypeB({
         isOpen={showBreakdown}
         onClose={() => setShowBreakdown(false)}
         breakdown={breakdown}
+        visibleAllowanceKeys={mode === 'employee' ? ['gui_xe'] : null}
       />
     </div>
   );
