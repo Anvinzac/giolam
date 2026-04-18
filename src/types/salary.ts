@@ -51,6 +51,9 @@ export interface SalaryEntry {
   allowance_amount: number;
   extra_wage: number;
   total_daily_wage: number;
+  submitted_by?: string | null;
+  is_admin_reviewed?: boolean;
+  last_employee_edit_at?: string | null;
 }
 
 export interface SalaryRecord {

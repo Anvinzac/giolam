@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Plus, X } from 'lucide-react';
+import { Check, Plus, X, Clock } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
 import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
@@ -31,6 +31,10 @@ interface SalaryTableTypeCProps {
   onCustomDateChange: (start: string | null, end: string | null) => void;
   breakdown: SalaryBreakdown | null;
   isPreview?: boolean;
+  editMode?: 'admin' | 'employee' | 'preview';
+  onAcceptEntry?: (id: string) => void;
+  onRemoveEntry?: (id: string) => void;
+  currentUserId?: string | null;
 }
 
 export default function SalaryTableTypeC({
@@ -38,7 +42,13 @@ export default function SalaryTableTypeC({
   periodStart, periodEnd, customStartDate, customEndDate,
   onEntryUpdate, onEntryDateChange, onAddRowAtDate, onAllowanceToggle, onAllowanceUpdate, onAddAllowance,
   onHourlyRateChange, onCustomDateChange, breakdown, isPreview = false,
+  editMode, onAcceptEntry, onRemoveEntry, currentUserId,
 }: SalaryTableTypeCProps) {
+  const mode: 'admin' | 'employee' | 'preview' =
+    editMode ?? (isPreview ? 'preview' : 'admin');
+  const readOnly = mode === 'preview';
+  const canDeleteRow = (e: SalaryEntry) =>
+    mode === 'admin' || (mode === 'employee' && e.is_admin_reviewed === false);
   const OFF_DAY_NOTE = 'Quán nghỉ';
   const [compact, setCompact] = useState(false);
   const [separateClockColumns, setSeparateClockColumns] = useState(false);
@@ -263,7 +273,7 @@ export default function SalaryTableTypeC({
   };
 
   const queueDateTapAction = (e: SalaryEntry, cellKey: string) => {
-    if (isPreview) return;
+    if (readOnly) return;
     if (pendingDateTapRef.current && lastTappedDateRef.current === cellKey) {
       clearTimeout(pendingDateTapRef.current);
       pendingDateTapRef.current = null;
@@ -332,7 +342,11 @@ export default function SalaryTableTypeC({
     const cellKey = `${e.entry_date}-${e.sort_order}`;
     const isScheduledOffDay = scheduledOffDays.has(e.entry_date);
     const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
-    const showClockChips = separateClockColumns && !isPreview && !e.is_day_off && !isScheduledOffDay && chipRowKey === cellKey;
+    const showClockChips = separateClockColumns && !readOnly && !e.is_day_off && !isScheduledOffDay && chipRowKey === cellKey;
+    const isPending =
+      mode === 'admin' &&
+      e.is_admin_reviewed === false &&
+      (!currentUserId || e.submitted_by !== currentUserId);
 
     // Show week separator after Sunday, if not the last row
     const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
@@ -344,17 +358,17 @@ export default function SalaryTableTypeC({
       <div key={cellKey}>
       <div className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
-      } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
+      } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'moon-accent-row' : ''
-      } ${showWeekSep ? 'relative' : ''}`}>
+      } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
-            {!isPreview && (
+            {!readOnly && (
               <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
                 {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
             )}
-            {editingDateKey === `${cellKey}-date` && !isPreview ? (
+            {editingDateKey === `${cellKey}-date` && !readOnly ? (
               <DateInput
                 value={editingDateValue}
                 onChange={setEditingDateValue}
@@ -373,28 +387,28 @@ export default function SalaryTableTypeC({
             ) : (
               <button
                 onClick={() => toggleDayOff(e)}
-                className={`block -mt-0.5 font-semibold text-[17px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+                className={`block -mt-0.5 font-semibold text-[17px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
               >
                 {formatDayOnly(e.entry_date)}
               </button>
             )}
           </div>
-          {editingCell === `${cellKey}-note` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
+          {editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
             <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
               onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
               className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
           ) : (
-            <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && startCellEdit(`${cellKey}-note`, e.note || '')}
+            <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && startCellEdit(`${cellKey}-note`, e.note || '')}
               className={`block text-left text-[12px] leading-tight ${
                 isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-              } ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
+              } ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
               {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
             </button>
           )}
         </div>
         <div className="ml-1 flex shrink-0 items-center gap-2 text-right">
           <div className="flex w-[40px] flex-col gap-[0.15rem] min-h-[38px] items-center justify-center">
-            {editingCell === `${cellKey}-clock_in` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
+            {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
                 onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
                 className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
@@ -402,12 +416,12 @@ export default function SalaryTableTypeC({
                 Chọn
               </button>
             ) : (
-              <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
-                className={`w-full text-center font-medium ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+              <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
             )}
-            {editingCell === `${cellKey}-clock_out` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
+            {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
                 onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
                 className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
@@ -415,8 +429,8 @@ export default function SalaryTableTypeC({
                 Chọn
               </button>
             ) : (
-              <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
-                className={`w-full text-center font-medium ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
+              <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
                 {formatClockDecimal(e.clock_out)}
               </button>
             )}
@@ -436,19 +450,19 @@ export default function SalaryTableTypeC({
       </div>
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
-      } ${idx && idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
+      } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'moon-accent-row' : ''
-      } ${showWeekSep ? 'relative' : ''}`}>
+      } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
         {/* Date + note */}
         <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
-            {!isPreview && (
+            {!readOnly && (
               <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
                 {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
             )}
             <div className="min-w-0 flex-1">
-              {editingDateKey === `${cellKey}-date` && !isPreview ? (
+              {editingDateKey === `${cellKey}-date` && !readOnly ? (
                 <DateInput
                   value={editingDateValue}
                   onChange={setEditingDateValue}
@@ -467,7 +481,7 @@ export default function SalaryTableTypeC({
               ) : (
                 <button
                   onClick={() => toggleDayOff(e)}
-                  className={`block -mt-0.5 font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline' : 'cursor-default'}`}
+                  className={`block -mt-0.5 font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
                 >
                   <span className="sm:hidden">{formatDayOnly(e.entry_date)}</span>
                   <span className="hidden sm:inline">{formatDateViet(e.entry_date).split(' ')[0]}</span>
@@ -528,7 +542,7 @@ export default function SalaryTableTypeC({
               })()}
             </div>
           </div>
-        ) : editingCell === `${cellKey}-note` && !isPreview && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
+        ) : editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
           <input
             value={cellValue}
             onChange={ev => setCellValue(ev.target.value)}
@@ -549,7 +563,7 @@ export default function SalaryTableTypeC({
             }}
             className={`hidden sm:block sm:ml-1 text-left whitespace-nowrap overflow-hidden text-ellipsis text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
               isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-            } ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+            } ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
           >
             {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
           </button>
@@ -560,7 +574,7 @@ export default function SalaryTableTypeC({
           <>
             {/* Clock In */}
             <div className="flex items-center justify-center h-full">
-              {editingCell === `${cellKey}-clock_in` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
+              {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
                 <button
                   onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
                   className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
@@ -568,15 +582,15 @@ export default function SalaryTableTypeC({
                   Chọn giờ
                 </button>
               ) : (
-                <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
-                  className={`w-full text-center font-medium ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
                   {formatClockDecimal(e.clock_in)}
                 </button>
               )}
             </div>
             {/* Clock Out */}
             <div className="flex items-center justify-center h-full">
-              {editingCell === `${cellKey}-clock_out` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
+              {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
                 <button
                   onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
                   className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
@@ -584,8 +598,8 @@ export default function SalaryTableTypeC({
                   Chọn giờ
                 </button>
               ) : (
-                <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
-                  className={`w-full text-center font-medium ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
+                <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
                   {formatClockDecimal(e.clock_out)}
                 </button>
               )}
@@ -593,7 +607,7 @@ export default function SalaryTableTypeC({
           </>
         ) : (
           <div className="flex flex-col gap-[0.15rem] min-h-[38px] items-center justify-self-end w-full">
-            {editingCell === `${cellKey}-clock_in` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
+            {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
                 onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
                 className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
@@ -601,12 +615,12 @@ export default function SalaryTableTypeC({
                 Chọn giờ
               </button>
             ) : (
-              <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
-                className={`w-full text-center font-medium ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
+              <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
             )}
-            {editingCell === `${cellKey}-clock_out` && !isPreview && !e.is_day_off && !isScheduledOffDay ? (
+            {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
                 onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
                 className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
@@ -614,8 +628,8 @@ export default function SalaryTableTypeC({
                 Chọn giờ
               </button>
             ) : (
-              <button onClick={() => !isPreview && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
-                className={`w-full text-center font-medium ${!isPreview && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'} self-center translate-x-1`}>
+              <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'} self-center translate-x-1`}>
                 {formatClockDecimal(e.clock_out)}
               </button>
             )}
@@ -649,6 +663,19 @@ export default function SalaryTableTypeC({
           <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
         )}
       </div>
+      {isPending && onAcceptEntry && e.id && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/5 border-b border-border/20">
+          <Clock size={11} className="text-amber-400 shrink-0" />
+          <span className="text-[10px] text-amber-400/80">Nhân viên gửi – chờ duyệt</span>
+          <div className="flex-1" />
+          <button
+            onClick={() => e.id && onAcceptEntry(e.id)}
+            className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold flex items-center gap-1 hover:bg-emerald-500/30 transition-colors"
+          >
+            <Check size={11} /> Duyệt
+          </button>
+        </div>
+      )}
       </div>
     );
   };
@@ -660,7 +687,7 @@ export default function SalaryTableTypeC({
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
         <div className="min-w-0 flex-1 pr-3">
           <div className="flex items-start gap-1.5">
-            {!isPreview && dateStr ? (
+            {!readOnly && dateStr ? (
               <button
                 onClick={() => !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
                 className={`mt-0.5 flex-shrink-0 transition-colors ${
@@ -675,9 +702,9 @@ export default function SalaryTableTypeC({
             <div className="min-w-0 flex-1">
               {dateStr ? (
                 <button
-                  onClick={() => !isPreview && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
+                  onClick={() => !readOnly && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
                   className={`block -mt-0.5 font-semibold text-[15px] leading-none whitespace-nowrap ${getDayColor(dateStr)} ${
-                    !isPreview && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
+                    !readOnly && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
                   }`}
                 >
                   {formatDayOnly(dateStr)}
@@ -707,7 +734,7 @@ export default function SalaryTableTypeC({
       } ${dateStr && scheduledOffDays.has(dateStr) ? 'opacity-50' : ''}`}>
         <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
-            {!isPreview && dateStr ? (
+            {!readOnly && dateStr ? (
               <button
                 onClick={() => !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
                 className={`mt-0.5 flex-shrink-0 transition-colors ${
@@ -722,9 +749,9 @@ export default function SalaryTableTypeC({
             <div className="min-w-0 flex-1">
               {dateStr ? (
                 <button
-                  onClick={() => !isPreview && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
+                  onClick={() => !readOnly && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
                   className={`block -mt-0.5 font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap ${getDayColor(dateStr)} ${
-                    !isPreview && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
+                    !readOnly && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
                   }`}
                 >
                   <span className="sm:hidden">{formatDayOnly(dateStr)}</span>
@@ -766,9 +793,9 @@ export default function SalaryTableTypeC({
     <div className="flex items-center justify-between gap-2 py-2.5 pl-3 pr-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full sm:hidden">
       <span className="flex items-center justify-center">
         <button
-          onClick={() => !isPreview && setAddingDate(prev => !prev)}
+          onClick={() => !readOnly && setAddingDate(prev => !prev)}
           className={`mx-auto flex items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
-            !isPreview
+            !readOnly
               ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
               : 'border-border/30 bg-muted/20 cursor-default'
           }`}
@@ -796,9 +823,9 @@ export default function SalaryTableTypeC({
     <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 w-full`}>
       <span className="flex items-center justify-center sm:justify-center">
         <button
-          onClick={() => !isPreview && setAddingDate(prev => !prev)}
+          onClick={() => !readOnly && setAddingDate(prev => !prev)}
           className={`mx-auto flex items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider ${
-            !isPreview
+            !readOnly
               ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
               : 'border-border/30 bg-muted/20 cursor-default'
           }`}
@@ -835,7 +862,7 @@ export default function SalaryTableTypeC({
     return (
       <div className="w-full overflow-x-auto pb-2">
         <div className="w-full min-w-0">
-          {addingDate && !isPreview && (
+          {addingDate && !readOnly && (
             <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
               <input
                 type="date"
@@ -890,7 +917,7 @@ export default function SalaryTableTypeC({
     return (
       <div className="w-full overflow-x-auto pb-2">
         <div className="w-full min-w-0">
-          {addingDate && !isPreview && (
+          {addingDate && !readOnly && (
             <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
               <input
                 type="date"
@@ -933,7 +960,7 @@ export default function SalaryTableTypeC({
 
   return (
     <div className="space-y-3">
-      {!isPreview && (
+      {!readOnly && (
         <div className="glass-card p-2.5">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="flex items-center gap-2">

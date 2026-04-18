@@ -23,12 +23,47 @@ const buildEmptyEntry = (userId: string, periodId: string, entryDate: string, so
   total_daily_wage: 0,
 });
 
-export function useSalaryEntries(userId: string | null, periodId: string | null) {
+export type SalaryEditorMode = 'admin' | 'employee';
+
+export interface UseSalaryEntriesOptions {
+  editorMode?: SalaryEditorMode;
+  enableRealtime?: boolean;
+}
+
+export function useSalaryEntries(
+  userId: string | null,
+  periodId: string | null,
+  options: UseSalaryEntriesOptions = {}
+) {
+  const { editorMode = 'admin', enableRealtime = false } = options;
   const [entries, setEntries] = useState<SalaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUpdatesRef = useRef<Map<string, Partial<SalaryEntry>>>(new Map());
+  const currentUidRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      currentUidRef.current = data.user?.id || null;
+    });
+  }, []);
+
+  // Build audit-trail fields we attach to every write.
+  const buildAuditFields = useCallback((): Partial<SalaryEntry> => {
+    const uid = currentUidRef.current;
+    if (editorMode === 'employee') {
+      return {
+        submitted_by: uid,
+        is_admin_reviewed: false,
+        last_employee_edit_at: new Date().toISOString(),
+      };
+    }
+    // Admin edit: mark reviewed so any pending flag clears.
+    return {
+      is_admin_reviewed: true,
+    };
+  }, [editorMode]);
 
   useEffect(() => {
     if (!userId || !periodId) { setLoading(false); return; }
@@ -51,6 +86,46 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
     fetch();
   }, [userId, periodId]);
 
+  // Optional realtime subscription — merges remote changes into local state.
+  useEffect(() => {
+    if (!enableRealtime || !userId || !periodId) return;
+
+    const channel = supabase
+      .channel(`salary_entries:${userId}:${periodId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'salary_entries',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = (payload.new || payload.old) as SalaryEntry | undefined;
+          if (!row || row.period_id !== periodId) return;
+
+          setEntries(prev => {
+            if (payload.eventType === 'DELETE') {
+              return prev.filter(e => e.id !== (payload.old as SalaryEntry).id);
+            }
+            const incoming = payload.new as SalaryEntry;
+            const idx = prev.findIndex(e => e.id === incoming.id);
+            if (idx < 0) return sortEntries([...prev, incoming]);
+            // Preserve any locally pending (dirty) fields for this row.
+            const dirtyKey = `${incoming.entry_date}|${incoming.sort_order}`;
+            const dirty = pendingUpdatesRef.current.get(dirtyKey) || {};
+            const merged = { ...prev[idx], ...incoming, ...dirty };
+            const copy = [...prev];
+            copy[idx] = merged;
+            return sortEntries(copy);
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [enableRealtime, userId, periodId]);
+
   const flushUpdates = useCallback(async () => {
     const updates = new Map(pendingUpdatesRef.current);
     pendingUpdatesRef.current.clear();
@@ -61,7 +136,8 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
       const [entryDate, sortOrderStr] = key.split('|');
       const sortOrder = parseInt(sortOrderStr);
 
-      // Try upsert
+      const audit = buildAuditFields();
+
       const { error } = await supabase
         .from('salary_entries')
         .upsert(
@@ -71,13 +147,14 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
             entry_date: entryDate,
             sort_order: sortOrder,
             ...upd,
+            ...audit,
           },
           { onConflict: 'user_id,period_id,entry_date,sort_order' }
         );
       if (error) console.error('Failed to save entry:', error);
     }
     setIsSaving(false);
-  }, [userId, periodId]);
+  }, [userId, periodId, buildAuditFields]);
 
   const updateEntry = useCallback((
     entryDate: string,
@@ -108,22 +185,27 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
     saveTimerRef.current = setTimeout(flushUpdates, 1500);
   }, [userId, periodId, flushUpdates]);
 
+  const insertWithAudit = useCallback(async (base: Omit<SalaryEntry, 'id'>) => {
+    const audit = buildAuditFields();
+    return supabase
+      .from('salary_entries')
+      .insert({ ...base, ...audit })
+      .select()
+      .single();
+  }, [buildAuditFields]);
+
   const addDuplicateRow = useCallback(async (entryDate: string) => {
     if (!userId || !periodId) return;
     const existing = entries.filter(e => e.entry_date === entryDate);
     const maxSort = existing.reduce((max, e) => Math.max(max, e.sort_order), 0);
     const newEntry = buildEmptyEntry(userId, periodId, entryDate, maxSort + 1);
 
-    const { data, error } = await supabase
-      .from('salary_entries')
-      .insert(newEntry)
-      .select()
-      .single();
+    const { data, error } = await insertWithAudit(newEntry);
     if (error) { console.error('Failed to add duplicate row:', error); return; }
     if (data) {
       setEntries(prev => sortEntries([...prev, data as SalaryEntry]));
     }
-  }, [userId, periodId, entries]);
+  }, [userId, periodId, entries, insertWithAudit]);
 
   const addRowAtDate = useCallback(async (entryDate: string) => {
     if (!userId || !periodId) return;
@@ -133,16 +215,12 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
       : existing.reduce((max, e) => Math.max(max, e.sort_order), 0) + 1;
     const newEntry = buildEmptyEntry(userId, periodId, entryDate, nextSortOrder);
 
-    const { data, error } = await supabase
-      .from('salary_entries')
-      .insert(newEntry)
-      .select()
-      .single();
+    const { data, error } = await insertWithAudit(newEntry);
     if (error) { console.error('Failed to add row at date:', error); return; }
     if (data) {
       setEntries(prev => sortEntries([...prev, data as SalaryEntry]));
     }
-  }, [userId, periodId, entries]);
+  }, [userId, periodId, entries, insertWithAudit]);
 
   const moveEntryToDate = useCallback(async (id: string, currentEntryDate: string, currentSortOrder: number, nextEntryDate: string) => {
     if (!userId || !periodId || currentEntryDate === nextEntryDate) return;
@@ -160,12 +238,13 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
 
     pendingUpdatesRef.current.delete(`${currentEntryDate}|${currentSortOrder}`);
 
+    const audit = buildAuditFields();
     const { error } = await supabase
       .from('salary_entries')
-      .update({ entry_date: nextEntryDate, sort_order: nextSortOrder })
+      .update({ entry_date: nextEntryDate, sort_order: nextSortOrder, ...audit })
       .eq('id', id);
     if (error) console.error('Failed to move entry to another date:', error);
-  }, [userId, periodId, entries]);
+  }, [userId, periodId, entries, buildAuditFields]);
 
   const removeEntry = useCallback(async (id: string) => {
     setEntries(prev => prev.filter(e => e.id !== id));
@@ -173,5 +252,25 @@ export function useSalaryEntries(userId: string | null, periodId: string | null)
     if (error) console.error('Failed to remove entry:', error);
   }, []);
 
-  return { entries, loading, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, isSaving };
+  const acceptEntry = useCallback(async (id: string) => {
+    // Admin one-click accept — flip reviewed flag.
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, is_admin_reviewed: true } : e));
+    const { error } = await supabase
+      .from('salary_entries')
+      .update({ is_admin_reviewed: true })
+      .eq('id', id);
+    if (error) console.error('Failed to accept entry:', error);
+  }, []);
+
+  return {
+    entries,
+    loading,
+    updateEntry,
+    addDuplicateRow,
+    addRowAtDate,
+    moveEntryToDate,
+    removeEntry,
+    acceptEntry,
+    isSaving,
+  };
 }

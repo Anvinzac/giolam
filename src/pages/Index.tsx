@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import LunarHeader from "@/components/LunarHeader";
 import WeekView from "@/components/WeekView";
-import { Check, LogOut, Shield, DollarSign } from "lucide-react";
+import { Check, LogOut, Shield, DollarSign, Edit3 } from "lucide-react";
 import RegistrationResult from "@/components/RegistrationResult";
 import { toast } from "sonner";
 import AppBootState from "@/components/AppBootState";
@@ -35,6 +35,7 @@ export default function Index() {
   const [useDefaultTime, setUseDefaultTime] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [isCurrentPeriodPublished, setIsCurrentPeriodPublished] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,6 +102,23 @@ export default function Index() {
 
       if (currentPeriod) {
         setPeriod(currentPeriod);
+
+        // Determine whether this employee's salary for the current period has
+        // already been published — drives whether the "Nhập giờ làm" entry
+        // button is shown.
+        const { data: salaryRec } = await withTimeout(
+          supabase.from('salary_records')
+            .select('status')
+            .eq('user_id', session.user.id)
+            .eq('period_id', currentPeriod.id)
+            .maybeSingle(),
+          10000,
+          'Salary record lookup timed out.',
+        );
+        if (!isMounted) return;
+        setIsCurrentPeriodPublished(
+          (salaryRec as any)?.status === 'published'
+        );
         const { data: shiftData } = await withTimeout(
           supabase.from('shifts').select('*').eq('user_id', session.user.id).eq('period_id', currentPeriod.id),
           10000,
@@ -261,6 +279,19 @@ export default function Index() {
           <DollarSign size={16} />
           Bảng lương tháng này
         </motion.button>
+
+        {/* Self-service time-entry link — only while the current period is
+            still unpublished for this employee. */}
+        {period && !isCurrentPeriodPublished && (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => navigate('/salary/edit')}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium"
+          >
+            <Edit3 size={16} />
+            Nhập giờ làm của tôi
+          </motion.button>
+        )}
 
         {period ? (
           <WeekView

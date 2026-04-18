@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, getRateForDate, formatDateViet, VIET_DAYS } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
@@ -27,6 +27,9 @@ interface SalaryTableTypeAProps {
   periodEnd?: string;
   breakdown: SalaryBreakdown | null;
   isPreview?: boolean;
+  editMode?: 'admin' | 'employee' | 'preview';
+  onAcceptEntry?: (id: string) => void;
+  currentUserId?: string | null;
 }
 
 export default function SalaryTableTypeA({
@@ -34,7 +37,10 @@ export default function SalaryTableTypeA({
   onEntryUpdate, onAddRowAtDate, onRemoveEntry, onAllowanceToggle, onAllowanceUpdate, onAddAllowance,
   onHourlyRateChange,
   periodStart, periodEnd, breakdown, isPreview = false,
+  editMode, onAcceptEntry, currentUserId,
 }: SalaryTableTypeAProps) {
+  const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
+  const readOnly = mode === 'preview';
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
   const [editRate, setEditRate] = useState('');
@@ -133,9 +139,9 @@ export default function SalaryTableTypeA({
             <div className="flex items-center gap-2 pl-3 pr-3 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40">
               <span className="w-[52px] flex items-center justify-end">
                 <button
-                  onClick={() => !isPreview && onAddRowAtDate && setAddingDate(prev => !prev)}
+                  onClick={() => !readOnly && onAddRowAtDate && setAddingDate(prev => !prev)}
                   className={`flex items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] uppercase tracking-wider whitespace-nowrap ${
-                    !isPreview && onAddRowAtDate
+                    !readOnly && onAddRowAtDate
                       ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
                       : 'border-border/30 bg-muted/20 cursor-default'
                   }`}
@@ -150,7 +156,7 @@ export default function SalaryTableTypeA({
               <span className="w-[62px] text-right">Tổng</span>
             </div>
 
-        {addingDate && !isPreview && onAddRowAtDate && (
+        {addingDate && !readOnly && onAddRowAtDate && (
           <PeriodDatePicker
             periodStart={periodStart || ''}
             periodEnd={periodEnd || ''}
@@ -168,25 +174,32 @@ export default function SalaryTableTypeA({
           {visibleEntries.map((e, idx) => {
             const { rate, allowance, extraWage, deduction, total } = computeRow(e);
             const key = rowKey(e);
-            const isEditing = editingRow === key && !isPreview;
+            const isEditing = editingRow === key && !readOnly;
             const isOff = e.is_day_off;
             const matchedRate = rates.find(r => r.special_date === e.entry_date);
             const rateDesc = matchedRate?.description_vi;
             // Show delete for manually added rows: no matching rate OR a duplicate sort_order
-            const isDeletable = !isPreview && onRemoveEntry && e.id &&
-              (!matchedRate || e.sort_order > 0);
+            const isDeletable = !readOnly && onRemoveEntry && e.id &&
+              (!matchedRate || e.sort_order > 0) &&
+              (mode !== 'employee' || e.is_admin_reviewed === false);
+            const isPending = mode === 'admin' && e.is_admin_reviewed === false;
+            const showAccept = isPending && !!e.id && !!onAcceptEntry &&
+              (!currentUserId || e.submitted_by !== currentUserId);
 
             return (
               <div key={key}>
                 <div
                   className={`flex items-center gap-2 pl-3 pr-3 py-3.5 border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
-                  } ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff ? 'bg-muted/20' : ''}`}
+                  } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff && !isPending ? 'bg-muted/20' : ''}`}
                 >
+                  {isPending && (
+                    <Clock size={12} className="text-amber-400 shrink-0" aria-label="Chờ duyệt" />
+                  )}
                   {/* Date */}
                   <button
                     onClick={() => handleDateTap(e.entry_date, e.sort_order)}
-                    className={`w-[52px] font-semibold text-[14px] text-left ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
+                    className={`w-[52px] font-semibold text-[14px] text-left ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
                   >
                     {formatDateViet(e.entry_date)}
                   </button>
@@ -210,8 +223,8 @@ export default function SalaryTableTypeA({
                     </div>
                   ) : (
                     <button
-                      onClick={() => !isPreview && startEditRow(e)}
-                      className={`flex-1 text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!isPreview ? 'hover:text-foreground' : 'cursor-default'}`}
+                      onClick={() => !readOnly && startEditRow(e)}
+                      className={`flex-1 text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!readOnly ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
                       {isOff ? `Nghỉ -${e.off_percent}%` : (rateDesc || '—')}
                     </button>
@@ -241,6 +254,18 @@ export default function SalaryTableTypeA({
                     {formatCompact(total)}
                   </span>
                 </div>
+
+                {/* Accept pending submission */}
+                {showAccept && !isEditing && (
+                  <div className="flex justify-end px-3 pb-2 pt-1">
+                    <button
+                      onClick={() => onAcceptEntry!(e.id!)}
+                      className="text-[11px] px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors flex items-center gap-1"
+                    >
+                      <Check size={12} /> Duyệt
+                    </button>
+                  </div>
+                )}
 
                 {/* Edit save bar */}
                 {isEditing && (
@@ -288,7 +313,7 @@ export default function SalaryTableTypeA({
                 )}
 
                 {/* Off percent snapper */}
-                {isOff && expandedOff === key && !isPreview && (
+                {isOff && expandedOff === key && !readOnly && (
                   <div className="px-3 pb-3 pt-1">
                     <OffPercentSnapper
                       value={e.off_percent}
@@ -296,7 +321,7 @@ export default function SalaryTableTypeA({
                     />
                   </div>
                 )}
-                {isOff && !isEditing && !isPreview && (
+                {isOff && !isEditing && !readOnly && (
                   <button
                     onClick={() => setExpandedOff(expandedOff === key ? null : key)}
                     className="w-full text-[10px] text-center text-muted-foreground py-1 hover:text-foreground transition-colors"
@@ -304,7 +329,7 @@ export default function SalaryTableTypeA({
                     {expandedOff === key ? 'Ẩn' : `Nghỉ ${e.off_percent}% · Nhấn để chỉnh`}
                   </button>
                 )}
-                {isOff && isPreview && (
+                {isOff && readOnly && (
                   <div className="w-full text-[10px] text-center text-muted-foreground py-1">
                     Nghỉ {e.off_percent}%
                   </div>
@@ -327,7 +352,7 @@ export default function SalaryTableTypeA({
         onToggle={onAllowanceToggle}
         onUpdate={onAllowanceUpdate}
         onAddAllowance={onAddAllowance}
-        isAdmin={!isPreview}
+        isAdmin={mode === 'admin'}
       />
 
       {/* Total */}

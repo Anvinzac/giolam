@@ -9,6 +9,7 @@ import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
 import SalaryTableTypeB from '@/components/salary/SalaryTableTypeB';
 import SalaryTableTypeC from '@/components/salary/SalaryTableTypeC';
 import PublishButton from '@/components/salary/PublishButton';
+import PendingReviewBadge from '@/components/salary/PendingReviewBadge';
 import { useSpecialDayRates } from '@/hooks/useSpecialDayRates';
 import { useEmployeeAllowances } from '@/hooks/useEmployeeAllowances';
 import { useSalaryEntries } from '@/hooks/useSalaryEntries';
@@ -47,9 +48,10 @@ interface DepartmentEmployeePagesProps {
   employees: Employee[];
   onSelectEmployee: (emp: Employee) => void;
   typeBadgeColor: (t: EmployeeShiftType) => string;
+  pendingCounts?: Map<string, number>;
 }
 
-function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }: DepartmentEmployeePagesProps) {
+function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor, pendingCounts }: DepartmentEmployeePagesProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [dragStartX, setDragStartX] = useState(0);
 
@@ -128,7 +130,10 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor }
               className="w-full glass-card p-3 flex items-center justify-between text-left"
             >
               <div>
-                <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
+                  <PendingReviewBadge count={pendingCounts?.get(emp.user_id) || 0} variant="dot" />
+                </div>
                 {emp.department_name && (
                   <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
                 )}
@@ -253,6 +258,8 @@ export default function SalaryAdmin() {
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [showShiftTypePicker, setShowShiftTypePicker] = useState(false);
   const [salaryColumnsAvailable, setSalaryColumnsAvailable] = useState(true);
+  const [adminUid, setAdminUid] = useState<string | null>(null);
+  const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map());
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -267,14 +274,52 @@ export default function SalaryAdmin() {
     selectedEmployee?.user_id || null,
     selectedPeriodId
   );
-  const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, isSaving } = useSalaryEntries(
+  const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, acceptEntry, isSaving } = useSalaryEntries(
     selectedEmployee?.user_id || null,
-    selectedPeriodId
+    selectedPeriodId,
+    { editorMode: 'admin', enableRealtime: true }
   );
   const { record, saveDraft, publish, isPublished } = useSalaryRecord(
     selectedEmployee?.user_id || null,
     selectedPeriodId
   );
+
+  // Fetch pending-review counts per employee for the selected period.
+  const refreshPendingCounts = useCallback(async () => {
+    if (!selectedPeriodId) { setPendingCounts(new Map()); return; }
+    const { data, error } = await supabase
+      .from('salary_entries')
+      .select('user_id')
+      .eq('period_id', selectedPeriodId)
+      .eq('is_admin_reviewed', false);
+    if (error) { console.error('Pending count fetch failed:', error); return; }
+    const map = new Map<string, number>();
+    for (const row of (data || []) as { user_id: string }[]) {
+      map.set(row.user_id, (map.get(row.user_id) || 0) + 1);
+    }
+    setPendingCounts(map);
+  }, [selectedPeriodId]);
+
+  useEffect(() => { refreshPendingCounts(); }, [refreshPendingCounts]);
+
+  // Realtime: when any salary_entries row in this period changes, refresh counts.
+  useEffect(() => {
+    if (!selectedPeriodId) return;
+    const channel = supabase
+      .channel(`pending-counts:${selectedPeriodId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'salary_entries',
+          filter: `period_id=eq.${selectedPeriodId}`,
+        },
+        () => { refreshPendingCounts(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedPeriodId, refreshPendingCounts]);
 
   // Sync global clock-in
   useEffect(() => {
@@ -376,6 +421,7 @@ export default function SalaryAdmin() {
           return;
         }
         setIsAdmin(true);
+        setAdminUid(user.id);
 
         const { data: p } = await withTimeout(
           supabase.from('working_periods').select('*').order('start_date', { ascending: false }),
@@ -776,6 +822,7 @@ export default function SalaryAdmin() {
             employees={employees}
             onSelectEmployee={setSelectedEmployee}
             typeBadgeColor={typeBadgeColor}
+            pendingCounts={pendingCounts}
           />
         )}
 
@@ -800,6 +847,9 @@ export default function SalaryAdmin() {
                 periodEnd={selectedPeriod.end_date}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
+                editMode={isPreviewMode ? 'preview' : 'admin'}
+                onAcceptEntry={acceptEntry}
+                currentUserId={adminUid}
               />
             )}
 
@@ -823,6 +873,9 @@ export default function SalaryAdmin() {
                 onHourlyRateChange={handleHourlyRateChange}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
+                editMode={isPreviewMode ? 'preview' : 'admin'}
+                onAcceptEntry={acceptEntry}
+                currentUserId={adminUid}
               />
             )}
 
@@ -847,6 +900,9 @@ export default function SalaryAdmin() {
                 onCustomDateChange={() => {}} // TODO: store custom dates
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
+                editMode={isPreviewMode ? 'preview' : 'admin'}
+                onAcceptEntry={acceptEntry}
+                currentUserId={adminUid}
               />
             )}
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatDateViet } from '@/lib/salaryCalculations';
 import { splitIntoPages } from '@/lib/salaryPaging';
@@ -28,6 +28,9 @@ interface SalaryTableTypeBProps {
   onGlobalClockInChange: (time: string) => void;
   breakdown: SalaryBreakdown | null;
   isPreview?: boolean;
+  editMode?: 'admin' | 'employee' | 'preview';
+  onAcceptEntry?: (id: string) => void;
+  currentUserId?: string | null;
 }
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
@@ -52,7 +55,12 @@ export default function SalaryTableTypeB({
   globalClockIn, onGlobalClockInChange,
   breakdown,
   isPreview = false,
+  editMode, onAcceptEntry, currentUserId,
 }: SalaryTableTypeBProps) {
+  const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
+  const readOnly = mode === 'preview';
+  const canDeleteRow = (e: SalaryEntry) =>
+    mode === 'admin' || (mode === 'employee' && e.is_admin_reviewed === false);
   const tableGridClass = 'sm:grid-cols-[70px_minmax(120px,1fr)_50px_40px_55px_60px_75px]';
   const tableGapClass = 'sm:gap-1.5 sm:px-1';
   const [currentPage, setCurrentPage] = useState(0);
@@ -118,7 +126,7 @@ export default function SalaryTableTypeB({
   };
 
   const handleDateTap = (entry: SalaryEntry) => {
-    if (isPreview) return;
+    if (readOnly) return;
     const key = `${entry.entry_date}-${entry.sort_order}`;
     const now = Date.now();
     const last = lastTapRef.current;
@@ -237,7 +245,11 @@ export default function SalaryTableTypeB({
           const matchedRate = rates.find(r => r.special_date === e.entry_date);
           const rateDesc = matchedRate?.description_vi;
           const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
-          const chipsActive = !isPreview && chipRowKey === cellKey && !e.is_day_off;
+          const chipsActive = !readOnly && chipRowKey === cellKey && !e.is_day_off;
+          const isPending = mode === 'admin' && e.is_admin_reviewed === false;
+          const showAccept = isPending && !!e.id && !!onAcceptEntry &&
+            (!currentUserId || e.submitted_by !== currentUserId);
+          const canDelete = canDeleteRow(e);
 
           const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
           const nextEntry = pageEntries[idx + 1];
@@ -249,17 +261,19 @@ export default function SalaryTableTypeB({
               {/* ── Mobile row ─────────────────────────────────────────────── */}
               <div className={`flex items-start justify-between gap-2 py-3.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden ${
                 e.is_day_off ? 'opacity-40' : ''
-              } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
+              } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
                 isMoonDay ? 'moon-accent-row' : ''
-              } ${showWeekSep ? 'relative' : ''}`}>
+              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
                 {/* Left: date + note */}
                 <div className="min-w-0 flex-1 pr-1">
                   <div className="flex items-start gap-1">
-                    {!isPreview && (
+                    {!readOnly && (
                       isDupe ? (
-                        <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
-                          <Trash2 size={10} />
-                        </button>
+                        canDelete ? (
+                          <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
+                            <Trash2 size={10} />
+                          </button>
+                        ) : null
                       ) : (
                         <button onClick={() => onAddDuplicateRow(e.entry_date)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
                           <Plus size={10} />
@@ -269,11 +283,11 @@ export default function SalaryTableTypeB({
                     <div className="min-w-0 flex-1">
                       <button
                         onClick={() => handleDateTap(e)}
-                        className={`block font-semibold text-[15px] leading-none ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
+                        className={`block font-semibold text-[15px] leading-none ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
                       >
                         {isDupe ? '↳' : formatDayOnly(e.entry_date)}
                       </button>
-                      {editingCell === `${cellKey}-note` && !isPreview ? (
+                      {editingCell === `${cellKey}-note` && !readOnly ? (
                         <div className="relative mt-1">
                           <input
                             value={cellValue}
@@ -293,10 +307,10 @@ export default function SalaryTableTypeB({
                         </div>
                       ) : (
                         <button
-                          onClick={() => !isPreview && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
+                          onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
                           className={`mt-1 block text-left text-[12px] leading-tight ${
                             isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-                          } ${!isPreview && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+                          } ${!readOnly && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
                         >
                           {e.is_day_off ? 'Nghỉ' : (e.note || rateDesc || '—')}
                         </button>
@@ -312,9 +326,9 @@ export default function SalaryTableTypeB({
                   <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
                     {/* RA (clock-out) */}
                     <button
-                      onClick={() => !isPreview && !e.is_day_off && showRowChips(cellKey)}
+                      onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
                       className={`w-[38px] text-right text-sm font-medium ${
-                        !isPreview && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
+                        !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                       }`}
                     >
                       {formatClockDecimal(e.clock_out)}
@@ -340,17 +354,19 @@ export default function SalaryTableTypeB({
               {/* ── Desktop row ────────────────────────────────────────────── */}
               <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
                 e.is_day_off ? 'opacity-40' : ''
-              } ${idx % 2 !== 0 ? 'bg-muted/20' : ''} ${
+              } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
                 isMoonDay ? 'moon-accent-row' : ''
-              } ${showWeekSep ? 'relative' : ''}`}>
+              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
                 {/* Date */}
                 <div className="pr-4 sm:pr-2">
                   <div className="flex items-start gap-1">
-                    {!isPreview && (
+                    {!readOnly && (
                       isDupe ? (
-                        <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
-                          <Trash2 size={10} />
-                        </button>
+                        canDelete ? (
+                          <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
+                            <Trash2 size={10} />
+                          </button>
+                        ) : null
                       ) : (
                         <button onClick={() => onAddDuplicateRow(e.entry_date)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
                           <Plus size={10} />
@@ -360,7 +376,7 @@ export default function SalaryTableTypeB({
                     <div className="min-w-0 flex-1">
                       <button
                         onClick={() => handleDateTap(e)}
-                        className={`block font-semibold text-sm ${getDayColor(e.entry_date)} ${!isPreview ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
+                        className={`block font-semibold text-sm ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
                       >
                         {isDupe ? '↳' : formatDateViet(e.entry_date)}
                       </button>
@@ -369,7 +385,7 @@ export default function SalaryTableTypeB({
                 </div>
 
                 {/* Note */}
-                {editingCell === `${cellKey}-note` && !isPreview && !e.is_day_off ? (
+                {editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off ? (
                   <div className="relative min-w-0">
                     <input
                       value={cellValue}
@@ -389,11 +405,11 @@ export default function SalaryTableTypeB({
                   </div>
                 ) : (
                   <button
-                    onClick={() => !isPreview && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
+                    onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
                     className={`text-left truncate text-sm transition-colors ${
                       isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
                     } ${
-                      !isPreview && !e.is_day_off ? 'hover:text-foreground' : 'cursor-default'
+                      !readOnly && !e.is_day_off ? 'hover:text-foreground' : 'cursor-default'
                     }`}
                   >
                     {e.is_day_off ? 'Nghỉ' : (e.note || rateDesc || '—')}
@@ -424,9 +440,9 @@ export default function SalaryTableTypeB({
                   <>
                     {/* Clock out */}
                     <button
-                      onClick={() => !isPreview && !e.is_day_off && showRowChips(cellKey)}
+                      onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
                       className={`justify-self-end text-right text-sm font-medium ${
-                        !isPreview && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
+                        !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                       }`}
                     >
                       {formatClockDecimal(e.clock_out)}
@@ -458,6 +474,23 @@ export default function SalaryTableTypeB({
                   <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
                 )}
               </div>
+
+              {/* Pending review strip (admin sees yellow + Accept button) */}
+              {isPending && (
+                <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-amber-500/5 border-b border-border/20 sm:px-1">
+                  <span className="flex items-center gap-1 text-[11px] text-amber-400">
+                    <Clock size={11} /> Chờ duyệt
+                  </span>
+                  {showAccept && (
+                    <button
+                      onClick={() => onAcceptEntry!(e.id!)}
+                      className="text-[11px] px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors flex items-center gap-1"
+                    >
+                      <Check size={12} /> Duyệt
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -489,7 +522,7 @@ export default function SalaryTableTypeB({
         onToggle={onAllowanceToggle}
         onUpdate={onAllowanceUpdate}
         onAddAllowance={onAddAllowance}
-        isAdmin={!isPreview}
+        isAdmin={mode === 'admin'}
       />
 
       {/* Total */}
