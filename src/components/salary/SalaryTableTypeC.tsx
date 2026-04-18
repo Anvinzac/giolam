@@ -483,7 +483,7 @@ export default function SalaryTableTypeC({
       } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
         isMoonDay ? 'moon-accent-row' : ''
       } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
-        <div className={`min-w-0 ${showClockChips ? 'w-[58px] flex-none pr-1' : 'flex-1 pr-1'} flex flex-col justify-between min-h-[38px]`}>
+        <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
               <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
@@ -515,7 +515,7 @@ export default function SalaryTableTypeC({
               </button>
             )}
           </div>
-          {showClockChips ? null : editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
+          {editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
             <input value={cellValue} onChange={ev => setCellValue(ev.target.value)}
               onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
               className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
@@ -528,24 +528,6 @@ export default function SalaryTableTypeC({
             </button>
           )}
         </div>
-        {showClockChips && separateClockColumns ? (
-          <div className="ml-1 flex min-w-0 flex-1 items-center gap-2">
-            {/* Clock-in stays visible as a static display while clock-out is
-                being picked via chips — the celestial clock is default-only. */}
-            <div className="flex w-[40px] min-h-[38px] items-center justify-center shrink-0">
-              <span className="w-full text-center font-medium text-emerald-400">
-                {formatClockDecimal(e.clock_in)}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              {renderClockOutChips('w-full pr-1')}
-            </div>
-          </div>
-        ) : showClockChips ? (
-          <div className="ml-1 flex min-w-0 flex-1 items-center">
-            {renderClockOutChips('w-full pr-1')}
-          </div>
-        ) : (
         <div className="ml-1 flex shrink-0 items-center gap-2 text-right">
           {separateClockColumns ? (
             <>
@@ -619,7 +601,6 @@ export default function SalaryTableTypeC({
           </span>
           <span className="w-[40px] text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
         </div>
-        )}
         {showWeekSep && (
           <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
         )}
@@ -669,12 +650,8 @@ export default function SalaryTableTypeC({
           </div>
         </div>
 
-        {/* Note / Quick Clock Chips */}
-        {showClockChips && !separateClockColumns ? (
-          <div className="col-span-6 hidden sm:flex items-center min-w-0">
-            {renderClockOutChips('w-full')}
-          </div>
-        ) : editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
+        {/* Note */}
+        {editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
           <input
             value={cellValue}
             onChange={ev => setCellValue(ev.target.value)}
@@ -720,15 +697,6 @@ export default function SalaryTableTypeC({
           </div>
         )}
 
-        {/* When chips active in separate mode, chips span the remaining 5 cells (clock-out + hours + wage + allowance + total) */}
-        {separateClockColumns && showClockChips && (
-          <div className="col-span-5 hidden sm:flex items-center min-w-0">
-            {renderClockOutChips('w-full')}
-          </div>
-        )}
-
-        {!showClockChips && (
-        <>
         {/* Clock-out (separate) OR combined clock column */}
         {separateClockColumns ? (
           <>
@@ -803,12 +771,15 @@ export default function SalaryTableTypeC({
         <div className="justify-self-end flex items-center h-full">
           <span className="text-right font-bold text-[14px] sm:text-[16px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
         </div>
-        </>
-        )}
         {showWeekSep && (
           <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
         )}
       </div>
+      {showClockChips && (
+        <div className="px-2 py-1.5 border-b border-border/20 bg-muted/10">
+          {renderClockOutChips('w-full')}
+        </div>
+      )}
       {isPending && onAcceptEntry && e.id && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/5 border-b border-border/20">
           <Clock size={11} className="text-amber-400 shrink-0" />

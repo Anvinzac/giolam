@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
 import SalaryTableTypeB from '@/components/salary/SalaryTableTypeB';
@@ -17,7 +17,7 @@ import {
   computeTotalSalaryTypeC,
 } from '@/lib/salaryCalculations';
 import { generateDateRange } from '@/lib/salaryPaging';
-import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/types/salary';
+import { EmployeeShiftType, SalaryBreakdown } from '@/types/salary';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 
@@ -28,6 +28,7 @@ interface Profile {
   base_salary: number;
   hourly_rate: number;
   default_clock_in: string | null;
+  default_clock_out: string | null;
 }
 
 interface Period {
@@ -36,6 +37,14 @@ interface Period {
   end_date: string;
   off_days: string[];
 }
+
+const isBlankEmployeeEntry = (entry: { is_day_off: boolean; clock_in: string | null; clock_out: string | null; total_hours: number | null; note: string | null; allowance_rate_override: number | null }) =>
+  !entry.is_day_off &&
+  !entry.clock_in &&
+  !entry.clock_out &&
+  entry.total_hours === null &&
+  !entry.note &&
+  entry.allowance_rate_override === null;
 
 export default function EmployeeSalaryEntry() {
   const navigate = useNavigate();
@@ -77,6 +86,16 @@ export default function EmployeeSalaryEntry() {
     return raw.length > 5 ? raw.slice(0, 5) : raw;
   }, [profile?.default_clock_in]);
 
+  const globalClockOut = useMemo(() => {
+    const raw = profile?.default_clock_out || '17:30';
+    return raw.length > 5 ? raw.slice(0, 5) : raw;
+  }, [profile?.default_clock_out]);
+
+  const employeeVisibleEntries = useMemo(
+    () => entries.filter(entry => !isBlankEmployeeEntry(entry)),
+    [entries]
+  );
+
   // Init: auth, profile, periods
   useEffect(() => {
     let mounted = true;
@@ -101,7 +120,7 @@ export default function EmployeeSalaryEntry() {
         // Profile
         const { data: prof, error: profErr } = await withTimeout(
           supabase.from('profiles')
-            .select('user_id, full_name, shift_type, base_salary, hourly_rate, default_clock_in')
+            .select('user_id, full_name, shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
             .eq('user_id', user.id)
             .single(),
           10000,
@@ -116,46 +135,44 @@ export default function EmployeeSalaryEntry() {
           base_salary: (prof as any).base_salary || 0,
           hourly_rate: (prof as any).hourly_rate || 25000,
           default_clock_in: (prof as any).default_clock_in || null,
+          default_clock_out: (prof as any).default_clock_out || null,
         });
 
-        // All periods
+        // Only show the period containing today. Employees may not edit past
+        // periods (even if unpublished) or browse to other periods.
+        const today = new Date().toISOString().split('T')[0];
         const { data: pAll } = await withTimeout(
           supabase.from('working_periods')
             .select('*')
-            .order('start_date', { ascending: false }),
+            .lte('start_date', today)
+            .gte('end_date', today)
+            .limit(1),
           10000,
           'Working period lookup timed out.'
         );
         if (!mounted) return;
-        const allPeriods = (pAll || []) as Period[];
+        const activePeriod = ((pAll || []) as Period[])[0];
 
-        // Filter out periods where this employee already has a published salary_record
-        const { data: myRecords } = await withTimeout(
-          supabase.from('salary_records')
-            .select('period_id, status')
-            .eq('user_id', user.id),
-          10000,
-          'Salary record lookup timed out.'
-        );
-        if (!mounted) return;
-        const publishedPeriodIds = new Set(
-          (myRecords || [])
-            .filter(r => (r as any).status === 'published')
-            .map(r => (r as any).period_id)
-        );
-        const editablePeriods = allPeriods.filter(p => !publishedPeriodIds.has(p.id));
-        setPeriods(editablePeriods);
-
-        // Pick the one containing today, else earliest upcoming, else newest.
-        const today = new Date().toISOString().split('T')[0];
-        let chosen: Period | undefined = editablePeriods.find(
-          p => p.start_date <= today && p.end_date >= today
-        );
-        if (!chosen) {
-          chosen = editablePeriods
-            .slice()
-            .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
+        // If the active period is already published for this employee, there's
+        // nothing editable.
+        let chosen: Period | undefined = activePeriod;
+        if (chosen) {
+          const { data: myRec } = await withTimeout(
+            supabase.from('salary_records')
+              .select('status')
+              .eq('user_id', user.id)
+              .eq('period_id', chosen.id)
+              .maybeSingle(),
+            10000,
+            'Salary record lookup timed out.'
+          );
+          if (!mounted) return;
+          if ((myRec as any)?.status === 'published') {
+            chosen = undefined;
+          }
         }
+        setPeriods(chosen ? [chosen] : []);
+
         if (chosen) {
           setSelectedPeriodId(chosen.id);
           // Ensure a draft salary_records row exists so admin can see this
@@ -187,21 +204,21 @@ export default function EmployeeSalaryEntry() {
 
   // Compute breakdown (for auto-saved draft)
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
-    if (!profile || entries.length === 0) return null;
+    if (!profile || employeeVisibleEntries.length === 0) return null;
     switch (profile.shift_type) {
       case 'basic':
-        return computeTotalSalaryTypeA(entries, allowances, profile.base_salary, rates);
+        return computeTotalSalaryTypeA(employeeVisibleEntries, allowances, profile.base_salary, profile.hourly_rate, rates);
       case 'overtime':
         return computeTotalSalaryTypeB(
-          entries, allowances, profile.base_salary,
+          employeeVisibleEntries, allowances, profile.base_salary,
           profile.hourly_rate, rates, globalClockIn
         );
       case 'notice_only':
-        return computeTotalSalaryTypeC(entries, allowances, profile.hourly_rate, rates);
+        return computeTotalSalaryTypeC(employeeVisibleEntries, allowances, profile.hourly_rate, rates);
       default:
         return null;
     }
-  }, [entries, allowances, profile, rates, globalClockIn]);
+  }, [employeeVisibleEntries, allowances, profile, rates, globalClockIn]);
 
   useEffect(() => {
     if (breakdown && profile && !isPublished && selectedPeriodId) {
@@ -213,6 +230,39 @@ export default function EmployeeSalaryEntry() {
   const noop = useCallback(() => {
     toast.info('Chỉ quản trị viên có thể chỉnh mục này.');
   }, []);
+
+  const handleDefaultClockInChange = useCallback(async (time: string) => {
+    if (!profile) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ default_clock_in: time } as any)
+      .eq('user_id', profile.user_id);
+    if (error) {
+      console.error('Failed to update default_clock_in:', error);
+      toast.error(error.message || 'Lỗi lưu giờ vào mặc định');
+      return;
+    }
+    setProfile(prev => prev ? { ...prev, default_clock_in: time } : prev);
+  }, [profile]);
+
+  const handleDefaultClockOutChange = useCallback(async (time: string) => {
+    if (!profile) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ default_clock_out: time } as any)
+      .eq('user_id', profile.user_id);
+    if (error) {
+      console.error('Failed to update default_clock_out:', error);
+      toast.error(error.message || 'Lỗi lưu giờ ra mặc định');
+      return;
+    }
+    setProfile(prev => prev ? { ...prev, default_clock_out: time } : prev);
+  }, [profile]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   if (loading || bootError) {
     return <AppBootState error={bootError} onRetry={() => setRetryKey(k => k + 1)} />;
@@ -231,9 +281,17 @@ export default function EmployeeSalaryEntry() {
           >
             <ArrowLeft size={20} />
           </motion.button>
-          <h1 className="font-display text-xl font-bold text-gradient-gold">
+          <h1 className="font-display text-xl font-bold text-gradient-gold flex-1 truncate">
             Chấm công của tôi
           </h1>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={handleLogout}
+            aria-label="Đăng xuất"
+            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <LogOut size={18} />
+          </motion.button>
         </header>
         <div className="px-4">
           <div className="glass-card p-8 text-center space-y-2">
@@ -252,18 +310,10 @@ export default function EmployeeSalaryEntry() {
     );
   }
 
-  const typeBadgeColor = (t: EmployeeShiftType) => {
-    switch (t) {
-      case 'basic': return 'bg-amber-500/20 text-amber-400';
-      case 'overtime': return 'bg-cyan-500/20 text-cyan-400';
-      case 'notice_only': return 'bg-purple-500/20 text-purple-400';
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background pb-8">
       <header className="px-6 pt-12 pb-4">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate('/')}
@@ -271,14 +321,11 @@ export default function EmployeeSalaryEntry() {
           >
             <ArrowLeft size={20} />
           </motion.button>
-          <div className="flex-1">
-            <h1 className="font-display text-xl font-bold text-gradient-gold">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-xl font-bold text-gradient-gold truncate">
               Chấm công của tôi
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeBadgeColor(profile.shift_type)}`}>
-                {EMPLOYEE_TYPE_LABELS[profile.shift_type]}
-              </span>
               {profile.default_clock_in && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                   <ClockIcon size={11} /> Giờ vào: {globalClockIn}
@@ -286,31 +333,25 @@ export default function EmployeeSalaryEntry() {
               )}
             </div>
           </div>
-        </div>
-
-        {/* Period selector */}
-        {periods.length > 1 && (
-          <select
-            value={selectedPeriodId || ''}
-            onChange={e => setSelectedPeriodId(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-muted border border-border text-sm text-foreground"
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={handleLogout}
+            aria-label="Đăng xuất"
+            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-destructive transition-colors"
           >
-            {periods.map(p => (
-              <option key={p.id} value={p.id}>
-                {new Date(p.start_date).toLocaleDateString('vi-VN')} – {new Date(p.end_date).toLocaleDateString('vi-VN')}
-              </option>
-            ))}
-          </select>
-        )}
+            <LogOut size={18} />
+          </motion.button>
+        </div>
       </header>
 
       <div className="px-4 space-y-4">
         {selectedPeriod && profile.shift_type === 'basic' && (
           <SalaryTableTypeA
-            entries={entries}
+            entries={employeeVisibleEntries}
             rates={rates}
             allowances={allowances}
             baseSalary={profile.base_salary}
+            hourlyRate={profile.hourly_rate}
             onEntryUpdate={updateEntry}
             onAddRowAtDate={addRowAtDate}
             onAllowanceToggle={toggleAllowance}
@@ -326,7 +367,7 @@ export default function EmployeeSalaryEntry() {
 
         {selectedPeriod && profile.shift_type === 'overtime' && (
           <SalaryTableTypeB
-            entries={entries}
+            entries={employeeVisibleEntries}
             rates={rates}
             allowances={allowances}
             baseSalary={profile.base_salary}
@@ -350,7 +391,7 @@ export default function EmployeeSalaryEntry() {
 
         {selectedPeriod && profile.shift_type === 'notice_only' && (
           <SalaryTableTypeC
-            entries={entries}
+            entries={employeeVisibleEntries}
             rates={rates}
             allowances={allowances}
             offDays={selectedPeriod.off_days || []}
@@ -359,6 +400,10 @@ export default function EmployeeSalaryEntry() {
             periodEnd={selectedPeriod.end_date}
             customStartDate={null}
             customEndDate={null}
+            defaultClockIn={globalClockIn}
+            defaultClockOut={globalClockOut}
+            onDefaultClockInChange={handleDefaultClockInChange}
+            onDefaultClockOutChange={handleDefaultClockOutChange}
             onEntryUpdate={updateEntry}
             onEntryDateChange={moveEntryToDate}
             onAddRowAtDate={addRowAtDate}

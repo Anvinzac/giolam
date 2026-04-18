@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy } from 'lucide-react';
-import { SalaryBreakdown } from '@/types/salary';
+import { AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { formatVND } from './TotalSalaryDisplay';
 import { toast } from 'sonner';
 
@@ -8,10 +8,15 @@ interface SalaryBreakdownPopupProps {
   isOpen: boolean;
   onClose: () => void;
   breakdown: SalaryBreakdown | null;
+  visibleAllowanceKeys?: AllowanceKey[] | null;
 }
 
-export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown }: SalaryBreakdownPopupProps) {
+export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown, visibleAllowanceKeys }: SalaryBreakdownPopupProps) {
   if (!breakdown) return null;
+
+  const visibleAllowances = breakdown.allowances
+    .filter(a => a.enabled)
+    .filter(a => !visibleAllowanceKeys || visibleAllowanceKeys.includes(a.key));
 
   const handleCopy = () => {
     const lines = [
@@ -21,8 +26,8 @@ export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown }: Sal
     if (breakdown.total_deductions > 0) {
       lines.push(`Khấu trừ nghỉ: -${formatVND(breakdown.total_deductions)}`);
     }
-    for (const a of breakdown.allowances) {
-      if (a.enabled) lines.push(`${a.label}: ${formatVND(a.amount)}`);
+    for (const a of visibleAllowances) {
+      lines.push(`${a.label}: ${formatVND(a.amount)}`);
     }
     lines.push(`---`);
     lines.push(`TỔNG CỘNG: ${formatVND(breakdown.total)}`);
@@ -64,7 +69,7 @@ export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown }: Sal
                   <Row label="Khấu trừ nghỉ" amount={-breakdown.total_deductions} negative />
                 )}
 
-                {breakdown.allowances.filter(a => a.enabled).map(a => (
+                {visibleAllowances.map(a => (
                   <Row key={a.key} label={a.label} amount={a.amount} />
                 ))}
 

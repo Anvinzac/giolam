@@ -30,6 +30,7 @@ interface Employee {
   base_salary: number;
   hourly_rate: number;
   default_clock_in: string | null;
+  default_clock_out: string | null;
   department_id: string | null;
   department_name?: string;
 }
@@ -450,7 +451,7 @@ export default function SalaryAdmin() {
         // select errors, retry with a minimal column set so the employee list
         // still loads instead of going empty.
         let profilesRes: any = await withTimeout(
-          supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in'),
+          supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in, default_clock_out'),
           10000,
           'Profile lookup timed out.',
         );
@@ -458,7 +459,7 @@ export default function SalaryAdmin() {
           console.warn('Profile lookup (with salary columns) failed, retrying:', profilesRes.error);
           setSalaryColumnsAvailable(false);
           profilesRes = await withTimeout(
-            supabase.from('profiles').select('user_id, username, full_name, shift_type, department_id, default_clock_in'),
+            supabase.from('profiles').select('user_id, username, full_name, shift_type, department_id, default_clock_in, default_clock_out'),
             10000,
             'Profile lookup timed out.',
           );
@@ -483,6 +484,7 @@ export default function SalaryAdmin() {
             base_salary: (p as any).base_salary || 0,
             hourly_rate: (p as any).hourly_rate || 25000,
             default_clock_in: (p as any).default_clock_in || null,
+            default_clock_out: (p as any).default_clock_out || null,
             department_id: p.department_id || null,
             department_name: p.department_id ? deptMap.get(p.department_id) : undefined,
           }));
@@ -578,6 +580,40 @@ export default function SalaryAdmin() {
       }
     }
   }, [selectedEmployee, entries, updateEntry]);
+
+  const handleTypeCDefaultClockInChange = useCallback(async (time: string) => {
+    if (!selectedEmployee) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ default_clock_in: time } as any)
+      .eq('user_id', selectedEmployee.user_id);
+    if (error) {
+      console.error('Failed to update default_clock_in:', error);
+      toast.error(error.message || 'Lỗi lưu giờ vào mặc định');
+      return;
+    }
+    setSelectedEmployee(prev => prev ? { ...prev, default_clock_in: time } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, default_clock_in: time } : e
+    ));
+  }, [selectedEmployee]);
+
+  const handleTypeCDefaultClockOutChange = useCallback(async (time: string) => {
+    if (!selectedEmployee) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ default_clock_out: time } as any)
+      .eq('user_id', selectedEmployee.user_id);
+    if (error) {
+      console.error('Failed to update default_clock_out:', error);
+      toast.error(error.message || 'Lỗi lưu giờ ra mặc định');
+      return;
+    }
+    setSelectedEmployee(prev => prev ? { ...prev, default_clock_out: time } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, default_clock_out: time } : e
+    ));
+  }, [selectedEmployee]);
 
   const handleCSVImport = useCallback(async (rows: ParsedRow[]) => {
     if (!selectedEmployee || !selectedPeriodId) return;
@@ -890,6 +926,10 @@ export default function SalaryAdmin() {
                 periodEnd={selectedPeriod.end_date}
                 customStartDate={null}
                 customEndDate={null}
+                defaultClockIn={selectedEmployee.default_clock_in}
+                defaultClockOut={selectedEmployee.default_clock_out}
+                onDefaultClockInChange={handleTypeCDefaultClockInChange}
+                onDefaultClockOutChange={handleTypeCDefaultClockOutChange}
                 onEntryUpdate={updateEntry}
                 onEntryDateChange={moveEntryToDate}
                 onAddRowAtDate={addRowAtDate}

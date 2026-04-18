@@ -3,9 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { timeToString } from "@/lib/lunarUtils";
 
 interface AnalogClockProps {
-  onTimeSelect: (time: string) => void;
+  onTimeSelect?: (time: string) => void;
+  onTimeRangeSelect?: (times: { clockIn: string; clockOut: string }) => void;
   onClose: () => void;
   label: string;
+  mode?: 'single' | 'range';
+  initialClockIn?: string | null;
+  initialClockOut?: string | null;
+  initialActiveField?: 'in' | 'out';
 }
 
 const MINUTES = [0, 30];
@@ -47,14 +52,84 @@ function arcSegmentPath(cx: number, cy: number, innerR: number, outerR: number, 
   ].join(' ');
 }
 
-export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogClockProps) {
-  const [selectedHour, setSelectedHour] = useState<number | null>(null);
-  const [selectedMinute, setSelectedMinute] = useState<number>(0);
+function normalizeTime(time: string | null | undefined): string | null {
+  if (!time) return null;
+  return time.length > 5 ? time.slice(0, 5) : time;
+}
+
+function parseTime(time: string | null | undefined): { hour: number; minute: number } | null {
+  const normalized = normalizeTime(time);
+  if (!normalized) return null;
+  const [hour, minute] = normalized.split(':').map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return { hour, minute };
+}
+
+export default function AnalogClock({
+  onTimeSelect,
+  onTimeRangeSelect,
+  onClose,
+  label,
+  mode = 'single',
+  initialClockIn,
+  initialClockOut,
+  initialActiveField = 'in',
+}: AnalogClockProps) {
+  const isRangeMode = mode === 'range';
+  const initialActiveTime = initialActiveField === 'in' ? initialClockIn : initialClockOut;
+  const parsedInitialActiveTime = parseTime(initialActiveTime);
+  const [selectedHour, setSelectedHour] = useState<number | null>(parsedInitialActiveTime?.hour ?? null);
+  const [selectedMinute, setSelectedMinute] = useState<number>(parsedInitialActiveTime?.minute ?? 0);
+  const [activeRangeField, setActiveRangeField] = useState<'in' | 'out'>(initialActiveField);
+  const [rangeClockIn, setRangeClockIn] = useState<string | null>(normalizeTime(initialClockIn));
+  const [rangeClockOut, setRangeClockOut] = useState<string | null>(normalizeTime(initialClockOut));
 
   const handleConfirm = () => {
     if (selectedHour === null) return;
-    onTimeSelect(timeToString(selectedHour, selectedMinute));
+    onTimeSelect?.(timeToString(selectedHour, selectedMinute));
     // Don't call onClose here - let the parent handle closing/chaining
+  };
+
+  const showRangeField = (field: 'in' | 'out') => {
+    const nextTime = field === 'in' ? rangeClockIn : rangeClockOut;
+    const parsed = parseTime(nextTime);
+    setActiveRangeField(field);
+    setSelectedHour(parsed?.hour ?? null);
+    if (parsed) setSelectedMinute(parsed.minute);
+  };
+
+  const recordRangeTime = (hour: number, minute: number) => {
+    const nextTime = timeToString(hour, minute);
+    if (activeRangeField === 'in') {
+      setRangeClockIn(nextTime);
+      const parsedClockOut = parseTime(rangeClockOut);
+      setActiveRangeField('out');
+      setSelectedHour(parsedClockOut?.hour ?? null);
+      if (parsedClockOut) {
+        setSelectedMinute(parsedClockOut.minute);
+      }
+    } else {
+      setRangeClockOut(nextTime);
+    }
+  };
+
+  const handleHourSelect = (hour: number) => {
+    setSelectedHour(hour);
+    if (isRangeMode) {
+      recordRangeTime(hour, selectedMinute);
+    }
+  };
+
+  const handleMinuteSelect = (minute: number) => {
+    setSelectedMinute(minute);
+    if (isRangeMode && selectedHour !== null) {
+      recordRangeTime(selectedHour, minute);
+    }
+  };
+
+  const handleRangeDone = () => {
+    if (!rangeClockIn || !rangeClockOut) return;
+    onTimeRangeSelect?.({ clockIn: rangeClockIn, clockOut: rangeClockOut });
   };
 
   const size = 320;
@@ -125,7 +200,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               return (
                 <g
                   key={`pm-${pos}`}
-                  onClick={() => active && setSelectedHour(h24)}
+                  onClick={() => active && handleHourSelect(h24)}
                   style={{ cursor: active ? 'pointer' : 'default' }}
                 >
                   <path
@@ -174,7 +249,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
               return (
                 <g
                   key={`am-${pos}`}
-                  onClick={() => active && setSelectedHour(h24)}
+                  onClick={() => active && handleHourSelect(h24)}
                   style={{ cursor: active ? 'pointer' : 'default' }}
                 >
                   <path
@@ -274,7 +349,7 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
             {MINUTES.map(m => (
               <button
                 key={m}
-                onClick={() => setSelectedMinute(m)}
+                onClick={() => handleMinuteSelect(m)}
                 className={`px-5 py-2 rounded-xl text-sm font-medium transition-colors ${
                   selectedMinute === m ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
                 }`}
@@ -284,14 +359,49 @@ export default function AnalogClock({ onTimeSelect, onClose, label }: AnalogCloc
             ))}
           </div>
 
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleConfirm}
-            disabled={selectedHour === null}
-            className="w-full py-3 rounded-xl font-display font-semibold text-sm gradient-gold text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Xác nhận
-          </motion.button>
+          {isRangeMode ? (
+            <div className="grid grid-cols-[1fr_1fr_0.9fr] gap-2">
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => showRangeField('in')}
+                className={`py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
+                  activeRangeField === 'in'
+                    ? 'gradient-gold text-primary-foreground'
+                    : 'bg-muted text-emerald-400'
+                }`}
+              >
+                Vào {rangeClockIn || '--:--'}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => showRangeField('out')}
+                className={`py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
+                  activeRangeField === 'out'
+                    ? 'gradient-gold text-primary-foreground'
+                    : 'bg-muted text-accent'
+                }`}
+              >
+                Ra {rangeClockOut || '--:--'}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={handleRangeDone}
+                disabled={!rangeClockIn || !rangeClockOut}
+                className="py-3 rounded-xl font-display font-semibold text-xs gradient-gold text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Xong
+              </motion.button>
+            </div>
+          ) : (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleConfirm}
+              disabled={selectedHour === null}
+              className="w-full py-3 rounded-xl font-display font-semibold text-sm gradient-gold text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Xác nhận
+            </motion.button>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>

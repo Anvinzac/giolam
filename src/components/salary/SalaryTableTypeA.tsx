@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, getRateForDate, formatDateViet, VIET_DAYS } from '@/lib/salaryCalculations';
+import { roundToThousand, calcDailyBase, getRateForDate, formatDateViet, VIET_DAYS, formatVND } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
 import OffPercentSnapper from './OffPercentSnapper';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -76,6 +76,16 @@ export default function SalaryTableTypeA({
   }, [visibleEntries, dailyBase, rates]);
 
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
+
+  const guiXeSummary = useMemo(() => {
+    const fromBreakdown = breakdown?.allowances?.find(a => a.key === 'gui_xe');
+    const offDaysCount = visibleEntries.reduce((sum, e) => sum + (e.is_day_off ? 1 : 0), 0);
+    const computedAmount = (28 - offDaysCount) * 10000;
+    return {
+      amount: fromBreakdown?.amount ?? computedAmount,
+      enabled: fromBreakdown?.enabled ?? (allowances.find(a => a.allowance_key === 'gui_xe')?.is_enabled ?? false),
+    };
+  }, [breakdown, visibleEntries, allowances]);
 
   const startEditRow = (e: SalaryEntry) => {
     setEditingRow(rowKey(e));
@@ -347,13 +357,38 @@ export default function SalaryTableTypeA({
       </div>
 
       {/* Allowances */}
-      <EmployeeAllowanceEditor
-        allowances={allowances}
-        onToggle={onAllowanceToggle}
-        onUpdate={onAllowanceUpdate}
-        onAddAllowance={onAddAllowance}
-        isAdmin={mode === 'admin'}
-      />
+      {mode === 'employee' ? (
+        <div className="glass-card p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Gửi xe (tự động)
+            </h4>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+              guiXeSummary.enabled
+                ? 'text-success bg-success/10 border-success/30'
+                : 'text-muted-foreground bg-muted/30 border-muted-foreground/20'
+            }`}>
+              {guiXeSummary.enabled ? 'Đang áp dụng' : 'Đang tắt'}
+            </span>
+          </div>
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-[11px] text-muted-foreground">
+              Tính theo công thức cố định (cập nhật theo ngày nghỉ).
+            </p>
+            <div className="text-sm font-semibold text-foreground">
+              {formatVND(guiXeSummary.amount)}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <EmployeeAllowanceEditor
+          allowances={allowances}
+          onToggle={onAllowanceToggle}
+          onUpdate={onAllowanceUpdate}
+          onAddAllowance={onAddAllowance}
+          isAdmin={mode === 'admin'}
+        />
+      )}
 
       {/* Total */}
       <TotalSalaryDisplay
@@ -365,6 +400,7 @@ export default function SalaryTableTypeA({
         isOpen={showBreakdown}
         onClose={() => setShowBreakdown(false)}
         breakdown={breakdown}
+        visibleAllowanceKeys={mode === 'employee' ? ['gui_xe'] : null}
       />
     </div>
   );
