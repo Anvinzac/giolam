@@ -528,7 +528,20 @@ export default function SalaryTableTypeC({
             </button>
           )}
         </div>
-        {showClockChips ? (
+        {showClockChips && separateClockColumns ? (
+          <div className="ml-1 flex min-w-0 flex-1 items-center gap-2">
+            {/* Clock-in stays visible as a static display while clock-out is
+                being picked via chips — the celestial clock is default-only. */}
+            <div className="flex w-[40px] min-h-[38px] items-center justify-center shrink-0">
+              <span className="w-full text-center font-medium text-emerald-400">
+                {formatClockDecimal(e.clock_in)}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              {renderClockOutChips('w-full pr-1')}
+            </div>
+          </div>
+        ) : showClockChips ? (
           <div className="ml-1 flex min-w-0 flex-1 items-center">
             {renderClockOutChips('w-full pr-1')}
           </div>
@@ -545,7 +558,7 @@ export default function SalaryTableTypeC({
                     Chọn
                   </button>
                 ) : (
-                  <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                  <button type="button"
                     className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
                     {formatClockDecimal(e.clock_in)}
                   </button>
@@ -577,7 +590,7 @@ export default function SalaryTableTypeC({
                   Chọn
                 </button>
               ) : (
-                <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                <button type="button"
                   className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
                   {formatClockDecimal(e.clock_in)}
                 </button>
@@ -657,8 +670,8 @@ export default function SalaryTableTypeC({
         </div>
 
         {/* Note / Quick Clock Chips */}
-        {showClockChips ? (
-          <div className={`${separateClockColumns ? 'col-span-7' : 'col-span-6'} hidden sm:flex items-center min-w-0`}>
+        {showClockChips && !separateClockColumns ? (
+          <div className="col-span-6 hidden sm:flex items-center min-w-0">
             {renderClockOutChips('w-full')}
           </div>
         ) : editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
@@ -688,27 +701,37 @@ export default function SalaryTableTypeC({
           </button>
         )}
 
+        {/* Clock-in always visible in separate mode (even while chips are active) */}
+        {separateClockColumns && (
+          <div className="flex items-center justify-center h-full">
+            {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
+              <button
+                onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
+              >
+                Chọn giờ
+              </button>
+            ) : (
+              <button type="button"
+                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                {formatClockDecimal(e.clock_in)}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* When chips active in separate mode, chips span the remaining 5 cells (clock-out + hours + wage + allowance + total) */}
+        {separateClockColumns && showClockChips && (
+          <div className="col-span-5 hidden sm:flex items-center min-w-0">
+            {renderClockOutChips('w-full')}
+          </div>
+        )}
+
         {!showClockChips && (
         <>
-        {/* Combined clock column */}
+        {/* Clock-out (separate) OR combined clock column */}
         {separateClockColumns ? (
           <>
-            {/* Clock In */}
-            <div className="flex items-center justify-center h-full">
-              {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
-                <button
-                  onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
-                  className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
-                >
-                  Chọn giờ
-                </button>
-              ) : (
-                <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
-                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
-                  {formatClockDecimal(e.clock_in)}
-                </button>
-              )}
-            </div>
             {/* Clock Out */}
             <div className="flex items-center justify-center h-full">
               {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
@@ -736,7 +759,7 @@ export default function SalaryTableTypeC({
                 Chọn giờ
               </button>
             ) : (
-              <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+              <button type="button"
                 className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
