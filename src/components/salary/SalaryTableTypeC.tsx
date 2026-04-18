@@ -12,13 +12,13 @@ import AnalogClock from '../AnalogClock';
 import DateInput from './DateInput';
 
 // Offsets (minutes) from the row's current clock-out (or default) used to
-// build the quick-pick chip row. The 4 leftmost + 4 rightmost are hidden
+// build the quick-pick chip row. The 5 leftmost + 5 rightmost are hidden
 // behind a fade mask on each side so the user discovers them by scrolling;
-// the middle 5 are the familiar defaults and get auto-aligned to the left
+// the middle 6 are the familiar defaults and get auto-aligned to the left
 // edge when a row activates.
-const CHIP_OFFSETS_LEFT = [-180, -150, -120, -90];
-const CHIP_OFFSETS_CORE = [-60, -30, 0, 30, 60];
-const CHIP_OFFSETS_RIGHT = [90, 120, 150, 180];
+const CHIP_OFFSETS_LEFT = [-240, -210, -180, -150, -120];
+const CHIP_OFFSETS_CORE = [-90, -60, -30, 0, 30, 60];
+const CHIP_OFFSETS_RIGHT = [90, 120, 150, 180, 210];
 const CHIP_OFFSETS_ALL = [
   ...CHIP_OFFSETS_LEFT,
   ...CHIP_OFFSETS_CORE,
@@ -1013,7 +1013,7 @@ export default function SalaryTableTypeC({
     }));
 
     return (
-      <div className="w-full overflow-x-auto pb-2">
+      <div className="w-full sm:overflow-x-auto pb-2">
         <div className="w-full min-w-0">
           {addingDate && !readOnly && (
             <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
@@ -1068,7 +1068,7 @@ export default function SalaryTableTypeC({
       .map(row => row.entry);
 
     return (
-      <div className="w-full overflow-x-auto pb-2">
+      <div className="w-full sm:overflow-x-auto pb-2">
         <div className="w-full min-w-0">
           {addingDate && !readOnly && (
             <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
@@ -1281,7 +1281,10 @@ export default function SalaryTableTypeC({
             setEditingCell(null);
             setPickingClock(null);
           }}
-          onClose={() => setPickingClock(null)}
+          onClose={() => {
+            setPickingClock(null);
+            setEditingCell(null);
+          }}
         />
       )}
     </div>
