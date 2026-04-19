@@ -11,11 +11,17 @@ import SalaryBreakdownPopup from './SalaryBreakdownPopup';
 import AnalogClock from '../AnalogClock';
 import DateInput from './DateInput';
 
-// Offsets (minutes) from the row's current clock-out (or default) used to
-// build the quick-pick chip row. The 5 leftmost + 5 rightmost are hidden
-// behind a fade mask on each side so the user discovers them by scrolling;
-// the middle 6 are the familiar defaults and get auto-aligned to the left
-// edge when a row activates.
+// Clock-in offsets: earlier times (negative) and later times (positive) from default clock-in
+const CHIP_OFFSETS_CLOCK_IN_LEFT = [-60, -45, -30, -15];
+const CHIP_OFFSETS_CLOCK_IN_CORE = [0, 15, 30, 45, 60, 90];
+const CHIP_OFFSETS_CLOCK_IN_RIGHT = [120, 150, 180, 210, 240];
+const CHIP_OFFSETS_CLOCK_IN_ALL = [
+  ...CHIP_OFFSETS_CLOCK_IN_LEFT,
+  ...CHIP_OFFSETS_CLOCK_IN_CORE,
+  ...CHIP_OFFSETS_CLOCK_IN_RIGHT,
+];
+
+// Clock-out offsets: relative to default clock-out time
 const CHIP_OFFSETS_LEFT = [-240, -210, -180, -150, -120];
 const CHIP_OFFSETS_CORE = [-90, -60, -30, 0, 30, 60];
 const CHIP_OFFSETS_RIGHT = [90, 120, 150, 180, 210];
@@ -24,6 +30,7 @@ const CHIP_OFFSETS_ALL = [
   ...CHIP_OFFSETS_CORE,
   ...CHIP_OFFSETS_RIGHT,
 ];
+const CHIP_CORE_START_INDEX_CLOCK_IN = CHIP_OFFSETS_CLOCK_IN_LEFT.length;
 const CHIP_CORE_START_INDEX = CHIP_OFFSETS_LEFT.length;
 const CHIP_FADE_MASK =
   'linear-gradient(to right, transparent 0, black 28px, black calc(100% - 28px), transparent 100%)';
@@ -261,9 +268,10 @@ export default function SalaryTableTypeC({
   };
 
   const showRowChips = (rowKey: string, baseTime: string, clockType: 'in' | 'out') => {
+    // Always update the base time for this row when showing chips
+    setChipBaseByRowKey(prev => ({ ...prev, [rowKey]: baseTime }));
     setChipRowKey(rowKey);
     setChipClockType(clockType);
-    ensureChipBase(rowKey, baseTime);
     startChipAutoHide(rowKey);
   };
 
@@ -420,24 +428,51 @@ export default function SalaryTableTypeC({
     const showWeekSep = isSunday && nextEntry !== undefined;
     const toggleClockInChips = () => {
       if (!canEditClock) return;
+      // If this row's chips are showing and it's already clock-in, hide them
       if (chipRowKey === cellKey && chipClockType === 'in') {
         setChipRowKey(null);
         return;
       }
+      // Otherwise show clock-in chips (even if clock-out chips were showing)
       showRowChips(cellKey, e.clock_in || defaultClockIn, 'in');
     };
     const toggleClockOutChips = () => {
       if (!canEditClock) return;
+      // If this row's chips are showing and it's already clock-out, hide them
       if (chipRowKey === cellKey && chipClockType === 'out') {
         setChipRowKey(null);
         return;
       }
+      // Otherwise show clock-out chips (even if clock-in chips were showing)
       showRowChips(cellKey, e.clock_out || defaultClockOut, 'out');
     };
     const renderClockChips = (className = '') => {
       const isClockIn = chipClockType === 'in';
       const base = chipBaseByRowKey[cellKey] || (isClockIn ? (e.clock_in || defaultClockIn) : (e.clock_out || defaultClockOut));
-      const candidates = CHIP_OFFSETS_ALL.map((o) => addMinutes(base, o));
+      const offsets = isClockIn ? CHIP_OFFSETS_CLOCK_IN_ALL : CHIP_OFFSETS_ALL;
+      const coreStartIndex = isClockIn ? CHIP_CORE_START_INDEX_CLOCK_IN : CHIP_CORE_START_INDEX;
+      const allCandidates = offsets.map((o) => addMinutes(base, o));
+      
+      // Filter candidates based on constraints
+      const candidates = allCandidates.filter((timeStr) => {
+        const [h, m] = timeStr.split(':').map(Number);
+        const totalMinutes = h * 60 + m;
+        
+        // Only allow times that are multiples of 30 minutes (0.5 hour increments)
+        if (m !== 0 && m !== 30) return false;
+        
+        if (isClockIn) {
+          // Clock-in: must be >= 7:30 AM (450 min) and <= 8:00 PM (1200 min)
+          return totalMinutes >= 450 && totalMinutes <= 1200;
+        } else {
+          // Clock-out: must be >= clock-in time and <= 11:00 PM (1380 min)
+          const clockInTime = e.clock_in || defaultClockIn;
+          const [inH, inM] = clockInTime.split(':').map(Number);
+          const clockInMinutes = inH * 60 + inM;
+          return totalMinutes >= clockInMinutes && totalMinutes <= 1380;
+        }
+      });
+      
       const selected = isClockIn ? (e.clock_in || base) : (e.clock_out || base);
       const otherClock = isClockIn ? (e.clock_out || defaultClockOut) : (e.clock_in || defaultClockIn);
 
@@ -453,11 +488,12 @@ export default function SalaryTableTypeC({
           >
             {candidates.map((t, i) => {
               const isSelected = selected === t;
+              const originalIndex = allCandidates.indexOf(t);
               return (
                 <motion.button
                   key={`${t}-${i}`}
                   type="button"
-                  data-chip-core-start={i === CHIP_CORE_START_INDEX ? 'true' : undefined}
+                  data-chip-core-start={originalIndex === coreStartIndex ? 'true' : undefined}
                   initial={{ opacity: 0, scale: 0.85 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 28 }}
@@ -496,6 +532,13 @@ export default function SalaryTableTypeC({
 
     return (
       <div key={cellKey}>
+      {showClockChips ? (
+        <div className={`py-2 border-b border-border/20 w-full sm:hidden ${
+          idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''
+        } ${isMoonDay ? 'moon-accent-row' : ''} ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}>
+          {renderClockChips('w-full')}
+        </div>
+      ) : (
       <div className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
@@ -607,6 +650,14 @@ export default function SalaryTableTypeC({
           <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
         )}
       </div>
+      )}
+      {showClockChips ? (
+        <div className={`hidden sm:block py-2 border-b border-border/20 w-full ${
+          idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''
+        } ${isMoonDay ? 'moon-accent-row' : ''} ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}>
+          {renderClockChips('w-full')}
+        </div>
+      ) : (
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
         e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
       } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
@@ -779,10 +830,6 @@ export default function SalaryTableTypeC({
           <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
         )}
       </div>
-      {showClockChips && (
-        <div className="px-2 py-1.5 border-b border-border/20 bg-muted/10">
-          {renderClockChips('w-full')}
-        </div>
       )}
       {isPending && onAcceptEntry && e.id && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/5 border-b border-border/20">
