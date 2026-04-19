@@ -77,9 +77,9 @@ export default function SalaryTableTypeC({
   const OFF_DAY_NOTE = 'Quán nghỉ';
   const [compact, setCompact] = useState(false);
   const [separateClockColumns, setSeparateClockColumns] = useState(true);
-  // When we separate clock columns, we temporarily swap the "note" column into a quick clock-in picker
-  // for a single active row (so the whole table doesn't explode into chips at once).
+  // Track which clock field is showing chips: 'in' or 'out'
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
+  const [chipClockType, setChipClockType] = useState<'in' | 'out'>('out');
   const [chipBaseByRowKey, setChipBaseByRowKey] = useState<Record<string, string>>({});
   const chipAutoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tableGridClass = separateClockColumns 
@@ -260,8 +260,9 @@ export default function SalaryTableTypeC({
     }, 3000);
   };
 
-  const showRowChips = (rowKey: string, baseTime: string) => {
+  const showRowChips = (rowKey: string, baseTime: string, clockType: 'in' | 'out') => {
     setChipRowKey(rowKey);
+    setChipClockType(clockType);
     ensureChipBase(rowKey, baseTime);
     startChipAutoHide(rowKey);
   };
@@ -417,19 +418,28 @@ export default function SalaryTableTypeC({
     const entries = allEntries || [];
     const nextEntry = idx !== undefined ? entries[idx + 1] : undefined;
     const showWeekSep = isSunday && nextEntry !== undefined;
-    const toggleClockOutChips = () => {
+    const toggleClockInChips = () => {
       if (!canEditClock) return;
-      if (chipRowKey === cellKey) {
+      if (chipRowKey === cellKey && chipClockType === 'in') {
         setChipRowKey(null);
         return;
       }
-      showRowChips(cellKey, e.clock_out || defaultClockOut);
+      showRowChips(cellKey, e.clock_in || defaultClockIn, 'in');
     };
-    const renderClockOutChips = (className = '') => {
-      const base = chipBaseByRowKey[cellKey] || e.clock_out || defaultClockOut;
+    const toggleClockOutChips = () => {
+      if (!canEditClock) return;
+      if (chipRowKey === cellKey && chipClockType === 'out') {
+        setChipRowKey(null);
+        return;
+      }
+      showRowChips(cellKey, e.clock_out || defaultClockOut, 'out');
+    };
+    const renderClockChips = (className = '') => {
+      const isClockIn = chipClockType === 'in';
+      const base = chipBaseByRowKey[cellKey] || (isClockIn ? (e.clock_in || defaultClockIn) : (e.clock_out || defaultClockOut));
       const candidates = CHIP_OFFSETS_ALL.map((o) => addMinutes(base, o));
-      const selected = e.clock_out || base;
-      const nextIn = e.clock_in || defaultClockIn;
+      const selected = isClockIn ? (e.clock_in || base) : (e.clock_out || base);
+      const otherClock = isClockIn ? (e.clock_out || defaultClockOut) : (e.clock_in || defaultClockIn);
 
       return (
         <div
@@ -453,11 +463,19 @@ export default function SalaryTableTypeC({
                   transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                   onClick={() => {
                     if (!canEditClock) return;
-                    onEntryUpdate(e.entry_date, e.sort_order, {
-                      clock_in: nextIn,
-                      clock_out: t,
-                      total_hours: calcHoursFromTimes(nextIn, t),
-                    });
+                    if (isClockIn) {
+                      onEntryUpdate(e.entry_date, e.sort_order, {
+                        clock_in: t,
+                        clock_out: otherClock,
+                        total_hours: calcHoursFromTimes(t, otherClock),
+                      });
+                    } else {
+                      onEntryUpdate(e.entry_date, e.sort_order, {
+                        clock_in: otherClock,
+                        clock_out: t,
+                        total_hours: calcHoursFromTimes(otherClock, t),
+                      });
+                    }
                     setChipRowKey((current) => (current === cellKey ? null : current));
                   }}
                   className={`inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
@@ -465,7 +483,7 @@ export default function SalaryTableTypeC({
                       ? 'border-accent/60 bg-accent/15 text-accent'
                       : 'border-border/60 bg-muted/60 text-foreground hover:border-accent/60 hover:bg-accent/10'
                   }`}
-                  aria-label={`Đặt giờ ra: ${t}`}
+                  aria-label={`Đặt giờ ${isClockIn ? 'vào' : 'ra'}: ${t}`}
                 >
                   {formatClockDecimal(t)}
                 </motion.button>
@@ -532,54 +550,38 @@ export default function SalaryTableTypeC({
           {separateClockColumns ? (
             <>
               <div className="flex w-[40px] min-h-[38px] items-center justify-center">
-                {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
-                  <button
-                    onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
-                    className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
-                  >
-                    Chọn
-                  </button>
-                ) : (
-                  <button type="button"
-                    className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
-                    {formatClockDecimal(e.clock_in)}
-                  </button>
-                )}
+                <button
+                  onClick={toggleClockInChips}
+                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                  {formatClockDecimal(e.clock_in)}
+                </button>
               </div>
               <div className="flex w-[40px] min-h-[38px] items-center justify-center">
-                {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
-                  <button
-                    onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
-                    className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
-                  >
-                    Chọn
-                  </button>
-                ) : (
-                  <button onClick={toggleClockOutChips}
-                    className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
-                    {formatClockDecimal(e.clock_out)}
-                  </button>
-                )}
+                <button onClick={toggleClockOutChips}
+                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-accent hover:underline' : 'text-accent cursor-default'}`}>
+                  {formatClockDecimal(e.clock_out)}
+                </button>
               </div>
             </>
           ) : (
             <div className="flex w-[40px] flex-col gap-[0.15rem] min-h-[38px] items-center justify-center">
               {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
                 <button
-                  onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                  onClick={toggleClockInChips}
                   className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
                 >
                   Chọn
                 </button>
               ) : (
                 <button type="button"
+                  onClick={toggleClockInChips}
                   className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
                   {formatClockDecimal(e.clock_in)}
                 </button>
               )}
               {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
                 <button
-                  onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                  onClick={toggleClockOutChips}
                   className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
                 >
                   Chọn
@@ -683,13 +685,14 @@ export default function SalaryTableTypeC({
           <div className="flex items-center justify-center h-full">
             {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
-                onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                onClick={toggleClockInChips}
                 className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
               >
                 Chọn giờ
               </button>
             ) : (
-              <button type="button"
+              <button
+                onClick={toggleClockInChips}
                 className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
@@ -704,7 +707,7 @@ export default function SalaryTableTypeC({
             <div className="flex items-center justify-center h-full">
               {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
                 <button
-                  onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                  onClick={toggleClockOutChips}
                   className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
                 >
                   Chọn giờ
@@ -721,20 +724,21 @@ export default function SalaryTableTypeC({
           <div className="flex flex-col gap-[0.15rem] min-h-[38px] items-center justify-self-end w-full">
             {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
-                onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in)}
+                onClick={toggleClockInChips}
                 className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
               >
                 Chọn giờ
               </button>
             ) : (
-              <button type="button"
+              <button
+                onClick={toggleClockInChips}
                 className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
             )}
             {editingCell === `${cellKey}-clock_out` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
-                onClick={() => openCellClockPicker(e.entry_date, e.sort_order, 'out', e.clock_out)}
+                onClick={toggleClockOutChips}
                 className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-accent"
               >
                 Chọn giờ
@@ -777,7 +781,7 @@ export default function SalaryTableTypeC({
       </div>
       {showClockChips && (
         <div className="px-2 py-1.5 border-b border-border/20 bg-muted/10">
-          {renderClockOutChips('w-full')}
+          {renderClockChips('w-full')}
         </div>
       )}
       {isPending && onAcceptEntry && e.id && (
