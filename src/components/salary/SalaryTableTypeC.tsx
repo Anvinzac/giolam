@@ -1358,21 +1358,21 @@ export default function SalaryTableTypeC({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCompact(!compact)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${
                   compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {compact ? <Check size={9} /> : <X size={9} />}
+                {compact ? <Check size={14} /> : <X size={14} />}
                 Gọn
               </button>
 
               <button
                 onClick={() => setSeparateClockColumns(!separateClockColumns)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${
                   separateClockColumns ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {separateClockColumns ? <Check size={9} /> : <X size={9} />}
+                {separateClockColumns ? <Check size={14} /> : <X size={14} />}
                 Tách
               </button>
             </div>

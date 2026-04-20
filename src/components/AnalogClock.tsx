@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
 import { timeToString } from "@/lib/lunarUtils";
 
 interface AnalogClockProps {
@@ -81,44 +82,22 @@ export default function AnalogClock({
   const [activeRangeField, setActiveRangeField] = useState<'in' | 'out' | null>(initialActiveField);
   const [rangeClockIn, setRangeClockIn] = useState<string | null>(normalizeTime(initialClockIn));
   const [rangeClockOut, setRangeClockOut] = useState<string | null>(normalizeTime(initialClockOut));
-  // Bumps on every edit-within-active-field to restart the 3s advance timer
-  // and re-trigger the progress-bar animation. Stays 0 until the user's
-  // first tap, so the countdown never shows on load.
-  const [progressTick, setProgressTick] = useState(0);
-  // Whether auto-advance is still armed. The user opting to tap a range
-  // button directly disables this permanently — they're taking control.
-  const [autoAdvance, setAutoAdvance] = useState(true);
+  
+  // Track which fields are marked as done
+  const [clockInDone, setClockInDone] = useState(false);
+  const [clockOutDone, setClockOutDone] = useState(false);
 
-  // Auto-advance: clock-in idles for 1.5s and hands off to clock-out (no
-  // timer starts on clock-out — progressTick resets to 0 and waits for
-  // the user's first tap there). Clock-out then idles for 3s to deactivate,
-  // leaving "Xong" as the only salient CTA. Only runs once the user has
-  // actually tapped the dial at least once (progressTick > 0) AND
-  // auto-advance hasn't been disabled.
+  // Auto-dismiss when both are checked
   useEffect(() => {
-    if (!isRangeMode || activeRangeField === null) return;
-    if (!autoAdvance || progressTick === 0) return;
-    const duration = activeRangeField === 'in' ? 1500 : 3000;
-    const t = setTimeout(() => {
-      if (activeRangeField === 'in') {
-        const parsedOut = parseTime(rangeClockOut);
-        setActiveRangeField('out');
-        setSelectedHour(parsedOut?.hour ?? null);
-        if (parsedOut) setSelectedMinute(parsedOut.minute);
-        // Do NOT bump progressTick — clock-out waits quietly for user tap.
-        setProgressTick(0);
-      } else {
-        setActiveRangeField(null);
-        setProgressTick(0);
-      }
-    }, duration);
-    return () => clearTimeout(t);
-  }, [progressTick, activeRangeField, isRangeMode, rangeClockOut, autoAdvance]);
+    if (isRangeMode && clockInDone && clockOutDone && rangeClockIn && rangeClockOut) {
+      onTimeRangeSelect?.({ clockIn: rangeClockIn, clockOut: rangeClockOut });
+      onClose();
+    }
+  }, [clockInDone, clockOutDone, isRangeMode, rangeClockIn, rangeClockOut, onTimeRangeSelect, onClose]);
 
   const handleConfirm = () => {
     if (selectedHour === null) return;
     onTimeSelect?.(timeToString(selectedHour, selectedMinute));
-    // Don't call onClose here - let the parent handle closing/chaining
   };
 
   const showRangeField = (field: 'in' | 'out') => {
@@ -127,23 +106,37 @@ export default function AnalogClock({
     setActiveRangeField(field);
     setSelectedHour(parsed?.hour ?? null);
     if (parsed) setSelectedMinute(parsed.minute);
-    // User explicitly took control — no more auto-advance, no progress bar.
-    setAutoAdvance(false);
-    setProgressTick(0);
+    
+    // If switching to clock-in, unmark it and auto-mark clock-out as done
+    if (field === 'in') {
+      setClockInDone(false);
+      setClockOutDone(true);
+    }
   };
 
-  // Write into the active field's state. Returns the effective field so
-  // callers can keep applying logic consistently if they just reactivated.
+  // Mark current field as done and advance to next
+  const markCurrentFieldDone = () => {
+    if (activeRangeField === 'in') {
+      setClockInDone(true);
+      // Advance to clock-out
+      const parsedOut = parseTime(rangeClockOut);
+      setActiveRangeField('out');
+      setSelectedHour(parsedOut?.hour ?? null);
+      if (parsedOut) setSelectedMinute(parsedOut.minute);
+    } else if (activeRangeField === 'out') {
+      setClockOutDone(true);
+    }
+  };
+
+  // Write into the active field's state
   const writeRangeTime = (
     hour: number,
     minute: number,
     field: 'in' | 'out',
-    advance: boolean,
   ) => {
     const nextTime = timeToString(hour, minute);
     if (field === 'in') setRangeClockIn(nextTime);
     else setRangeClockOut(nextTime);
-    if (advance) setProgressTick(k => k + 1);
   };
 
   // True if, with the active field == 'out', the candidate hour/minute
@@ -162,17 +155,7 @@ export default function AnalogClock({
       return;
     }
 
-    // Idle dial-tap reactivates clock-out in manual mode — user still
-    // wants to change clock-out but is tweaking, not restarting the timer.
-    let nextField = activeRangeField;
-    let nextAutoAdvance = autoAdvance;
-    if (nextField === null) {
-      nextField = 'out';
-      nextAutoAdvance = false;
-      setActiveRangeField('out');
-      setAutoAdvance(false);
-      setProgressTick(0);
-    }
+    const nextField = activeRangeField || 'out';
 
     // Clock-out cannot precede clock-in.
     if (nextField === 'out' && wouldPrecedeClockIn(hour, selectedMinute)) {
@@ -180,7 +163,7 @@ export default function AnalogClock({
     }
 
     setSelectedHour(hour);
-    writeRangeTime(hour, selectedMinute, nextField, nextAutoAdvance);
+    writeRangeTime(hour, selectedMinute, nextField);
   };
 
   const handleMinuteSelect = (minute: number) => {
@@ -189,15 +172,7 @@ export default function AnalogClock({
       return;
     }
 
-    let nextField = activeRangeField;
-    let nextAutoAdvance = autoAdvance;
-    if (nextField === null) {
-      nextField = 'out';
-      nextAutoAdvance = false;
-      setActiveRangeField('out');
-      setAutoAdvance(false);
-      setProgressTick(0);
-    }
+    const nextField = activeRangeField || 'out';
 
     if (selectedHour === null) {
       // No hour yet — just update the visible minute state; nothing to write.
@@ -210,12 +185,7 @@ export default function AnalogClock({
     }
 
     setSelectedMinute(minute);
-    writeRangeTime(selectedHour, minute, nextField, nextAutoAdvance);
-  };
-
-  const handleRangeDone = () => {
-    if (!rangeClockIn || !rangeClockOut) return;
-    onTimeRangeSelect?.({ clockIn: rangeClockIn, clockOut: rangeClockOut });
+    writeRangeTime(selectedHour, minute, nextField);
   };
 
   const size = 320;
@@ -530,54 +500,51 @@ export default function AnalogClock({
           </svg>
 
           {isRangeMode ? (
-            <div className="grid grid-cols-[1fr_1fr_0.9fr] gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => showRangeField('in')}
-                className={`relative overflow-hidden py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
+                onClick={() => {
+                  if (activeRangeField === 'in') {
+                    // Mark clock-in as done and advance
+                    markCurrentFieldDone();
+                  } else {
+                    // Switch to clock-in field
+                    showRangeField('in');
+                  }
+                }}
+                className={`relative py-3 rounded-xl font-display font-semibold text-xs transition-colors flex items-center justify-center gap-2 ${
                   activeRangeField === 'in'
                     ? 'gradient-gold text-primary-foreground'
                     : 'bg-muted text-orange-400'
                 }`}
               >
-                {activeRangeField === 'in' && autoAdvance && progressTick > 0 && (
-                  <motion.div
-                    key={progressTick}
-                    className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
-                    initial={{ width: '0%' }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 3, ease: 'linear' }}
-                  />
+                {clockInDone && (
+                  <Check size={16} className="shrink-0" />
                 )}
-                <span className="relative">Vào {rangeClockIn || '--:--'}</span>
+                <span>Vào {rangeClockIn || '--:--'}</span>
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => showRangeField('out')}
-                className={`relative overflow-hidden py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
+                onClick={() => {
+                  if (activeRangeField === 'out') {
+                    // Mark clock-out as done
+                    markCurrentFieldDone();
+                  } else {
+                    // Switch to clock-out field (auto-marks clock-in as done)
+                    setClockInDone(true);
+                    showRangeField('out');
+                  }
+                }}
+                className={`relative py-3 rounded-xl font-display font-semibold text-xs transition-colors flex items-center justify-center gap-2 ${
                   activeRangeField === 'out'
                     ? 'gradient-gold text-primary-foreground'
                     : 'bg-muted text-accent'
                 }`}
               >
-                {activeRangeField === 'out' && autoAdvance && progressTick > 0 && (
-                  <motion.div
-                    key={progressTick}
-                    className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
-                    initial={{ width: '0%' }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 3, ease: 'linear' }}
-                  />
+                {clockOutDone && (
+                  <Check size={16} className="shrink-0" />
                 )}
-                <span className="relative">Ra {rangeClockOut || '--:--'}</span>
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={handleRangeDone}
-                disabled={!rangeClockIn || !rangeClockOut}
-                className="py-3 rounded-xl font-display font-semibold text-xs gradient-gold text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Xong
+                <span>Ra {rangeClockOut || '--:--'}</span>
               </motion.button>
             </div>
           ) : (
