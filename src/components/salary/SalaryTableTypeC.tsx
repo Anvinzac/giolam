@@ -747,14 +747,14 @@ export default function SalaryTableTypeC({
               )}
             </div>
           )}
-          <span className="w-[24px] text-right font-semibold text-[13px]">{formatHours(hours)}</span>
-          <span className="w-[34px] text-right font-medium text-[13px] text-foreground/70">
+          <span className="num-cell w-[24px] text-right font-semibold text-[13px]">{formatHours(hours)}</span>
+          <span className="num-cell w-[34px] text-right font-medium text-[13px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </span>
-          <span className="w-[30px] text-right allowance-amt font-semibold text-[13px]">
+          <span className="num-cell w-[30px] text-right allowance-amt font-semibold text-[13px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </span>
-          <span className="w-[40px] text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
+          <span className="num-cell-lg w-[40px] text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
         </div>
         {showWeekSep && (
           <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
@@ -967,26 +967,26 @@ export default function SalaryTableTypeC({
 
         {/* Hours */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="text-right font-semibold text-[13px] sm:text-[14px]">{formatHours(hours)}</span>
+          <span className="num-cell-sm text-right font-semibold text-[13px] sm:text-[14px]">{formatHours(hours)}</span>
         </div>
 
         {/* Wage (hours × rate) */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
+          <span className="num-cell-sm text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </span>
         </div>
 
         {/* Allowance */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="text-right allowance-amt font-semibold text-[13px] sm:text-[14px]">
+          <span className="num-cell-sm text-right allowance-amt font-semibold text-[13px] sm:text-[14px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </span>
         </div>
 
         {/* Total */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="text-right font-bold text-[14px] sm:text-[16px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
+          <span className="num-cell-xl text-right font-bold text-[14px] sm:text-[16px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
         </div>
         {showWeekSep && (
           <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
@@ -1056,10 +1056,10 @@ export default function SalaryTableTypeC({
               <span className="w-full text-center">—</span>
             </div>
           )}
-          <span className="w-[24px] text-right text-muted-foreground font-semibold">—</span>
-          <span className="w-[34px] text-right text-muted-foreground font-semibold">—</span>
-          <span className="w-[30px] text-right text-muted-foreground font-semibold">—</span>
-          <span className="w-[40px] text-right text-[13px] text-muted-foreground font-bold">—</span>
+          <span className="num-cell w-[24px] text-right text-muted-foreground font-semibold">—</span>
+          <span className="num-cell w-[34px] text-right text-muted-foreground font-semibold">—</span>
+          <span className="num-cell w-[30px] text-right text-muted-foreground font-semibold">—</span>
+          <span className="num-cell w-[40px] text-right text-[13px] text-muted-foreground font-bold">—</span>
         </div>
       </div>
       <div 
@@ -1122,10 +1122,10 @@ export default function SalaryTableTypeC({
             <span className="w-full self-center translate-x-0.5 text-center">—</span>
           </div>
         )}
-        <span className="justify-self-end text-right text-muted-foreground font-semibold">—</span>
-        <span className="justify-self-end text-right text-muted-foreground font-semibold">—</span>
-        <span className="justify-self-end text-right text-muted-foreground font-semibold">—</span>
-        <span className="justify-self-end text-right text-[13px] sm:text-[15px] text-muted-foreground font-bold">—</span>
+        <span className="num-cell-sm justify-self-end text-right text-muted-foreground font-semibold">—</span>
+        <span className="num-cell-sm justify-self-end text-right text-muted-foreground font-semibold">—</span>
+        <span className="num-cell-sm justify-self-end text-right text-muted-foreground font-semibold">—</span>
+        <span className="num-cell-md justify-self-end text-right text-[13px] sm:text-[15px] text-muted-foreground font-bold">—</span>
       </div>
     </div>
   );

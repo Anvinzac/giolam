@@ -237,6 +237,19 @@
     color: hsl(218 70% 42%);
   }
 
+  /* Light-mode readability: bump number columns in TypeC/D by 1px.
+     Base sizes preserved for dark mode. */
+  html.light .num-cell { font-size: 14px; }       /* base 13px → 14px */
+  html.light .num-cell-lg { font-size: 15px; }    /* base 14px → 15px (mobile total) */
+  html.light .num-cell-sm { font-size: 14px; }    /* base 13px → 14px */
+  @media (min-width: 640px) {
+    html.light .num-cell-sm { font-size: 15px; }  /* sm 14px → 15px */
+    html.light .num-cell-md { font-size: 16px; }  /* sm 15px → 16px */
+    html.light .num-cell-xl { font-size: 17px; }  /* sm 16px → 17px */
+  }
+  html.light .num-cell-md { font-size: 14px; }    /* mobile base 13px → 14px */
+  html.light .num-cell-xl { font-size: 15px; }    /* mobile base 14px → 15px */
+
   .gradient-gold {
     background: linear-gradient(135deg, hsl(42 90% 55%), hsl(42 100% 70%));
   }
