@@ -294,6 +294,17 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
+    hsl(25 85% 50% / 0.3) 20%,
+    hsl(20 90% 55% / 0.5) 50%,
+    hsl(25 85% 50% / 0.3) 80%,
+    transparent 100%
+  );
+}
+
+.dark .week-separator {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
     hsl(190 75% 50% / 0.3) 20%,
     hsl(130 75% 50% / 0.5) 50%,
     hsl(190 75% 50% / 0.3) 80%,
