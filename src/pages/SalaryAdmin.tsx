@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useTheme } from '@/hooks/useTheme';
 import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
@@ -247,7 +248,7 @@ export default function SalaryAdmin() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
-  const [lightMode, setLightMode] = useState(false);
+  const { isLight, toggle: toggleTheme } = useTheme();
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -331,15 +332,6 @@ export default function SalaryAdmin() {
       setGlobalClockIn(time);
     }
   }, [selectedEmployee]);
-
-  // Sync light mode with HTML element
-  useEffect(() => {
-    if (lightMode) {
-      document.documentElement.classList.add('light');
-    } else {
-      document.documentElement.classList.remove('light');
-    }
-  }, [lightMode]);
 
   // Compute breakdown
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
@@ -1030,10 +1022,11 @@ export default function SalaryAdmin() {
                 </button>
                 <motion.button
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setLightMode(!lightMode)}
-                  className={`px-3 rounded-xl ${lightMode ? 'bg-amber-500/20 text-amber-400' : 'bg-muted text-muted-foreground'}`}
+                  onClick={toggleTheme}
+                  className={`px-3 rounded-xl ${isLight ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground'}`}
+                  aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
                 >
-                  {lightMode ? <Sun size={20} /> : <Moon size={20} />}
+                  {isLight ? <Sun size={20} /> : <Moon size={20} />}
                 </motion.button>
                 <div className="flex-1">
                   <PublishButton

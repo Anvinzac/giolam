@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon, LogOut } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
 import SalaryTableTypeB from '@/components/salary/SalaryTableTypeB';
@@ -263,6 +264,8 @@ export default function EmployeeSalaryEntry() {
     setProfile(prev => prev ? { ...prev, default_clock_out: time } : prev);
   }, [profile]);
 
+  const { isLight, toggle: toggleTheme } = useTheme();
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
@@ -288,6 +291,16 @@ export default function EmployeeSalaryEntry() {
           <h1 className="font-display text-xl font-bold text-gradient-gold flex-1 truncate">
             Chấm công của tôi
           </h1>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleTheme}
+            aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
+            className={`p-2 rounded-xl transition-colors ${
+              isLight ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {isLight ? <Sun size={18} /> : <Moon size={18} />}
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handleLogout}
@@ -344,6 +357,16 @@ export default function EmployeeSalaryEntry() {
               </div>
             )}
           </div>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleTheme}
+            aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
+            className={`p-2 rounded-xl transition-colors ${
+              isLight ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {isLight ? <Sun size={18} /> : <Moon size={18} />}
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={handleLogout}
