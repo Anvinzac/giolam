@@ -599,7 +599,7 @@ export default function SalaryTableTypeC({
     return (
       <div key={cellKey}>
       <div
-        className={`relative overflow-hidden py-2.5 ${showClockChips ? 'px-0' : 'pl-3 pr-3'} text-[13px] border-b border-border/20 w-full sm:hidden transition-[padding] duration-200 ${
+        className={`relative overflow-hidden py-2.5 px-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
           e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
         } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
@@ -636,7 +636,7 @@ export default function SalaryTableTypeC({
             animate={{ y: 0 }}
             exit={{ y: '-180%' }}
             transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-start justify-between gap-2 w-full"
+            className="flex items-start justify-between gap-2 w-full pl-3 pr-3"
           >
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
