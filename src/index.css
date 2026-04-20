@@ -90,17 +90,17 @@
     --primary: 145 50% 55%;
     --primary-foreground: 150 40% 12%;
 
-    /* Secondary - Soft seafoam */
-    --secondary: 160 45% 68%;
-    --secondary-foreground: 160 40% 12%;
+    /* Secondary - Pastel orange */
+    --secondary: 25 85% 72%;
+    --secondary-foreground: 22 50% 18%;
 
     /* Muted - Pale sage for secondary text */
     --muted: 140 20% 88%;
     --muted-foreground: 160 15% 38%;
 
-    /* Accent - Fresh teal for contrast */
-    --accent: 175 55% 48%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Pastel blue for contrast */
+    --accent: 210 72% 65%;
+    --accent-foreground: 215 40% 14%;
 
     /* Status colors */
     --destructive: 0 70% 60%;
@@ -115,12 +115,12 @@
     --lunar-gold-glow: 150 70% 72%;
     --lunar-navy: 160 30% 22%;
     --lunar-deep: 160 35% 28%;
-    --saturday: 185 60% 38%;
-    --saturday-foreground: 185 60% 8%;
+    --saturday: 210 55% 48%;
+    --saturday-foreground: 210 55% 8%;
     --sunday: 290 45% 50%;
     --sunday-foreground: 290 45% 8%;
-    --fullmoon-glow: 150 75% 65%;
-    --newmoon-glow: 130 75% 50%;
+    --fullmoon-glow: 28 90% 70%;
+    --newmoon-glow: 210 72% 62%;
     --off-day: 0 70% 78%;
     --off-day-foreground: 0 70% 32%;
     --glass: 140 40% 98%;
@@ -132,8 +132,8 @@
     --sidebar-foreground: 160 30% 18%;
     --sidebar-primary: 145 50% 55%;
     --sidebar-primary-foreground: 150 40% 12%;
-    --sidebar-accent: 160 45% 68%;
-    --sidebar-accent-foreground: 160 40% 12%;
+    --sidebar-accent: 25 85% 72%;
+    --sidebar-accent-foreground: 22 50% 18%;
     --sidebar-border: 140 25% 86%;
     --sidebar-ring: 145 50% 55%;
   }
@@ -207,8 +207,8 @@
   html.light .moon-accent-row {
     background: linear-gradient(
       90deg,
-      hsl(150 65% 78% / 0.32),
-      hsl(150 65% 78% / 0.08),
+      hsl(28 90% 78% / 0.32),
+      hsl(28 90% 78% / 0.08),
       transparent
     );
   }
@@ -218,7 +218,7 @@
   }
 
   html.light .moon-accent-text {
-    color: hsl(160 55% 32%);
+    color: hsl(25 75% 42%);
   }
 
   .gradient-gold {
