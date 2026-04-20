@@ -511,7 +511,7 @@ export default function SalaryTableTypeC({
         >
           <div
             ref={activeChipScrollRef}
-            className="flex items-center gap-1.5 min-w-0 overflow-x-auto whitespace-nowrap py-0.5 px-1 no-scrollbar"
+            className="flex items-center justify-end gap-1.5 min-w-0 overflow-x-auto whitespace-nowrap py-0.5 pl-1 pr-2 no-scrollbar"
           >
             {/* "Khác" chip - opens analog clock */}
             <motion.button
@@ -623,10 +623,10 @@ export default function SalaryTableTypeC({
         {showClockChips ? (
           <motion.div
             key="chips"
-            initial={{ y: '100%' }}
+            initial={{ y: '180%' }}
             animate={{ y: 0 }}
-            exit={{ y: '-100%' }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ y: '-180%' }}
+            transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
             className="w-full min-h-[38px] flex items-center"
           >
             {renderClockChips('w-full')}
@@ -634,10 +634,10 @@ export default function SalaryTableTypeC({
         ) : (
           <motion.div
             key="body"
-            initial={{ y: '100%' }}
+            initial={{ y: '180%' }}
             animate={{ y: 0 }}
-            exit={{ y: '-100%' }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ y: '-180%' }}
+            transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-start justify-between gap-2 w-full"
           >
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
