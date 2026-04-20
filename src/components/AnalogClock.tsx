@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { timeToString } from "@/lib/lunarUtils";
 
@@ -78,9 +78,30 @@ export default function AnalogClock({
   const parsedInitialActiveTime = parseTime(initialActiveTime);
   const [selectedHour, setSelectedHour] = useState<number | null>(parsedInitialActiveTime?.hour ?? null);
   const [selectedMinute, setSelectedMinute] = useState<number>(parsedInitialActiveTime?.minute ?? 0);
-  const [activeRangeField, setActiveRangeField] = useState<'in' | 'out'>(initialActiveField);
+  const [activeRangeField, setActiveRangeField] = useState<'in' | 'out' | null>(initialActiveField);
   const [rangeClockIn, setRangeClockIn] = useState<string | null>(normalizeTime(initialClockIn));
   const [rangeClockOut, setRangeClockOut] = useState<string | null>(normalizeTime(initialClockOut));
+  // Bumps on every edit-within-active-field to restart the 3s advance timer
+  // and re-trigger the progress-bar animation.
+  const [progressTick, setProgressTick] = useState(0);
+
+  // After 3s of inactivity on the active range field, advance: in -> out,
+  // out -> null (both buttons unhighlighted, only "Xong" stays salient).
+  useEffect(() => {
+    if (!isRangeMode || activeRangeField === null) return;
+    const t = setTimeout(() => {
+      if (activeRangeField === 'in') {
+        const parsedOut = parseTime(rangeClockOut);
+        setActiveRangeField('out');
+        setSelectedHour(parsedOut?.hour ?? null);
+        if (parsedOut) setSelectedMinute(parsedOut.minute);
+        setProgressTick(k => k + 1);
+      } else {
+        setActiveRangeField(null);
+      }
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [progressTick, activeRangeField, isRangeMode, rangeClockOut]);
 
   const handleConfirm = () => {
     if (selectedHour === null) return;
@@ -94,21 +115,15 @@ export default function AnalogClock({
     setActiveRangeField(field);
     setSelectedHour(parsed?.hour ?? null);
     if (parsed) setSelectedMinute(parsed.minute);
+    setProgressTick(k => k + 1);
   };
 
   const recordRangeTime = (hour: number, minute: number) => {
+    if (activeRangeField === null) return;
     const nextTime = timeToString(hour, minute);
-    if (activeRangeField === 'in') {
-      setRangeClockIn(nextTime);
-      const parsedClockOut = parseTime(rangeClockOut);
-      setActiveRangeField('out');
-      setSelectedHour(parsedClockOut?.hour ?? null);
-      if (parsedClockOut) {
-        setSelectedMinute(parsedClockOut.minute);
-      }
-    } else {
-      setRangeClockOut(nextTime);
-    }
+    if (activeRangeField === 'in') setRangeClockIn(nextTime);
+    else setRangeClockOut(nextTime);
+    setProgressTick(k => k + 1);
   };
 
   const handleHourSelect = (hour: number) => {
@@ -408,24 +423,42 @@ export default function AnalogClock({
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={() => showRangeField('in')}
-                className={`py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
+                className={`relative overflow-hidden py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
                   activeRangeField === 'in'
                     ? 'gradient-gold text-primary-foreground'
                     : 'bg-muted text-emerald-400'
                 }`}
               >
-                Vào {rangeClockIn || '--:--'}
+                {activeRangeField === 'in' && (
+                  <motion.div
+                    key={progressTick}
+                    className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 3, ease: 'linear' }}
+                  />
+                )}
+                <span className="relative">Vào {rangeClockIn || '--:--'}</span>
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={() => showRangeField('out')}
-                className={`py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
+                className={`relative overflow-hidden py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
                   activeRangeField === 'out'
                     ? 'gradient-gold text-primary-foreground'
                     : 'bg-muted text-accent'
                 }`}
               >
-                Ra {rangeClockOut || '--:--'}
+                {activeRangeField === 'out' && (
+                  <motion.div
+                    key={progressTick}
+                    className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 3, ease: 'linear' }}
+                  />
+                )}
+                <span className="relative">Ra {rangeClockOut || '--:--'}</span>
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.97 }}
