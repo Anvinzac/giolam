@@ -601,7 +601,7 @@ export default function SalaryTableTypeC({
     return (
       <div key={cellKey}>
       <div
-        className={`py-2.5 ${showClockChips ? 'px-0' : 'pl-3 pr-3'} text-[13px] border-b border-border/20 w-full sm:hidden transition-[padding] duration-200 ${
+        className={`relative overflow-hidden py-2.5 ${showClockChips ? 'px-0' : 'pl-3 pr-3'} text-[13px] border-b border-border/20 w-full sm:hidden transition-[padding] duration-200 ${
           e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
         } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
@@ -619,14 +619,14 @@ export default function SalaryTableTypeC({
           }
         }}
       >
-        <AnimatePresence initial={false} mode="wait">
+        <AnimatePresence initial={false} mode="popLayout">
         {showClockChips ? (
           <motion.div
             key="chips"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '-100%' }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className="w-full min-h-[38px] flex items-center"
           >
             {renderClockChips('w-full')}
@@ -634,10 +634,10 @@ export default function SalaryTableTypeC({
         ) : (
           <motion.div
             key="body"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '-100%' }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-start justify-between gap-2 w-full"
           >
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
