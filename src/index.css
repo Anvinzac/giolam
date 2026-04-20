@@ -115,8 +115,8 @@
     --lunar-gold-glow: 30 90% 75%;
     --lunar-navy: 22 35% 25%;
     --lunar-deep: 22 40% 32%;
-    --saturday: 22 45% 40%;
-    --saturday-foreground: 22 45% 8%;
+    --saturday: 218 65% 26%;
+    --saturday-foreground: 218 60% 95%;
     --sunday: 355 60% 45%;
     --sunday-foreground: 355 60% 8%;
     --fullmoon-glow: 28 90% 70%;
@@ -226,6 +226,15 @@
   html.light .font-medium.text-orange-400,
   html.light .font-medium.text-accent {
     font-weight: 600;
+  }
+
+  /* Allowance amount — dark navy blue under light theme for readability
+     against the pastel-blue background. Retains emerald in dark mode. */
+  .allowance-amt {
+    color: hsl(142 71% 55%); /* emerald-400 equivalent, default dark */
+  }
+  html.light .allowance-amt {
+    color: hsl(218 65% 26%);
   }
 
   .gradient-gold {

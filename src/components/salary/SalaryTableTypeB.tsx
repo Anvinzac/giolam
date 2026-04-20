@@ -477,7 +477,7 @@ export default function SalaryTableTypeB({
                     <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
                       {extraWage > 0 ? formatCompact(extraWage) : '—'}
                     </span>
-                    <span className="w-[30px] text-right text-emerald-400 font-semibold text-[12px]">
+                    <span className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
                       {allowance > 0 ? formatCompact(allowance) : ''}
                     </span>
                     <span className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
@@ -608,7 +608,7 @@ export default function SalaryTableTypeB({
                     </span>
 
                     {/* Allowance */}
-                    <span className="justify-self-end text-right text-emerald-400 font-semibold text-[13px]">
+                    <span className="justify-self-end text-right allowance-amt font-semibold text-[13px]">
                       {allowance > 0 ? formatCompact(allowance) : ''}
                     </span>
 

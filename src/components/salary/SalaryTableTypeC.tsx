@@ -751,7 +751,7 @@ export default function SalaryTableTypeC({
           <span className="w-[34px] text-right font-medium text-[13px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </span>
-          <span className="w-[30px] text-right text-emerald-400 font-semibold text-[13px]">
+          <span className="w-[30px] text-right allowance-amt font-semibold text-[13px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </span>
           <span className="w-[40px] text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
@@ -979,7 +979,7 @@ export default function SalaryTableTypeC({
 
         {/* Allowance */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="text-right text-emerald-400 font-semibold text-[13px] sm:text-[14px]">
+          <span className="text-right allowance-amt font-semibold text-[13px] sm:text-[14px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </span>
         </div>
