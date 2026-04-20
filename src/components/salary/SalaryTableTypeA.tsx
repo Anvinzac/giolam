@@ -136,7 +136,7 @@ export default function SalaryTableTypeA({
   const getDayColor = (dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
     const day = d.getDay();
-    if (day === 6) return 'text-[hsl(175,70%,45%)]';
+    if (day === 6) return 'text-saturday';
     if (day === 0) return 'text-[hsl(280,60%,55%)]';
     return '';
   };

@@ -115,7 +115,7 @@
     --lunar-gold-glow: 30 90% 75%;
     --lunar-navy: 22 35% 25%;
     --lunar-deep: 22 40% 32%;
-    --saturday: 218 65% 26%;
+    --saturday: 218 70% 42%;
     --saturday-foreground: 218 60% 95%;
     --sunday: 355 60% 45%;
     --sunday-foreground: 355 60% 8%;
@@ -234,7 +234,7 @@
     color: hsl(142 71% 55%); /* emerald-400 equivalent, default dark */
   }
   html.light .allowance-amt {
-    color: hsl(218 65% 26%);
+    color: hsl(218 70% 42%);
   }
 
   .gradient-gold {

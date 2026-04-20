@@ -66,7 +66,7 @@ export default function GlobalRateTable({ rates, onUpdate, onAdd, onRemove, peri
 
   const getDayTypeColor = (dt: DayType) => {
     switch (dt) {
-      case 'saturday': return 'text-[hsl(175,70%,45%)]';
+      case 'saturday': return 'text-saturday';
       case 'sunday': return 'text-[hsl(280,60%,55%)]';
       case 'full_moon': case 'new_moon': return 'text-amber-400';
       case 'day_before_full_moon': case 'day_before_new_moon': return 'text-amber-400/60';

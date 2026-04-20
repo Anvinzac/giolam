@@ -59,7 +59,7 @@ export default function PeriodDatePicker({
 
   const getDayColor = (dateStr: string) => {
     const dow = new Date(dateStr + 'T00:00:00').getDay();
-    if (dow === 6) return 'text-[hsl(175,70%,45%)]';
+    if (dow === 6) return 'text-saturday';
     if (dow === 0) return 'text-[hsl(280,60%,55%)]';
     return 'text-foreground';
   };
@@ -81,7 +81,7 @@ export default function PeriodDatePicker({
           <div className="grid grid-cols-7 mb-1">
             {DAY_HEADERS.map((h, i) => (
               <div key={h} className={`text-center text-[10px] font-semibold py-0.5 ${
-                i === 5 ? 'text-[hsl(175,70%,45%)]' : i === 6 ? 'text-[hsl(280,60%,55%)]' : 'text-muted-foreground'
+                i === 5 ? 'text-saturday' : i === 6 ? 'text-[hsl(280,60%,55%)]' : 'text-muted-foreground'
               }`}>{h}</div>
             ))}
           </div>
