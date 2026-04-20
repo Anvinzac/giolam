@@ -10,6 +10,7 @@ import AdminRegistrations from "@/components/AdminRegistrations";
 import AdminEmployeeManager from "@/components/AdminEmployeeManager";
 import AppBootState from "@/components/AppBootState";
 import { withTimeout } from "@/lib/withTimeout";
+import { formatDateViet } from "@/lib/salaryCalculations";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -313,7 +314,7 @@ export default function AdminDashboard() {
               <div key={p.id} className="glass-card p-4 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-foreground">
-                    {new Date(p.start_date).toLocaleDateString()} – {new Date(p.end_date).toLocaleDateString()}
+                    {formatDateViet(p.start_date)} – {formatDateViet(p.end_date)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {p.off_days?.length || 0} off days

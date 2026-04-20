@@ -306,6 +306,70 @@ export function computeTotalSalaryTypeC(
   return { base_salary: 0, daily_base: 0, total_daily_wages: totalDailyWages, total_allowances_from_rates: totalAllowancesFromRates, total_deductions: 0, allowances: allowanceItems, total };
 }
 
+/** Type D (lunar_rate): Flat hourly rate (27000) except lunar days (35000) */
+export function computeTotalSalaryTypeD(
+  entries: SalaryEntry[],
+  allowances: EmployeeAllowance[],
+  normalHourlyRate: number,
+  lunarHourlyRate: number,
+  rates: SpecialDayRate[]
+): SalaryBreakdown {
+  let totalDailyWages = 0;
+  let totalLunarBonus = 0;
+  let workingDays = 0;
+
+  for (const e of entries) {
+    const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in, e.clock_out) ?? 0;
+    
+    // Check if this is a lunar day (new moon or full moon)
+    const matchedRate = rates.find(r => r.special_date === e.entry_date);
+    const isLunarDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    
+    const hourlyRate = isLunarDay ? lunarHourlyRate : normalHourlyRate;
+    const baseWage = roundToThousand(hours * hourlyRate);
+    
+    // Calculate lunar bonus (difference between lunar and normal rate)
+    const lunarBonus = isLunarDay ? roundToThousand(hours * (lunarHourlyRate - normalHourlyRate)) : 0;
+    
+    const rowTotal = e.is_day_off ? 0 : baseWage;
+
+    totalDailyWages += rowTotal;
+    totalLunarBonus += lunarBonus;
+
+    // Count working days (non-day-off entries with clock times)
+    if (!e.is_day_off && (e.clock_in || e.clock_out)) {
+      workingDays++;
+    }
+  }
+
+  // Calculate gui_xe automatically: 10000 * working days
+  const guiXeAmount = workingDays * 10000;
+
+  const allowanceItems = allowances.map(a => ({
+    key: a.allowance_key,
+    label: a.label,
+    amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
+    enabled: a.is_enabled
+  }));
+
+  const enabledAllowancesSum = allowances.reduce((sum, a) => {
+    if (a.allowance_key === 'gui_xe') return sum + (a.is_enabled ? guiXeAmount : 0);
+    return a.is_enabled ? sum + a.amount : sum;
+  }, 0);
+
+  const total = totalDailyWages + enabledAllowancesSum;
+
+  return { 
+    base_salary: 0, 
+    daily_base: 0, 
+    total_daily_wages: totalDailyWages, 
+    total_allowances_from_rates: totalLunarBonus, 
+    total_deductions: 0, 
+    allowances: allowanceItems, 
+    total 
+  };
+}
+
 /** Format a number as VND with dot separators */
 export function formatVND(amount: number): string {
   if (amount === 0) return '0 đ';

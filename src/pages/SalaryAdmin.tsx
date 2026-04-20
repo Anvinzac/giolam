@@ -14,7 +14,7 @@ import { useSpecialDayRates } from '@/hooks/useSpecialDayRates';
 import { useEmployeeAllowances } from '@/hooks/useEmployeeAllowances';
 import { useSalaryEntries } from '@/hooks/useSalaryEntries';
 import { useSalaryRecord } from '@/hooks/useSalaryRecord';
-import { calcDailyBase, calcHoursFromTimes, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, formatVND } from '@/lib/salaryCalculations';
+import { calcDailyBase, calcHoursFromTimes, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, computeTotalSalaryTypeD, formatVND, formatDateViet } from '@/lib/salaryCalculations';
 import { generateDateRange } from '@/lib/salaryPaging';
 import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/types/salary';
 import AppBootState from '@/components/AppBootState';
@@ -351,6 +351,8 @@ export default function SalaryAdmin() {
         return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn);
       case 'notice_only':
         return computeTotalSalaryTypeC(entries, allowances, selectedEmployee.hourly_rate, rates);
+      case 'lunar_rate':
+        return computeTotalSalaryTypeD(entries, allowances, 27000, 35000, rates);
       default:
         return null;
     }
@@ -665,6 +667,39 @@ export default function SalaryAdmin() {
     setShowShiftTypePicker(false);
   }, [selectedEmployee, selectedPeriodId]);
 
+  const handleWorkShiftChange = useCallback(async (newShift: 'morning' | 'evening') => {
+    if (!selectedEmployee) return;
+    
+    // Set default clock times based on shift
+    const clockIn = newShift === 'morning' ? '08:00' : '15:00';
+    const clockOut = newShift === 'morning' ? '15:00' : '22:00';
+    
+    // Update database
+    await supabase.from('profiles').update({ 
+      work_shift: newShift,
+      default_clock_in: clockIn,
+      default_clock_out: clockOut
+    } as any).eq('user_id', selectedEmployee.user_id);
+    
+    // Update local state
+    setSelectedEmployee(prev => prev ? { 
+      ...prev, 
+      work_shift: newShift,
+      default_clock_in: clockIn,
+      default_clock_out: clockOut
+    } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { 
+        ...e, 
+        work_shift: newShift,
+        default_clock_in: clockIn,
+        default_clock_out: clockOut
+      } : e
+    ));
+    
+    toast.success(`Đã đổi ca làm việc sang ${newShift === 'morning' ? 'Ca sáng (8:00-15:00)' : 'Ca chiều (15:00-22:00)'}`);
+  }, [selectedEmployee]);
+
   const typeBadgeColor = (t: EmployeeShiftType) => {
     switch (t) {
       case 'basic': return 'bg-amber-500/20 text-amber-400';
@@ -722,12 +757,38 @@ export default function SalaryAdmin() {
                   ) : 'Quản lý lương'}
                 </h1>
                 {selectedEmployee && !isPreviewMode && (
-                  <button
-                    onClick={() => setShowShiftTypePicker(true)}
-                    className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-1 transition-all hover:ring-2 hover:ring-primary/50 ${typeBadgeColor(selectedEmployee.shift_type)}`}
-                  >
-                    {EMPLOYEE_TYPE_LABELS[selectedEmployee.shift_type]}
-                  </button>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      onClick={() => setShowShiftTypePicker(true)}
+                      className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium transition-all hover:ring-2 hover:ring-primary/50 ${typeBadgeColor(selectedEmployee.shift_type)}`}
+                    >
+                      {EMPLOYEE_TYPE_LABELS[selectedEmployee.shift_type]}
+                    </button>
+                    {(selectedEmployee.shift_type === 'notice_only' || selectedEmployee.shift_type === 'lunar_rate') && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleWorkShiftChange('morning')}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-all ${
+                            selectedEmployee.work_shift === 'morning'
+                              ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-400/50'
+                              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          Ca sáng
+                        </button>
+                        <button
+                          onClick={() => handleWorkShiftChange('evening')}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-all ${
+                            selectedEmployee.work_shift === 'evening'
+                              ? 'bg-accent/20 text-accent ring-1 ring-accent/50'
+                              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          Ca chiều
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -816,7 +877,7 @@ export default function SalaryAdmin() {
           >
             {periods.map(p => (
               <option key={p.id} value={p.id}>
-                {new Date(p.start_date).toLocaleDateString('vi-VN')} – {new Date(p.end_date).toLocaleDateString('vi-VN')}
+                {formatDateViet(p.start_date)} – {formatDateViet(p.end_date)}
               </option>
             ))}
           </select>
@@ -915,7 +976,7 @@ export default function SalaryAdmin() {
               />
             )}
 
-            {selectedEmployee.shift_type === 'notice_only' && (
+            {(selectedEmployee.shift_type === 'notice_only' || selectedEmployee.shift_type === 'lunar_rate') && (
               <SalaryTableTypeC
                 entries={entries}
                 rates={rates}
@@ -943,6 +1004,7 @@ export default function SalaryAdmin() {
                 editMode={isPreviewMode ? 'preview' : 'admin'}
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
+                shiftType={selectedEmployee.shift_type}
               />
             )}
 
@@ -1005,7 +1067,7 @@ export default function SalaryAdmin() {
                 >
                   <h3 className="text-lg font-bold text-foreground mb-4">Chọn loại nhân viên</h3>
                   <div className="space-y-2">
-                    {(['basic', 'overtime', 'notice_only'] as EmployeeShiftType[]).map(type => (
+                    {(['basic', 'overtime', 'notice_only', 'lunar_rate'] as EmployeeShiftType[]).map(type => (
                       <button
                         key={type}
                         onClick={() => handleShiftTypeChange(type)}

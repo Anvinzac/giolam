@@ -601,7 +601,7 @@ export default function SalaryTableTypeC({
     return (
       <div key={cellKey}>
       <div
-        className={`${showClockChips ? 'py-2.5 px-0' : 'flex items-start justify-between gap-2 py-2.5 pl-3 pr-3'} text-[13px] border-b border-border/20 w-full sm:hidden ${
+        className={`py-2.5 ${showClockChips ? 'px-0' : 'pl-3 pr-3'} text-[13px] border-b border-border/20 w-full sm:hidden transition-[padding] duration-200 ${
           e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
         } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
@@ -619,11 +619,27 @@ export default function SalaryTableTypeC({
           }
         }}
       >
+        <AnimatePresence initial={false} mode="wait">
         {showClockChips ? (
-          <div className="w-full min-h-[38px] flex items-center">
+          <motion.div
+            key="chips"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full min-h-[38px] flex items-center"
+          >
             {renderClockChips('w-full')}
-          </div>
-        ) : (<>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="body"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-start justify-between gap-2 w-full"
+          >
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
@@ -749,7 +765,9 @@ export default function SalaryTableTypeC({
         {showWeekSep && (
           <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
         )}
-        </>)}
+          </motion.div>
+        )}
+        </AnimatePresence>
       </div>
       <div 
         className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${

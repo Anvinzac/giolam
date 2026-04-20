@@ -15,6 +15,8 @@ import {
   computeTotalSalaryTypeA,
   computeTotalSalaryTypeB,
   computeTotalSalaryTypeC,
+  computeTotalSalaryTypeD,
+  formatDateViet,
 } from '@/lib/salaryCalculations';
 import { generateDateRange } from '@/lib/salaryPaging';
 import { EmployeeShiftType, SalaryBreakdown } from '@/types/salary';
@@ -215,6 +217,8 @@ export default function EmployeeSalaryEntry() {
         );
       case 'notice_only':
         return computeTotalSalaryTypeC(employeeVisibleEntries, allowances, profile.hourly_rate, rates);
+      case 'lunar_rate':
+        return computeTotalSalaryTypeD(employeeVisibleEntries, allowances, 27000, 35000, rates);
       default:
         return null;
     }
@@ -325,13 +329,20 @@ export default function EmployeeSalaryEntry() {
             <h1 className="font-display text-xl font-bold text-gradient-gold truncate">
               Chấm công của tôi
             </h1>
-            <div className="flex items-center gap-2 mt-1">
-              {profile.default_clock_in && (
+            {(profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && selectedPeriod && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[11px] text-muted-foreground">
+                  {formatDateViet(selectedPeriod.start_date)} - {formatDateViet(selectedPeriod.end_date)}
+                </span>
+              </div>
+            )}
+            {profile.shift_type !== 'notice_only' && profile.default_clock_in && (
+              <div className="flex items-center gap-2 mt-1">
                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                   <ClockIcon size={11} /> Giờ vào: {globalClockIn}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -389,7 +400,7 @@ export default function EmployeeSalaryEntry() {
           />
         )}
 
-        {selectedPeriod && profile.shift_type === 'notice_only' && (
+        {selectedPeriod && (profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && (
           <SalaryTableTypeC
             entries={employeeVisibleEntries}
             rates={rates}
@@ -416,6 +427,7 @@ export default function EmployeeSalaryEntry() {
             breakdown={breakdown}
             editMode="employee"
             currentUserId={userId}
+            shiftType={profile.shift_type}
           />
         )}
       </div>

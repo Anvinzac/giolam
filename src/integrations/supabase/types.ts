@@ -116,6 +116,7 @@ export type Database = {
           updated_at: string
           user_id: string
           username: string | null
+          work_shift: Database["public"]["Enums"]["work_shift"]
         }
         Insert: {
           avatar_url?: string | null
@@ -130,6 +131,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           username?: string | null
+          work_shift?: Database["public"]["Enums"]["work_shift"]
         }
         Update: {
           avatar_url?: string | null
@@ -144,6 +146,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+          work_shift?: Database["public"]["Enums"]["work_shift"]
         }
         Relationships: [
           {
@@ -479,7 +482,8 @@ export type Database = {
         | "rejected"
         | "modified"
         | "unapproved"
-      shift_type: "basic" | "overtime" | "notice_only"
+      shift_type: "basic" | "overtime" | "notice_only" | "lunar_rate"
+      work_shift: "morning" | "evening"
     }
     CompositeTypes: {
       [_ in never]: never

@@ -12,7 +12,7 @@ export type DayType =
 
 export type OffPercent = 0 | 25 | 50 | 75;
 export type SalaryStatus = 'draft' | 'published';
-export type EmployeeShiftType = 'basic' | 'overtime' | 'notice_only';
+export type EmployeeShiftType = 'basic' | 'overtime' | 'notice_only' | 'lunar_rate';
 
 export interface SpecialDayRate {
   id?: string;
@@ -115,4 +115,5 @@ export const EMPLOYEE_TYPE_LABELS: Record<EmployeeShiftType, string> = {
   basic: 'Loại A',
   overtime: 'Loại B',
   notice_only: 'Loại C',
+  lunar_rate: 'Loại D',
 };

@@ -82,13 +82,20 @@ export default function AnalogClock({
   const [rangeClockIn, setRangeClockIn] = useState<string | null>(normalizeTime(initialClockIn));
   const [rangeClockOut, setRangeClockOut] = useState<string | null>(normalizeTime(initialClockOut));
   // Bumps on every edit-within-active-field to restart the 3s advance timer
-  // and re-trigger the progress-bar animation.
+  // and re-trigger the progress-bar animation. Stays 0 until the user's
+  // first tap, so the countdown never shows on load.
   const [progressTick, setProgressTick] = useState(0);
+  // Whether auto-advance is still armed. The user opting to tap a range
+  // button directly disables this permanently — they're taking control.
+  const [autoAdvance, setAutoAdvance] = useState(true);
 
   // After 3s of inactivity on the active range field, advance: in -> out,
   // out -> null (both buttons unhighlighted, only "Xong" stays salient).
+  // Only runs once the user has actually tapped the dial at least once
+  // (progressTick > 0) AND auto-advance hasn't been disabled.
   useEffect(() => {
     if (!isRangeMode || activeRangeField === null) return;
+    if (!autoAdvance || progressTick === 0) return;
     const t = setTimeout(() => {
       if (activeRangeField === 'in') {
         const parsedOut = parseTime(rangeClockOut);
@@ -98,10 +105,11 @@ export default function AnalogClock({
         setProgressTick(k => k + 1);
       } else {
         setActiveRangeField(null);
+        setProgressTick(0);
       }
     }, 3000);
     return () => clearTimeout(t);
-  }, [progressTick, activeRangeField, isRangeMode, rangeClockOut]);
+  }, [progressTick, activeRangeField, isRangeMode, rangeClockOut, autoAdvance]);
 
   const handleConfirm = () => {
     if (selectedHour === null) return;
@@ -115,7 +123,9 @@ export default function AnalogClock({
     setActiveRangeField(field);
     setSelectedHour(parsed?.hour ?? null);
     if (parsed) setSelectedMinute(parsed.minute);
-    setProgressTick(k => k + 1);
+    // User explicitly took control — no more auto-advance, no progress bar.
+    setAutoAdvance(false);
+    setProgressTick(0);
   };
 
   const recordRangeTime = (hour: number, minute: number) => {
@@ -123,7 +133,7 @@ export default function AnalogClock({
     const nextTime = timeToString(hour, minute);
     if (activeRangeField === 'in') setRangeClockIn(nextTime);
     else setRangeClockOut(nextTime);
-    setProgressTick(k => k + 1);
+    if (autoAdvance) setProgressTick(k => k + 1);
   };
 
   const handleHourSelect = (hour: number) => {
@@ -429,7 +439,7 @@ export default function AnalogClock({
                     : 'bg-muted text-emerald-400'
                 }`}
               >
-                {activeRangeField === 'in' && (
+                {activeRangeField === 'in' && autoAdvance && progressTick > 0 && (
                   <motion.div
                     key={progressTick}
                     className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
@@ -449,7 +459,7 @@ export default function AnalogClock({
                     : 'bg-muted text-accent'
                 }`}
               >
-                {activeRangeField === 'out' && (
+                {activeRangeField === 'out' && autoAdvance && progressTick > 0 && (
                   <motion.div
                     key={progressTick}
                     className="absolute inset-y-0 left-0 bg-white/25 pointer-events-none"
