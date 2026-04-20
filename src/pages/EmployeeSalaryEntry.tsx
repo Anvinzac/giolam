@@ -296,7 +296,7 @@ export default function EmployeeSalaryEntry() {
             onClick={toggleTheme}
             aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
             className={`p-2 rounded-xl transition-colors ${
-              isLight ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground hover:text-foreground'
+              isLight ? 'bg-orange-500/20 text-orange-600' : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
             {isLight ? <Sun size={18} /> : <Moon size={18} />}
@@ -362,7 +362,7 @@ export default function EmployeeSalaryEntry() {
             onClick={toggleTheme}
             aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
             className={`p-2 rounded-xl transition-colors ${
-              isLight ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground hover:text-foreground'
+              isLight ? 'bg-orange-500/20 text-orange-600' : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
             {isLight ? <Sun size={18} /> : <Moon size={18} />}

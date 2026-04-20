@@ -1023,7 +1023,7 @@ export default function SalaryAdmin() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={toggleTheme}
-                  className={`px-3 rounded-xl ${isLight ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground'}`}
+                  className={`px-3 rounded-xl ${isLight ? 'bg-orange-500/20 text-orange-600' : 'bg-muted text-muted-foreground'}`}
                   aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
                 >
                   {isLight ? <Sun size={20} /> : <Moon size={20} />}
