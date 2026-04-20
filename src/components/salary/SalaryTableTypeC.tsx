@@ -585,7 +585,7 @@ export default function SalaryTableTypeC({
                       ? 'border-accent bg-accent text-white shadow-lg'
                       : isSelected
                       ? 'border-accent/60 bg-accent/15 text-accent'
-                      : 'border-border/60 bg-muted/60 text-foreground hover:border-accent/60 hover:bg-accent/10'
+                      : 'border-transparent bg-muted/60 text-foreground hover:border-accent/60 hover:bg-accent/10'
                   }`}
                   aria-label={`Đặt giờ ${isClockIn ? 'vào' : 'ra'}: ${t}`}
                 >
