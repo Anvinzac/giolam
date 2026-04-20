@@ -221,6 +221,13 @@
     color: hsl(22 65% 35%);
   }
 
+  /* Clock-in (orange) and clock-out (accent) cell text needs heavier
+     weight under the pastel-blue light theme for readability. */
+  html.light .font-medium.text-orange-400,
+  html.light .font-medium.text-accent {
+    font-weight: 600;
+  }
+
   .gradient-gold {
     background: linear-gradient(135deg, hsl(42 90% 55%), hsl(42 100% 70%));
   }
