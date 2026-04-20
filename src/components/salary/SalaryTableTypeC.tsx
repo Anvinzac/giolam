@@ -79,7 +79,7 @@ export default function SalaryTableTypeC({
   const [chipBaseByRowKey, setChipBaseByRowKey] = useState<Record<string, string>>({});
   const chipAutoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tableGridClass = separateClockColumns 
-    ? 'sm:grid-cols-[75px_minmax(170px,1fr)_50px_50px_40px_55px_55px_70px]'
+    ? 'sm:grid-cols-[75px_minmax(170px,1fr)_74px_50px_40px_55px_55px_70px]'
     : 'sm:grid-cols-[75px_minmax(110px,1fr)_84px_40px_55px_55px_70px]';
   const tableGapClass = 'sm:gap-1.5 sm:px-2';
   const [currentPage, setCurrentPage] = useState(0);
@@ -443,10 +443,6 @@ export default function SalaryTableTypeC({
     const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
     const canEditClock = !readOnly && !e.is_day_off && !isScheduledOffDay;
     const showClockChips = canEditClock && chipRowKey === cellKey;
-    const isPending =
-      mode === 'admin' &&
-      e.is_admin_reviewed === false &&
-      (!currentUserId || e.submitted_by !== currentUserId);
 
     // Show week separator after Sunday, if not the last row
     const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
@@ -601,9 +597,9 @@ export default function SalaryTableTypeC({
       <div
         className={`relative overflow-hidden py-2.5 px-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
           e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
-        } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+        } ${idx && idx % 2 !== 0 ? 'bg-muted/40' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
-        } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}
+        } ${showWeekSep ? 'relative' : ''}`}
         onClick={(ev) => {
           // Only activate if row is deactivated and not in readOnly mode
           if (!readOnly && e.is_day_off && !isScheduledOffDay) {
@@ -770,9 +766,9 @@ export default function SalaryTableTypeC({
       <div 
         className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
           e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
-        } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+        } ${idx && idx % 2 !== 0 ? 'bg-muted/40' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
-        } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}
+        } ${showWeekSep ? 'relative' : ''}`}
         onClick={(ev) => {
           // Only activate if row is deactivated and not in readOnly mode
           if (!readOnly && e.is_day_off && !isScheduledOffDay) {
@@ -996,28 +992,24 @@ export default function SalaryTableTypeC({
           <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
         )}
       </div>
-      {isPending && onAcceptEntry && e.id && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/5 border-b border-border/20">
-          <Clock size={11} className="text-amber-400 shrink-0" />
-          <span className="text-[10px] text-amber-400/80">Nhân viên gửi – chờ duyệt</span>
-          <div className="flex-1" />
-          <button
-            onClick={() => e.id && onAcceptEntry(e.id)}
-            className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold flex items-center gap-1 hover:bg-emerald-500/30 transition-colors"
-          >
-            <Check size={11} /> Duyệt
-          </button>
-        </div>
-      )}
       </div>
     );
   };
 
   const renderEmptyRow = (dateStr: string | null, idx: number) => (
     <div key={`empty-${dateStr || idx}`}>
-      <div className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
-        idx % 2 !== 0 ? 'bg-muted/20' : ''
-      } ${dateStr ? 'opacity-50' : ''}`}>
+      <div 
+        className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
+          idx % 2 !== 0 ? 'bg-muted/40' : ''
+        } ${dateStr ? 'opacity-50' : ''} ${
+          !readOnly && dateStr && !scheduledOffDays.has(dateStr) ? 'cursor-pointer hover:opacity-70' : ''
+        }`}
+        onClick={() => {
+          if (!readOnly && dateStr && !scheduledOffDays.has(dateStr)) {
+            activateEmptyDay(dateStr);
+          }
+        }}
+      >
         <div className="min-w-0 flex-1 pr-3">
           <div className="flex items-start gap-1.5">
             {!readOnly && dateStr ? (
@@ -1070,9 +1062,18 @@ export default function SalaryTableTypeC({
           <span className="w-[40px] text-right text-[13px] text-muted-foreground font-bold">—</span>
         </div>
       </div>
-      <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
-        idx % 2 !== 0 ? 'bg-muted/20' : ''
-      } ${dateStr ? 'opacity-50' : ''}`}>
+      <div 
+        className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
+          idx % 2 !== 0 ? 'bg-muted/40' : ''
+        } ${dateStr ? 'opacity-50' : ''} ${
+          !readOnly && dateStr && !scheduledOffDays.has(dateStr) ? 'cursor-pointer hover:opacity-70' : ''
+        }`}
+        onClick={() => {
+          if (!readOnly && dateStr && !scheduledOffDays.has(dateStr)) {
+            activateEmptyDay(dateStr);
+          }
+        }}
+      >
         <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!readOnly && dateStr ? (

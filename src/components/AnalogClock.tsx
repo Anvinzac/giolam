@@ -415,18 +415,23 @@ export default function AnalogClock({
                   const h = selectedHour;
                   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
                   const altMinute = selectedMinute === 0 ? 30 : 0;
-                  const mainY = cy + 10;
-                  const altY = cy - 26;
+                  const mainY = cy + 14;  // Moved down slightly for better spacing
+                  const altY = cy - 30;   // Moved up slightly for better spacing
                   // Both ":" characters are rendered as the first char of
                   // a start-anchored ":mm" text at this exact x. The hour
                   // is end-anchored at the same x. Result: colons line up
                   // pixel-perfect across main + alt.
                   const colonX = cx - 10;
+                  
+                  // Button container dimensions - only wrap :mm part
+                  const mmButtonWidth = 52;
+                  const mmButtonHeight = 40;
+                  
                   return (
                     <>
                       {/* Hour (end-anchored so its last char meets the colon). */}
                       <text
-                        x={colonX}
+                        x={colonX - 6}  // Add 6px gap between hour and button
                         y={mainY}
                         textAnchor="end"
                         dominantBaseline="central"
@@ -435,8 +440,24 @@ export default function AnalogClock({
                         fontFamily="Space Grotesk"
                         fill="hsl(var(--foreground))"
                       >
-                        {h12}
+                        {h12.toString().padStart(2, '0')}
                       </text>
+                      
+                      {/* Main :mm button background */}
+                      <rect
+                        x={colonX - 2}
+                        y={mainY - mmButtonHeight / 2}
+                        width={mmButtonWidth}
+                        height={mmButtonHeight}
+                        rx="6"
+                        fill="hsl(var(--muted))"
+                        fillOpacity="0.3"
+                        stroke="hsl(var(--border))"
+                        strokeWidth="1.5"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleMinuteSelect(altMinute)}
+                      />
+                      
                       {/* Current :mm (start-anchored at colonX). Tapping
                           it also swaps to the alternative minute. */}
                       <text
@@ -453,6 +474,23 @@ export default function AnalogClock({
                       >
                         {`:${selectedMinute.toString().padStart(2, '0')}`}
                       </text>
+                      
+                      {/* Alternative :mm button background */}
+                      <rect
+                        x={colonX - 2}
+                        y={altY - mmButtonHeight / 2}
+                        width={mmButtonWidth}
+                        height={mmButtonHeight}
+                        rx="6"
+                        fill="hsl(var(--primary))"
+                        fillOpacity="0.1"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="1.5"
+                        strokeOpacity="0.3"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleMinuteSelect(altMinute)}
+                      />
+                      
                       {/* Alternative :mm — plain text at 50% opacity; also
                           tappable. Colon sits at the same colonX. */}
                       <text
@@ -478,7 +516,7 @@ export default function AnalogClock({
             {periodLabel && (
               <text
                 x={cx}
-                y={cy + 36}
+                y={cy + 42}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize="12"
