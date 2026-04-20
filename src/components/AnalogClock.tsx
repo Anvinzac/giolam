@@ -125,13 +125,6 @@ export default function AnalogClock({
     }
   };
 
-  // Toggle between :00 and :30 — the center minute pill always shows the
-  // alternate value ("tap here to switch to this"), so tapping swaps state.
-  const toggleMinute = () => {
-    const next = selectedMinute === 0 ? 30 : 0;
-    handleMinuteSelect(next);
-  };
-
   const handleRangeDone = () => {
     if (!rangeClockIn || !rangeClockOut) return;
     onTimeRangeSelect?.({ clockIn: rangeClockIn, clockOut: rangeClockOut });
@@ -330,11 +323,12 @@ export default function AnalogClock({
               </text>
             ) : (
               <>
-                {/* Hour + colon, right-anchored at cx - 2 so the minute
-                    pill sits flush to its right. */}
+                {/* Hour + colon — nudged down so a vertical stack of two
+                    minute pills (:30 on top, :00 on bottom) can fit next
+                    to it without overlapping the period label below. */}
                 <text
                   x={cx - 2}
-                  y={cy - 8}
+                  y={cy + 2}
                   textAnchor="end"
                   dominantBaseline="central"
                   fontSize="30"
@@ -348,52 +342,54 @@ export default function AnalogClock({
                     return `${h12}:`;
                   })()}
                 </text>
-                {/* Minute toggle pill — labeled with the ALTERNATE value
-                    ("tap here to switch to this"), so tapping flips minute
-                    between :00 and :30 in place, with no extra row below. */}
-                <g
-                  onClick={toggleMinute}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <rect
-                    x={cx - 1}
-                    y={cy - 26}
-                    width={42}
-                    height={36}
-                    rx={10}
-                    fill="hsl(var(--primary))"
-                    opacity={0.18}
-                  />
-                  <rect
-                    x={cx - 1}
-                    y={cy - 26}
-                    width={42}
-                    height={36}
-                    rx={10}
-                    fill="transparent"
-                    stroke="hsl(var(--primary))"
-                    strokeOpacity={0.45}
-                    strokeWidth={1}
-                  />
-                  <text
-                    x={cx + 20}
-                    y={cy - 8}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize="24"
-                    fontWeight="700"
-                    fontFamily="Space Grotesk"
-                    fill="hsl(var(--primary))"
-                  >
-                    :{(selectedMinute === 0 ? 30 : 0).toString().padStart(2, '0')}
-                  </text>
-                </g>
+                {/* Minute stack — two pills, one above the other. The
+                    active pill gets the primary gradient; the other one
+                    is muted. Tapping either sets it active (the two swap
+                    colors). */}
+                {[30, 0].map((m, i) => {
+                  const isActive = selectedMinute === m;
+                  const pillY = cy - 16 + i * 18;
+                  const textY = pillY + 8;
+                  return (
+                    <g
+                      key={m}
+                      onClick={() => handleMinuteSelect(m)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <rect
+                        x={cx - 1}
+                        y={pillY}
+                        width={40}
+                        height={16}
+                        rx={8}
+                        fill={isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted))'}
+                        opacity={isActive ? 1 : 0.7}
+                      />
+                      <text
+                        x={cx + 19}
+                        y={textY}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize="12"
+                        fontWeight="700"
+                        fontFamily="Space Grotesk"
+                        fill={
+                          isActive
+                            ? 'hsl(var(--primary-foreground))'
+                            : 'hsl(var(--muted-foreground))'
+                        }
+                      >
+                        :{m.toString().padStart(2, '0')}
+                      </text>
+                    </g>
+                  );
+                })}
               </>
             )}
             {periodLabel && (
               <text
                 x={cx}
-                y={cy + 20}
+                y={cy + 28}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize="12"
