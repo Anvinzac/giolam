@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Plus, X, Clock } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
@@ -11,27 +11,14 @@ import SalaryBreakdownPopup from './SalaryBreakdownPopup';
 import AnalogClock from '../AnalogClock';
 import DateInput from './DateInput';
 
-// Clock-in offsets: earlier times (negative) and later times (positive) from default clock-in
-const CHIP_OFFSETS_CLOCK_IN_LEFT = [-60, -45, -30, -15];
-const CHIP_OFFSETS_CLOCK_IN_CORE = [0, 15, 30, 45, 60, 90];
-const CHIP_OFFSETS_CLOCK_IN_RIGHT = [120, 150, 180, 210, 240];
-const CHIP_OFFSETS_CLOCK_IN_ALL = [
-  ...CHIP_OFFSETS_CLOCK_IN_LEFT,
-  ...CHIP_OFFSETS_CLOCK_IN_CORE,
-  ...CHIP_OFFSETS_CLOCK_IN_RIGHT,
-];
+// Clock-in offsets: 6 chips in 30-minute increments
+const CHIP_OFFSETS_CLOCK_IN_ALL = [-90, -60, -30, 0, 30, 60];
 
-// Clock-out offsets: relative to default clock-out time
-const CHIP_OFFSETS_LEFT = [-240, -210, -180, -150, -120];
-const CHIP_OFFSETS_CORE = [-90, -60, -30, 0, 30, 60];
-const CHIP_OFFSETS_RIGHT = [90, 120, 150, 180, 210];
-const CHIP_OFFSETS_ALL = [
-  ...CHIP_OFFSETS_LEFT,
-  ...CHIP_OFFSETS_CORE,
-  ...CHIP_OFFSETS_RIGHT,
-];
-const CHIP_CORE_START_INDEX_CLOCK_IN = CHIP_OFFSETS_CLOCK_IN_LEFT.length;
-const CHIP_CORE_START_INDEX = CHIP_OFFSETS_LEFT.length;
+// Clock-out offsets: 6 chips in 30-minute increments
+const CHIP_OFFSETS_ALL = [-120, -90, -60, -30, 0, 30];
+
+const CHIP_CORE_START_INDEX_CLOCK_IN = 3; // Index of the 0 offset (center chip)
+const CHIP_CORE_START_INDEX = 4; // Index of the 0 offset (center chip)
 const CHIP_FADE_MASK =
   'linear-gradient(to right, transparent 0, black 28px, black calc(100% - 28px), transparent 100%)';
 
@@ -63,6 +50,7 @@ interface SalaryTableTypeCProps {
   onAcceptEntry?: (id: string) => void;
   onRemoveEntry?: (id: string) => void;
   currentUserId?: string | null;
+  shiftType?: 'notice_only' | 'lunar_rate';
 }
 
 export default function SalaryTableTypeC({
@@ -75,6 +63,7 @@ export default function SalaryTableTypeC({
   onDefaultClockInChange,
   onDefaultClockOutChange,
   editMode, onAcceptEntry, onRemoveEntry, currentUserId,
+  shiftType = 'notice_only',
 }: SalaryTableTypeCProps) {
   const mode: 'admin' | 'employee' | 'preview' =
     editMode ?? (isPreview ? 'preview' : 'admin');
@@ -104,8 +93,12 @@ export default function SalaryTableTypeC({
   const [addingDate, setAddingDate] = useState(false);
   const [newRowDate, setNewRowDate] = useState(periodStart);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [selectedChip, setSelectedChip] = useState<string | null>(null);
+  const [isChipAnimating, setIsChipAnimating] = useState(false);
+  const [showClockIcon, setShowClockIcon] = useState<string | null>(null);
   const pendingDateTapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTappedDateRef = useRef<string | null>(null);
+  const clockIconTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const normalizeClockDefault = (time: string | null | undefined, fallback: string) =>
     time ? (time.length > 5 ? time.slice(0, 5) : time) : fallback;
@@ -143,6 +136,7 @@ export default function SalaryTableTypeC({
     return () => {
       if (pendingDateTapRef.current) clearTimeout(pendingDateTapRef.current);
       if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
+      if (clockIconTimerRef.current) clearTimeout(clockIconTimerRef.current);
     };
   }, []);
 
@@ -234,6 +228,16 @@ export default function SalaryTableTypeC({
   };
 
   const formatDayOnly = (dateStr: string) => dateStr.slice(8, 10);
+
+  const formatVietnameseDay = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+    const dayNumber = date.getDate();
+    
+    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const formattedDay = dayNumber < 10 ? `0${dayNumber}` : `${dayNumber}`;
+    return `${dayNames[dayOfWeek]} ${formattedDay}`;
+  };
 
   const parseTimeToMinutes = (time: string) => {
     const [h, m] = time.split(':');
@@ -383,6 +387,12 @@ export default function SalaryTableTypeC({
     if (chipRowKey === rowKey) {
       setChipRowKey(null);
     }
+    
+    // If activating a row (turning day off -> on), show clock icon
+    if (e.is_day_off) {
+      setShowClockIcon(rowKey);
+    }
+    
     onEntryUpdate(e.entry_date, e.sort_order, {
       is_day_off: !e.is_day_off,
       ...(e.is_day_off
@@ -398,6 +408,11 @@ export default function SalaryTableTypeC({
   const activateEmptyDay = (dateStr: string) => {
     if (scheduledOffDays.has(dateStr)) return;
     const totalHours = calcHoursFromTimes(defaultClockIn, defaultClockOut);
+    const rowKey = `${dateStr}-0`;
+    
+    // Show clock icon when activating
+    setShowClockIcon(rowKey);
+    
     onEntryUpdate(dateStr, 0, {
       is_day_off: false,
       clock_in: defaultClockIn,
@@ -410,7 +425,19 @@ export default function SalaryTableTypeC({
   const renderRow = (e: SalaryEntry, idx?: number, allEntries?: SalaryEntry[]) => {
     const { rate, hours, baseWage, allowanceAmt, total } = computeRow(e);
     const matchedRate = rates.find(r => r.special_date === e.entry_date);
-    const rateDesc = matchedRate?.description_vi;
+    
+    // For Type D (lunar_rate), only show notice for New Moon and Full Moon
+    let rateDesc = matchedRate?.description_vi;
+    if (shiftType === 'lunar_rate') {
+      if (matchedRate?.day_type === 'new_moon') {
+        rateDesc = 'Mùng 1 - 35k';
+      } else if (matchedRate?.day_type === 'full_moon') {
+        rateDesc = 'Rằm - 35k';
+      } else {
+        rateDesc = undefined; // No notice for other days
+      }
+    }
+    
     const cellKey = `${e.entry_date}-${e.sort_order}`;
     const isScheduledOffDay = scheduledOffDays.has(e.entry_date);
     const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
@@ -486,8 +513,26 @@ export default function SalaryTableTypeC({
             ref={activeChipScrollRef}
             className="flex items-center gap-1.5 min-w-0 overflow-x-auto whitespace-nowrap py-0.5 px-1 no-scrollbar"
           >
+            {/* "Khác" chip - opens analog clock */}
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              onClick={() => {
+                if (!canEditClock) return;
+                // Open analog clock picker
+                openCellClockPicker(e.entry_date, e.sort_order, isClockIn ? 'in' : 'out', isClockIn ? e.clock_in : e.clock_out);
+                setChipRowKey(null); // Hide chips when opening clock
+              }}
+              className="inline-flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/60 px-2.5 py-1 text-[12px] font-semibold text-foreground hover:border-accent/60 hover:bg-accent/10 transition-colors"
+              aria-label="Chọn giờ khác"
+            >
+              Khác
+            </motion.button>
             {candidates.map((t, i) => {
               const isSelected = selected === t;
+              const isHighlighted = selectedChip === t;
               const originalIndex = allCandidates.indexOf(t);
               return (
                 <motion.button
@@ -495,10 +540,22 @@ export default function SalaryTableTypeC({
                   type="button"
                   data-chip-core-start={originalIndex === coreStartIndex ? 'true' : undefined}
                   initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  animate={{ 
+                    opacity: isChipAnimating && !isHighlighted ? 0.3 : 1, 
+                    scale: isHighlighted ? 1.1 : 1 
+                  }}
                   transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                  onClick={() => {
-                    if (!canEditClock) return;
+                  onClick={async () => {
+                    if (!canEditClock || isChipAnimating) return;
+                    
+                    // Step 1: Highlight the selected chip
+                    setSelectedChip(t);
+                    setIsChipAnimating(true);
+                    
+                    // Step 2: Wait for highlight animation
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                    // Step 3: Update the data
                     if (isClockIn) {
                       onEntryUpdate(e.entry_date, e.sort_order, {
                         clock_in: t,
@@ -512,10 +569,21 @@ export default function SalaryTableTypeC({
                         total_hours: calcHoursFromTimes(otherClock, t),
                       });
                     }
-                    setChipRowKey((current) => (current === cellKey ? null : current));
+                    
+                    // Step 4: Fade out chips and hide
+                    await new Promise(resolve => setTimeout(resolve, 150));
+                    setChipRowKey(null);
+                    
+                    // Step 5: Reset animation state
+                    setTimeout(() => {
+                      setSelectedChip(null);
+                      setIsChipAnimating(false);
+                    }, 300);
                   }}
-                  className={`inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
-                    isSelected
+                  className={`inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-all duration-200 ${
+                    isHighlighted
+                      ? 'border-accent bg-accent text-white shadow-lg'
+                      : isSelected
                       ? 'border-accent/60 bg-accent/15 text-accent'
                       : 'border-border/60 bg-muted/60 text-foreground hover:border-accent/60 hover:bg-accent/10'
                   }`}
@@ -532,22 +600,34 @@ export default function SalaryTableTypeC({
 
     return (
       <div key={cellKey}>
-      {showClockChips ? (
-        <div className={`py-2 border-b border-border/20 w-full sm:hidden ${
-          idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''
-        } ${isMoonDay ? 'moon-accent-row' : ''} ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}>
-          {renderClockChips('w-full')}
-        </div>
-      ) : (
-      <div className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
-        e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
-      } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
-        isMoonDay ? 'moon-accent-row' : ''
-      } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
+      <div
+        className={`${showClockChips ? 'py-2.5 px-0' : 'flex items-start justify-between gap-2 py-2.5 pl-3 pr-3'} text-[13px] border-b border-border/20 w-full sm:hidden ${
+          e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
+        } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+          isMoonDay ? 'moon-accent-row' : ''
+        } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}
+        onClick={(ev) => {
+          // Only activate if row is deactivated and not in readOnly mode
+          if (!readOnly && e.is_day_off && !isScheduledOffDay) {
+            // Check if click is on the toggle button or input
+            const target = ev.target as HTMLElement;
+            const isToggleButton = target.closest('[data-toggle-button]');
+            const isInput = target.closest('input');
+            if (!isToggleButton && !isInput) {
+              toggleDayOff(e);
+            }
+          }
+        }}
+      >
+        {showClockChips ? (
+          <div className="w-full min-h-[38px] flex items-center">
+            {renderClockChips('w-full')}
+          </div>
+        ) : (<>
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
-              <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
                 {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
             )}
@@ -570,9 +650,10 @@ export default function SalaryTableTypeC({
             ) : (
               <button
                 onClick={() => toggleDayOff(e)}
-                className={`block -mt-0.5 font-semibold text-[17px] leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
+                className={`block -mt-0.5 leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
               >
-                {formatDayOnly(e.entry_date)}
+                <span className="font-light text-[11px] opacity-50 mr-1.5">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
+                <span className="font-semibold text-[17px]">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>
               </button>
             )}
           </div>
@@ -581,10 +662,11 @@ export default function SalaryTableTypeC({
               onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
               className="px-2 py-1 rounded bg-background border border-border text-[12px] min-w-0 w-full" autoFocus />
           ) : (
-            <button onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && startCellEdit(`${cellKey}-note`, e.note || '')}
+            <button 
+              onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && e.note && startCellEdit(`${cellKey}-note`, e.note || '')}
               className={`block text-left text-[12px] leading-tight ${
                 isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-              } ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}>
+              } ${!readOnly && !e.is_day_off && !isScheduledOffDay && e.note ? 'hover:text-foreground transition-colors cursor-pointer' : 'cursor-default'}`}>
               {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
             </button>
           )}
@@ -592,6 +674,24 @@ export default function SalaryTableTypeC({
         <div className="ml-1 flex shrink-0 items-center gap-2 text-right">
           {separateClockColumns ? (
             <>
+              {/* Clock icon - stays visible with 30% opacity */}
+              <AnimatePresence>
+                {showClockIcon === cellKey && !readOnly && !e.is_day_off && !isScheduledOffDay && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 0.3, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.3 }}
+                    onClick={() => {
+                      openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in);
+                      setShowClockIcon(null);
+                    }}
+                    className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-accent/20 text-accent hover:bg-accent/30 hover:opacity-100 transition-all"
+                  >
+                    <Clock size={14} />
+                  </motion.button>
+                )}
+              </AnimatePresence>
               <div className="flex w-[40px] min-h-[38px] items-center justify-center">
                 <button
                   onClick={toggleClockInChips}
@@ -649,25 +749,32 @@ export default function SalaryTableTypeC({
         {showWeekSep && (
           <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
         )}
+        </>)}
       </div>
-      )}
-      {showClockChips ? (
-        <div className={`hidden sm:block py-2 border-b border-border/20 w-full ${
-          idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''
-        } ${isMoonDay ? 'moon-accent-row' : ''} ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}>
-          {renderClockChips('w-full')}
-        </div>
-      ) : (
-      <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
-        e.is_day_off || isScheduledOffDay ? 'opacity-50' : ''
-      } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
-        isMoonDay ? 'moon-accent-row' : ''
-      } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
+      <div 
+        className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
+          e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
+        } ${idx && idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+          isMoonDay ? 'moon-accent-row' : ''
+        } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}
+        onClick={(ev) => {
+          // Only activate if row is deactivated and not in readOnly mode
+          if (!readOnly && e.is_day_off && !isScheduledOffDay) {
+            // Check if click is on the toggle button or input
+            const target = ev.target as HTMLElement;
+            const isToggleButton = target.closest('[data-toggle-button]');
+            const isInput = target.closest('input');
+            if (!isToggleButton && !isInput) {
+              toggleDayOff(e);
+            }
+          }
+        }}
+      >
         {/* Date + note */}
         <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
-              <button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
                 {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
             )}
@@ -691,10 +798,10 @@ export default function SalaryTableTypeC({
               ) : (
                 <button
                   onClick={() => toggleDayOff(e)}
-                  className={`block -mt-0.5 font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
+                  className={`block -mt-0.5 leading-none sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
                 >
-                  <span className="sm:hidden">{formatDayOnly(e.entry_date)}</span>
-                  <span className="hidden sm:inline">{formatDateViet(e.entry_date).split(' ')[0]}</span>
+                  <span className="font-light text-[10px] sm:text-[9px] opacity-50 mr-1.5">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
+                  <span className="font-semibold text-[15px] sm:text-[14px]">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>
                 </button>
               )}
 
@@ -704,36 +811,79 @@ export default function SalaryTableTypeC({
         </div>
 
         {/* Note */}
-        {editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
-          <input
-            value={cellValue}
-            onChange={ev => setCellValue(ev.target.value)}
-            onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-            className="hidden sm:block sm:ml-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full"
-            autoFocus
-          />
-        ) : (
-          <button
-            onClick={() => {
-              if (isPreview || e.is_day_off || isScheduledOffDay) return;
-              if (separateClockColumns) {
-                // Manual re-open: still auto-hide after a short delay.
-                showRowChips(cellKey, e.clock_in || defaultClockIn);
-                return;
-              }
-              startCellEdit(`${cellKey}-note`, e.note || '');
-            }}
-            className={`hidden sm:block sm:ml-1 text-left whitespace-nowrap overflow-hidden text-ellipsis text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
-              isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-            } ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
-          >
-            {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
-          </button>
-        )}
+        <AnimatePresence mode="wait">
+          {editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off && !isScheduledOffDay && !separateClockColumns ? (
+            <motion.input
+              key="note-input"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              value={cellValue}
+              onChange={ev => setCellValue(ev.target.value)}
+              onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
+              className="hidden sm:block sm:ml-1 px-2 py-1 rounded bg-background border border-border text-[12px] sm:text-[13px] min-w-0 w-full"
+              autoFocus
+            />
+          ) : showClockChips ? (
+            <motion.div 
+              key="chips-desktop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="hidden sm:block sm:ml-1"
+            >
+              {renderClockChips()}
+            </motion.div>
+          ) : (
+            <motion.button
+              key="note-button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => {
+                if (isPreview || e.is_day_off || isScheduledOffDay) return;
+                // Only allow editing if there's an actual user note
+                if (!e.note) return;
+                if (separateClockColumns) {
+                  // Manual re-open: still auto-hide after a short delay.
+                  showRowChips(cellKey, e.clock_in || defaultClockIn, 'in');
+                  return;
+                }
+                startCellEdit(`${cellKey}-note`, e.note || '');
+              }}
+              className={`hidden sm:block sm:ml-1 text-left whitespace-nowrap overflow-hidden text-ellipsis text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
+                isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+              } ${!readOnly && !e.is_day_off && !isScheduledOffDay && e.note ? 'hover:text-foreground transition-colors cursor-pointer' : 'cursor-default'}`}
+            >
+              {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Clock-in always visible in separate mode (even while chips are active) */}
         {separateClockColumns && (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full gap-1">
+            {/* Clock icon - stays visible with 30% opacity */}
+            <AnimatePresence>
+              {showClockIcon === cellKey && !readOnly && !e.is_day_off && !isScheduledOffDay && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 0.3, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.3 }}
+                  onClick={() => {
+                    openCellClockPicker(e.entry_date, e.sort_order, 'in', e.clock_in);
+                    setShowClockIcon(null);
+                  }}
+                  className="flex items-center justify-center w-[24px] h-[24px] rounded-full bg-accent/20 text-accent hover:bg-accent/30 hover:opacity-100 transition-all"
+                >
+                  <Clock size={14} />
+                </motion.button>
+              )}
+            </AnimatePresence>
             {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
                 onClick={toggleClockInChips}
@@ -830,7 +980,6 @@ export default function SalaryTableTypeC({
           <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
         )}
       </div>
-      )}
       {isPending && onAcceptEntry && e.id && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/5 border-b border-border/20">
           <Clock size={11} className="text-amber-400 shrink-0" />
@@ -871,11 +1020,12 @@ export default function SalaryTableTypeC({
               {dateStr ? (
                 <button
                   onClick={() => !readOnly && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
-                  className={`block -mt-0.5 font-semibold text-[15px] leading-none whitespace-nowrap ${getDayColor(dateStr)} ${
+                  className={`block -mt-0.5 leading-none whitespace-nowrap ${getDayColor(dateStr)} ${
                     !readOnly && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
                   }`}
                 >
-                  {formatDayOnly(dateStr)}
+                  <span className="font-light text-[11px] opacity-50 mr-1.5">{formatVietnameseDay(dateStr).split(' ')[0]}</span>
+                  <span className="font-semibold text-[17px]">{formatVietnameseDay(dateStr).split(' ')[1]}</span>
                 </button>
               ) : (
                 <span className="block font-semibold text-[15px] leading-none whitespace-nowrap opacity-0">00</span>
@@ -925,12 +1075,12 @@ export default function SalaryTableTypeC({
               {dateStr ? (
                 <button
                   onClick={() => !readOnly && !scheduledOffDays.has(dateStr) && activateEmptyDay(dateStr)}
-                  className={`block -mt-0.5 font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap ${getDayColor(dateStr)} ${
+                  className={`block -mt-0.5 leading-none sm:leading-normal whitespace-nowrap ${getDayColor(dateStr)} ${
                     !readOnly && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
                   }`}
                 >
-                  <span className="sm:hidden">{formatDayOnly(dateStr)}</span>
-                  <span className="hidden sm:inline">{formatDateViet(dateStr).split(' ')[0]}</span>
+                  <span className="font-light text-[10px] sm:text-[9px] opacity-50 mr-1.5">{formatVietnameseDay(dateStr).split(' ')[0]}</span>
+                  <span className="font-semibold text-[15px] sm:text-[14px]">{formatVietnameseDay(dateStr).split(' ')[1]}</span>
                 </button>
               ) : (
                 <span className="block font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap opacity-0">00</span>
@@ -1137,72 +1287,76 @@ export default function SalaryTableTypeC({
     <div className="space-y-3">
       {!readOnly && (
         <div className="glass-card p-2.5">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">Từ:</span>
-                {pickingRange === 'start' ? (
-                  <input type="date" value={customStartDate || periodStart}
-                    onChange={e => onCustomDateChange(e.target.value, customEndDate)}
-                    onBlur={() => setPickingRange(null)}
-                    className="px-1.5 py-0.5 rounded bg-background border border-border text-[10px]" autoFocus />
-                ) : (
-                  <button
-                    onClick={() => setPickingRange('start')}
-                    className="px-2 py-0.5 rounded bg-background border border-border text-[10px] hover:bg-muted/60 transition-colors"
-                  >
-                    {formatDateViet(customStartDate || periodStart)}
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">Đến:</span>
-                {pickingRange === 'end' ? (
-                  <input type="date" value={customEndDate || periodEnd}
-                    onChange={e => onCustomDateChange(customStartDate, e.target.value)}
-                    onBlur={() => setPickingRange(null)}
-                    className="px-1.5 py-0.5 rounded bg-background border border-border text-[10px]" autoFocus />
-                ) : (
-                  <button
-                    onClick={() => setPickingRange('end')}
-                    className="px-2 py-0.5 rounded bg-background border border-border text-[10px] hover:bg-muted/60 transition-colors"
-                  >
-                    {formatDateViet(customEndDate || periodEnd)}
-                  </button>
-                )}
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {mode === 'admin' && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">Từ:</span>
+                    {pickingRange === 'start' ? (
+                      <input type="date" value={customStartDate || periodStart}
+                        onChange={e => onCustomDateChange(e.target.value, customEndDate)}
+                        onBlur={() => setPickingRange(null)}
+                        className="px-1.5 py-0.5 rounded bg-background border border-border text-[10px]" autoFocus />
+                    ) : (
+                      <button
+                        onClick={() => setPickingRange('start')}
+                        className="px-2 py-0.5 rounded bg-background border border-border text-[10px] hover:bg-muted/60 transition-colors"
+                      >
+                        {formatDateViet(customStartDate || periodStart)}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">Đến:</span>
+                    {pickingRange === 'end' ? (
+                      <input type="date" value={customEndDate || periodEnd}
+                        onChange={e => onCustomDateChange(customStartDate, e.target.value)}
+                        onBlur={() => setPickingRange(null)}
+                        className="px-1.5 py-0.5 rounded bg-background border border-border text-[10px]" autoFocus />
+                    ) : (
+                      <button
+                        onClick={() => setPickingRange('end')}
+                        className="px-2 py-0.5 rounded bg-background border border-border text-[10px] hover:bg-muted/60 transition-colors"
+                      >
+                        {formatDateViet(customEndDate || periodEnd)}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
-            <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-muted-foreground mr-1">Mặc định:</span>
-                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[10px] font-medium text-emerald-400 hover:bg-muted transition-colors">
+                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-emerald-400 hover:bg-muted transition-colors">
                   {defaultClockIn}
                 </button>
                 <span className="text-muted-foreground text-[10px]">-</span>
-                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'out', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[10px] font-medium text-accent hover:bg-muted transition-colors">
+                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'out', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-accent hover:bg-muted transition-colors">
                   {defaultClockOut}
                 </button>
               </div>
+            </div>
 
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setCompact(!compact)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-medium transition-colors ${
                   compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {compact ? <Check size={10} /> : <X size={10} />}
-                Chế độ gọn
+                {compact ? <Check size={9} /> : <X size={9} />}
+                Gọn
               </button>
 
               <button
                 onClick={() => setSeparateClockColumns(!separateClockColumns)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-medium transition-colors ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-medium transition-colors ${
                   separateClockColumns ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
                 }`}
               >
-                {separateClockColumns ? <Check size={10} /> : <X size={10} />}
-                Tách cột giờ
+                {separateClockColumns ? <Check size={9} /> : <X size={9} />}
+                Tách
               </button>
             </div>
           </div>
@@ -1227,43 +1381,44 @@ export default function SalaryTableTypeC({
 
       {/* Allowances */}
       {mode === 'employee' ? (
-        <div className="glass-card p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Gửi xe (tự động)
-            </h4>
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-              guiXeSummary.enabled
-                ? 'text-success bg-success/10 border-success/30'
-                : 'text-muted-foreground bg-muted/30 border-muted-foreground/20'
-            }`}>
-              {guiXeSummary.enabled ? 'Đang áp dụng' : 'Đang tắt'}
-            </span>
-          </div>
-          <div className="flex items-end justify-between gap-3">
-            <p className="text-[11px] text-muted-foreground">
-              10.000 đ mỗi ngày làm (tự cập nhật khi bật/tắt ngày làm).
+        <div className="glass-card p-3">
+          <button
+            onClick={() => {
+              // Auto-save is already handled by useEffect in parent
+              // This button is just for user feedback
+              console.log('Manual save triggered');
+            }}
+            disabled={readOnly}
+            className={`w-full py-3 rounded-lg font-semibold text-sm transition-all shadow-lg ${
+              readOnly
+                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
+            }`}
+          >
+            {readOnly ? 'Đã công bố - Không thể chỉnh sửa' : 'Lưu'}
+          </button>
+          {!readOnly && (
+            <p className="text-[11px] text-muted-foreground text-center mt-2">
+              Thay đổi được lưu tự động. Bạn có thể tiếp tục chỉnh sửa cho đến khi admin công bố.
             </p>
-            <div className="text-sm font-semibold text-foreground">
-              {formatVND(guiXeSummary.amount)}
-            </div>
-          </div>
+          )}
         </div>
       ) : (
-        <EmployeeAllowanceEditor
-          allowances={allowances}
-          onToggle={onAllowanceToggle}
-          onUpdate={onAllowanceUpdate}
-          onAddAllowance={onAddAllowance}
-          isAdmin={mode === 'admin'}
-        />
+        <>
+          <EmployeeAllowanceEditor
+            allowances={allowances}
+            onToggle={onAllowanceToggle}
+            onUpdate={onAllowanceUpdate}
+            onAddAllowance={onAddAllowance}
+            isAdmin={mode === 'admin'}
+          />
+          {/* Total - only show for admin */}
+          <TotalSalaryDisplay
+            total={breakdown?.total ?? 0}
+            onTap={() => setShowBreakdown(true)}
+          />
+        </>
       )}
-
-      {/* Total */}
-      <TotalSalaryDisplay
-        total={breakdown?.total ?? 0}
-        onTap={() => setShowBreakdown(true)}
-      />
 
       <SalaryBreakdownPopup
         isOpen={showBreakdown}
