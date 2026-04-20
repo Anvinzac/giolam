@@ -13,8 +13,6 @@ interface AnalogClockProps {
   initialActiveField?: 'in' | 'out';
 }
 
-const MINUTES = [0, 30];
-
 // 12 clock positions in order: 12,1,2,...,11
 const CLOCK_POSITIONS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
@@ -127,6 +125,13 @@ export default function AnalogClock({
     }
   };
 
+  // Toggle between :00 and :30 — the center minute pill always shows the
+  // alternate value ("tap here to switch to this"), so tapping swaps state.
+  const toggleMinute = () => {
+    const next = selectedMinute === 0 ? 30 : 0;
+    handleMinuteSelect(next);
+  };
+
   const handleRangeDone = () => {
     if (!rangeClockIn || !rangeClockOut) return;
     onTimeRangeSelect?.({ clockIn: rangeClockIn, clockOut: rangeClockOut });
@@ -136,13 +141,14 @@ export default function AnalogClock({
   const cx = size / 2;
   const cy = size / 2;
 
-  // Outer ring — bigger, more space
-  const outerR = 155;
-  const outerInnerR = 118;
-  // Gap between rings
-  // Inner ring
-  const innerR = 108;
-  const innerInnerR = 76;
+  // Outer ring — widened now that the separate minute-picker row is gone,
+  // so we recover the vertical space for a bigger dial.
+  const outerR = 158;
+  const outerInnerR = 120;
+  // Inner ring — also grows; inner-inner shrinks to give the center more
+  // room for the tappable minute toggle.
+  const innerR = 114;
+  const innerInnerR = 82;
 
   const gap = 1.5;
   const segAngle = 360 / 12;
@@ -159,11 +165,6 @@ export default function AnalogClock({
   };
 
   const periodLabel = getPeriodLabel(selectedHour);
-
-  const formatDisplay = (h: number, m: number): string => {
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:${m.toString().padStart(2, '0')}`;
-  };
 
   return (
     <AnimatePresence>
@@ -183,7 +184,7 @@ export default function AnalogClock({
         >
           <h3 className="font-display text-lg text-foreground text-center">{label}</h3>
 
-          <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto block w-full max-w-[280px] h-auto">
+          <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto block w-full max-w-[320px] h-auto">
             {/* Outer ring — PM */}
             {CLOCK_POSITIONS.map((pos, i) => {
               const startA = i * segAngle + gap / 2 + rotateOffset;
@@ -314,24 +315,85 @@ export default function AnalogClock({
 
             {/* Center */}
             <circle cx={cx} cy={cy} r={innerInnerR - 4} fill="hsl(var(--background))" opacity={0.9} />
-            <text
-              x={cx}
-              y={selectedHour !== null ? cy - 8 : cy}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize="26"
-              fontWeight="700"
-              fontFamily="Space Grotesk"
-              fill="hsl(var(--foreground))"
-            >
-              {selectedHour !== null
-                ? formatDisplay(selectedHour, selectedMinute)
-                : '--:--'}
-            </text>
+            {selectedHour === null ? (
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize="30"
+                fontWeight="700"
+                fontFamily="Space Grotesk"
+                fill="hsl(var(--foreground))"
+              >
+                --:--
+              </text>
+            ) : (
+              <>
+                {/* Hour + colon, right-anchored at cx - 2 so the minute
+                    pill sits flush to its right. */}
+                <text
+                  x={cx - 2}
+                  y={cy - 8}
+                  textAnchor="end"
+                  dominantBaseline="central"
+                  fontSize="30"
+                  fontWeight="700"
+                  fontFamily="Space Grotesk"
+                  fill="hsl(var(--foreground))"
+                >
+                  {(() => {
+                    const h = selectedHour;
+                    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                    return `${h12}:`;
+                  })()}
+                </text>
+                {/* Minute toggle pill — labeled with the ALTERNATE value
+                    ("tap here to switch to this"), so tapping flips minute
+                    between :00 and :30 in place, with no extra row below. */}
+                <g
+                  onClick={toggleMinute}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <rect
+                    x={cx - 1}
+                    y={cy - 26}
+                    width={42}
+                    height={36}
+                    rx={10}
+                    fill="hsl(var(--primary))"
+                    opacity={0.18}
+                  />
+                  <rect
+                    x={cx - 1}
+                    y={cy - 26}
+                    width={42}
+                    height={36}
+                    rx={10}
+                    fill="transparent"
+                    stroke="hsl(var(--primary))"
+                    strokeOpacity={0.45}
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={cx + 20}
+                    y={cy - 8}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize="24"
+                    fontWeight="700"
+                    fontFamily="Space Grotesk"
+                    fill="hsl(var(--primary))"
+                  >
+                    :{(selectedMinute === 0 ? 30 : 0).toString().padStart(2, '0')}
+                  </text>
+                </g>
+              </>
+            )}
             {periodLabel && (
               <text
                 x={cx}
-                y={cy + 16}
+                y={cy + 20}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize="12"
@@ -343,21 +405,6 @@ export default function AnalogClock({
               </text>
             )}
           </svg>
-
-          {/* Minutes */}
-          <div className="flex gap-2 justify-center">
-            {MINUTES.map(m => (
-              <button
-                key={m}
-                onClick={() => handleMinuteSelect(m)}
-                className={`px-5 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  selectedMinute === m ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                :{m.toString().padStart(2, '0')}
-              </button>
-            ))}
-          </div>
 
           {isRangeMode ? (
             <div className="grid grid-cols-[1fr_1fr_0.9fr] gap-2">
