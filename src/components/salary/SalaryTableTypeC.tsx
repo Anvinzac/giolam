@@ -516,9 +516,7 @@ export default function SalaryTableTypeC({
             {/* "Khác" chip - opens analog clock */}
             <motion.button
               type="button"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              initial={false}
               onClick={() => {
                 if (!canEditClock) return;
                 // Open analog clock picker
@@ -539,10 +537,10 @@ export default function SalaryTableTypeC({
                   key={`${t}-${i}`}
                   type="button"
                   data-chip-core-start={originalIndex === coreStartIndex ? 'true' : undefined}
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ 
-                    opacity: isChipAnimating && !isHighlighted ? 0.3 : 1, 
-                    scale: isHighlighted ? 1.1 : 1 
+                  initial={false}
+                  animate={{
+                    opacity: isChipAnimating && !isHighlighted ? 0.3 : 1,
+                    scale: isHighlighted ? 1.1 : 1
                   }}
                   transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                   onClick={async () => {
