@@ -10,6 +10,7 @@ import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
 import AnalogClock from '../AnalogClock';
 import DateInput from './DateInput';
+import PeriodDatePicker from './PeriodDatePicker';
 
 // Clock-in offsets: 6 chips in 30-minute increments
 const CHIP_OFFSETS_CLOCK_IN_ALL = [-90, -60, -30, 0, 30, 60];
@@ -444,11 +445,11 @@ export default function SalaryTableTypeC({
     const canEditClock = !readOnly && !e.is_day_off && !isScheduledOffDay;
     const showClockChips = canEditClock && chipRowKey === cellKey;
 
-    // Show week separator after Sunday, if not the last row
+    // Show week separator after every Sunday, regardless of position or state
     const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
-    const entries = allEntries || [];
-    const nextEntry = idx !== undefined ? entries[idx + 1] : undefined;
-    const showWeekSep = isSunday && nextEntry !== undefined;
+    // allEntries kept for signature compatibility; separator is always rendered for Sundays
+    void allEntries; void idx;
+    const showWeekSep = isSunday;
     const toggleClockInChips = () => {
       if (!canEditClock) return;
       // If this row's chips are showing and it's already clock-in, hide them
@@ -1238,32 +1239,17 @@ export default function SalaryTableTypeC({
       <div className="w-full sm:overflow-x-auto pb-2">
         <div className="w-full min-w-0">
           {addingDate && !readOnly && (
-            <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
-              <input
-                type="date"
-                value={newRowDate}
-                min={periodStart}
-                max={periodEnd}
-                onChange={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
-                onBlur={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
-                className="px-2 py-1 rounded bg-background border border-border text-[11px]"
-              />
-              <button
-                onClick={() => {
-                  onAddRowAtDate(clampDateToPeriod(newRowDate));
-                  setAddingDate(false);
-                }}
-                className="px-2 py-1 rounded bg-muted text-[10px] text-foreground hover:bg-muted/80 transition-colors"
-              >
-                Tạo dòng
-              </button>
-              <button
-                onClick={() => setAddingDate(false)}
-                className="px-2 py-1 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-              >
-                Hủy
-              </button>
-            </div>
+            <PeriodDatePicker
+              periodStart={periodStart}
+              periodEnd={periodEnd}
+              rates={rates}
+              entries={entries}
+              onSelect={(date) => {
+                onAddRowAtDate(clampDateToPeriod(date));
+                setAddingDate(false);
+              }}
+              onClose={() => setAddingDate(false)}
+            />
           )}
           <div className="px-2 py-2 text-[11px] text-muted-foreground font-semibold flex items-center justify-between border-b border-border/40">
             <span>Chế độ gọn · {workingEntries.length} ngày làm</span>
@@ -1271,10 +1257,9 @@ export default function SalaryTableTypeC({
           {renderTableHeader()}
           <div className="divide-y divide-border/20">
             {workingEntries.map((e, idx) => renderRow(e, idx, workingEntries))}
-            {emptyRows.map(({ idx, dateStr }, mapIdx) => {
+            {emptyRows.map(({ idx, dateStr }) => {
               const isSun = dateStr ? new Date(dateStr + 'T00:00:00').getDay() === 0 : false;
-              const showWeekSep = isSun && mapIdx < emptyRows.length - 1;
-              return renderEmptyRow(dateStr, idx, showWeekSep);
+              return renderEmptyRow(dateStr, idx, isSun);
             })}
           </div>
         </div>
@@ -1297,40 +1282,24 @@ export default function SalaryTableTypeC({
       <div className="w-full sm:overflow-x-auto pb-2">
         <div className="w-full min-w-0">
           {addingDate && !readOnly && (
-            <div className="flex items-center gap-2 px-2 py-2 border-b border-border/20">
-              <input
-                type="date"
-                value={newRowDate}
-                min={periodStart}
-                max={periodEnd}
-                onChange={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
-                onBlur={(e) => setNewRowDate(clampDateToPeriod(e.target.value))}
-                className="px-2 py-1 rounded bg-background border border-border text-[11px]"
-              />
-              <button
-                onClick={() => {
-                  onAddRowAtDate(clampDateToPeriod(newRowDate));
-                  setAddingDate(false);
-                }}
-                className="px-2 py-1 rounded bg-muted text-[10px] text-foreground hover:bg-muted/80 transition-colors"
-              >
-                Tạo dòng
-              </button>
-              <button
-                onClick={() => setAddingDate(false)}
-                className="px-2 py-1 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-              >
-                Hủy
-              </button>
-            </div>
+            <PeriodDatePicker
+              periodStart={periodStart}
+              periodEnd={periodEnd}
+              rates={rates}
+              entries={entries}
+              onSelect={(date) => {
+                onAddRowAtDate(clampDateToPeriod(date));
+                setAddingDate(false);
+              }}
+              onClose={() => setAddingDate(false)}
+            />
           )}
           {renderTableHeader()}
           <div className="divide-y divide-border/20">
             {pageRows.map((row, idx) => {
               if (row.entry) return renderRow(row.entry, idx, orderedEntries);
               const isSun = row.dateStr ? new Date(row.dateStr + 'T00:00:00').getDay() === 0 : false;
-              const showWeekSep = isSun && idx < pageRows.length - 1;
-              return renderEmptyRow(row.dateStr, idx, showWeekSep);
+              return renderEmptyRow(row.dateStr, idx, isSun);
             })}
           </div>
         </div>
