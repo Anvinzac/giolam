@@ -646,8 +646,8 @@ export default function SalaryTableTypeC({
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
-              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
-                {e.is_day_off ? <X size={11} /> : <Check size={11} />}
+              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`-ml-3 pl-3 pr-6 -my-2.5 py-2.5 flex-shrink-0 flex items-start transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+                <span className="mt-0.5 block">{e.is_day_off ? <X size={11} /> : <Check size={11} />}</span>
               </button>
             )}
             {editingDateKey === `${cellKey}-date` && !readOnly ? (
@@ -795,8 +795,8 @@ export default function SalaryTableTypeC({
         <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
-              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
-                {e.is_day_off ? <X size={11} /> : <Check size={11} />}
+              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`-ml-3 pl-3 pr-6 -my-2.5 py-2.5 flex-shrink-0 flex items-start transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+                <span className="mt-0.5 block">{e.is_day_off ? <X size={11} /> : <Check size={11} />}</span>
               </button>
             )}
             <div className="min-w-0 flex-1">
