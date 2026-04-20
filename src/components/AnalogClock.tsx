@@ -537,7 +537,7 @@ export default function AnalogClock({
                 className={`relative overflow-hidden py-3 rounded-xl font-display font-semibold text-xs transition-colors ${
                   activeRangeField === 'in'
                     ? 'gradient-gold text-primary-foreground'
-                    : 'bg-muted text-emerald-400'
+                    : 'bg-muted text-orange-400'
                 }`}
               >
                 {activeRangeField === 'in' && autoAdvance && progressTick > 0 && (

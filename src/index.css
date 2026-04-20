@@ -75,16 +75,16 @@
   html.light {
     /* Light mode - Pastel orange + brown + dark red palette */
 
-    /* Core backgrounds - warm ivory */
-    --background: 30 40% 95%;
-    --foreground: 22 40% 18%;
+    /* Core backgrounds - soft pastel blue */
+    --background: 210 55% 94%;
+    --foreground: 215 35% 20%;
 
-    /* Card surfaces - slightly brighter ivory */
-    --card: 30 45% 98%;
-    --card-foreground: 22 40% 18%;
+    /* Card surfaces - slightly brighter pastel blue */
+    --card: 210 60% 98%;
+    --card-foreground: 215 35% 20%;
 
-    --popover: 30 45% 98%;
-    --popover-foreground: 22 40% 18%;
+    --popover: 210 60% 98%;
+    --popover-foreground: 215 35% 20%;
 
     /* Primary - Pastel orange */
     --primary: 25 85% 65%;
@@ -95,8 +95,8 @@
     --secondary-foreground: 30 45% 96%;
 
     /* Muted - Warm beige for secondary text */
-    --muted: 30 22% 88%;
-    --muted-foreground: 22 22% 38%;
+    --muted: 210 30% 88%;
+    --muted-foreground: 215 20% 40%;
 
     /* Accent - Dark red / wine */
     --accent: 355 62% 44%;
@@ -106,8 +106,8 @@
     --destructive: 0 72% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 25% 86%;
-    --input: 30 25% 92%;
+    --border: 210 35% 85%;
+    --input: 210 35% 92%;
     --ring: 25 85% 60%;
 
     /* Custom LunarFlow tokens for light — tuned to pastel orange / brown / dark red */
@@ -123,18 +123,18 @@
     --newmoon-glow: 355 65% 52%;
     --off-day: 0 55% 78%;
     --off-day-foreground: 355 65% 32%;
-    --glass: 30 45% 98%;
-    --glass-border: 30 25% 86%;
+    --glass: 210 60% 98%;
+    --glass-border: 210 35% 85%;
     --success: 140 45% 42%;
     --success-foreground: 140 45% 8%;
 
-    --sidebar-background: 30 40% 96%;
-    --sidebar-foreground: 22 40% 18%;
+    --sidebar-background: 210 55% 96%;
+    --sidebar-foreground: 215 35% 20%;
     --sidebar-primary: 25 85% 65%;
     --sidebar-primary-foreground: 22 50% 15%;
     --sidebar-accent: 355 62% 44%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 30 25% 86%;
+    --sidebar-border: 210 35% 85%;
     --sidebar-ring: 25 85% 60%;
   }
 }
@@ -160,9 +160,9 @@
   }
 
   html.light .glass-card {
-    background: hsl(30 45% 98%);
-    border: 1px solid hsl(30 25% 86%);
-    box-shadow: 0 1px 3px hsl(22 40% 18% / 0.08);
+    background: hsl(210 60% 98%);
+    border: 1px solid hsl(210 35% 85%);
+    box-shadow: 0 1px 3px hsl(215 35% 20% / 0.08);
     border-radius: 1rem;
     transition-property: all;
     transition-duration: 300ms;
@@ -173,16 +173,16 @@
   }
 
   html.light .glass-card-hover {
-    background: hsl(30 45% 98%);
-    border: 1px solid hsl(30 25% 86%);
-    box-shadow: 0 1px 3px hsl(22 40% 18% / 0.08);
+    background: hsl(210 60% 98%);
+    border: 1px solid hsl(210 35% 85%);
+    box-shadow: 0 1px 3px hsl(215 35% 20% / 0.08);
     border-radius: 1rem;
     transition-property: all;
     transition-duration: 300ms;
   }
 
   html.light .glass-card-hover:hover {
-    background: hsl(30 50% 96%);
+    background: hsl(210 65% 96%);
     border-color: hsl(25 85% 58% / 0.35);
     box-shadow: 0 4px 12px hsl(25 85% 58% / 0.18);
   }

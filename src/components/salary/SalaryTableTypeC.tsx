@@ -705,7 +705,7 @@ export default function SalaryTableTypeC({
               <div className="flex w-[40px] min-h-[38px] items-center justify-center">
                 <button
                   onClick={toggleClockInChips}
-                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-orange-400 hover:underline' : 'text-orange-400 cursor-default'}`}>
                   {formatClockDecimal(e.clock_in)}
                 </button>
               </div>
@@ -721,14 +721,14 @@ export default function SalaryTableTypeC({
               {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
                 <button
                   onClick={toggleClockInChips}
-                  className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
+                  className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-orange-400"
                 >
                   Chọn
                 </button>
               ) : (
                 <button type="button"
                   onClick={toggleClockInChips}
-                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                  className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-orange-400 hover:underline' : 'text-orange-400 cursor-default'}`}>
                   {formatClockDecimal(e.clock_in)}
                 </button>
               )}
@@ -899,14 +899,14 @@ export default function SalaryTableTypeC({
             {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
                 onClick={toggleClockInChips}
-                className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
+                className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-orange-400"
               >
                 Chọn giờ
               </button>
             ) : (
               <button
                 onClick={toggleClockInChips}
-                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'}`}>
+                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-orange-400 hover:underline' : 'text-orange-400 cursor-default'}`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
             )}
@@ -938,14 +938,14 @@ export default function SalaryTableTypeC({
             {editingCell === `${cellKey}-clock_in` && !readOnly && !e.is_day_off && !isScheduledOffDay ? (
               <button
                 onClick={toggleClockInChips}
-                className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-emerald-400"
+                className="w-full rounded border border-border bg-background px-1 py-1 text-center text-[10px] text-orange-400"
               >
                 Chọn giờ
               </button>
             ) : (
               <button
                 onClick={toggleClockInChips}
-                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-emerald-400 hover:underline' : 'text-emerald-400 cursor-default'} self-center -translate-x-1`}>
+                className={`w-full text-center font-medium ${!readOnly && !e.is_day_off && !isScheduledOffDay ? 'text-orange-400 hover:underline' : 'text-orange-400 cursor-default'} self-center -translate-x-1`}>
                 {formatClockDecimal(e.clock_in)}
               </button>
             )}
@@ -1345,7 +1345,7 @@ export default function SalaryTableTypeC({
 
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-muted-foreground mr-1">Mặc định:</span>
-                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-emerald-400 hover:bg-muted transition-colors">
+                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-orange-400 hover:bg-muted transition-colors">
                   {defaultClockIn}
                 </button>
                 <span className="text-muted-foreground text-[10px]">-</span>
