@@ -329,40 +329,75 @@ export default function AnalogClock({
                   const altMinute = selectedMinute === 0 ? 30 : 0;
                   const mainY = cy + 10;
                   const altY = cy - 20;
+                  // Both ":" characters are rendered as the first char of
+                  // a start-anchored ":mm" text at this exact x. The hour
+                  // is end-anchored at the same x. Result: colons line up
+                  // pixel-perfect across main + alt.
+                  const colonX = cx - 10;
                   return (
                     <>
-                      {/* Current time — nudged down to leave headroom for
-                          the alternative-minute button stacked above the
-                          :mm portion. */}
+                      {/* Hour (end-anchored so its last char meets the colon). */}
                       <text
-                        x={cx}
+                        x={colonX}
                         y={mainY}
-                        textAnchor="middle"
+                        textAnchor="end"
                         dominantBaseline="central"
                         fontSize="30"
                         fontWeight="700"
                         fontFamily="Space Grotesk"
                         fill="hsl(var(--foreground))"
                       >
-                        {`${h12}:${selectedMinute.toString().padStart(2, '0')}`}
+                        {h12}
                       </text>
-                      {/* Alternative minute — same size as the hour, sitting
-                          directly above the current :mm value. Tapping
-                          swaps current ↔ alternative. */}
+                      {/* Current :mm (start-anchored at colonX). */}
+                      <text
+                        x={colonX}
+                        y={mainY}
+                        textAnchor="start"
+                        dominantBaseline="central"
+                        fontSize="30"
+                        fontWeight="700"
+                        fontFamily="Space Grotesk"
+                        fill="hsl(var(--foreground))"
+                      >
+                        {`:${selectedMinute.toString().padStart(2, '0')}`}
+                      </text>
+                      {/* Alternative :mm — wrapped in a pill container so
+                          it reads as a tappable button. Same font size as
+                          the hour; colon sits at the same colonX. */}
                       <g
                         onClick={() => handleMinuteSelect(altMinute)}
                         style={{ cursor: 'pointer' }}
                       >
+                        <rect
+                          x={colonX - 6}
+                          y={altY - 17}
+                          width={54}
+                          height={34}
+                          rx={10}
+                          fill="hsl(var(--primary))"
+                          opacity={0.18}
+                        />
+                        <rect
+                          x={colonX - 6}
+                          y={altY - 17}
+                          width={54}
+                          height={34}
+                          rx={10}
+                          fill="transparent"
+                          stroke="hsl(var(--primary))"
+                          strokeOpacity={0.5}
+                          strokeWidth={1}
+                        />
                         <text
-                          x={cx + 12}
+                          x={colonX}
                           y={altY}
-                          textAnchor="middle"
+                          textAnchor="start"
                           dominantBaseline="central"
                           fontSize="30"
                           fontWeight="700"
                           fontFamily="Space Grotesk"
-                          fill="hsl(var(--muted-foreground))"
-                          opacity={0.85}
+                          fill="hsl(var(--primary))"
                         >
                           {`:${altMinute.toString().padStart(2, '0')}`}
                         </text>
