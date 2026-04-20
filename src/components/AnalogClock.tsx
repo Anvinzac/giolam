@@ -89,25 +89,29 @@ export default function AnalogClock({
   // button directly disables this permanently — they're taking control.
   const [autoAdvance, setAutoAdvance] = useState(true);
 
-  // After 3s of inactivity on the active range field, advance: in -> out,
-  // out -> null (both buttons unhighlighted, only "Xong" stays salient).
-  // Only runs once the user has actually tapped the dial at least once
-  // (progressTick > 0) AND auto-advance hasn't been disabled.
+  // Auto-advance: clock-in idles for 1.5s and hands off to clock-out (no
+  // timer starts on clock-out — progressTick resets to 0 and waits for
+  // the user's first tap there). Clock-out then idles for 3s to deactivate,
+  // leaving "Xong" as the only salient CTA. Only runs once the user has
+  // actually tapped the dial at least once (progressTick > 0) AND
+  // auto-advance hasn't been disabled.
   useEffect(() => {
     if (!isRangeMode || activeRangeField === null) return;
     if (!autoAdvance || progressTick === 0) return;
+    const duration = activeRangeField === 'in' ? 1500 : 3000;
     const t = setTimeout(() => {
       if (activeRangeField === 'in') {
         const parsedOut = parseTime(rangeClockOut);
         setActiveRangeField('out');
         setSelectedHour(parsedOut?.hour ?? null);
         if (parsedOut) setSelectedMinute(parsedOut.minute);
-        setProgressTick(k => k + 1);
+        // Do NOT bump progressTick — clock-out waits quietly for user tap.
+        setProgressTick(0);
       } else {
         setActiveRangeField(null);
         setProgressTick(0);
       }
-    }, 3000);
+    }, duration);
     return () => clearTimeout(t);
   }, [progressTick, activeRangeField, isRangeMode, rangeClockOut, autoAdvance]);
 
@@ -128,26 +132,85 @@ export default function AnalogClock({
     setProgressTick(0);
   };
 
-  const recordRangeTime = (hour: number, minute: number) => {
-    if (activeRangeField === null) return;
+  // Write into the active field's state. Returns the effective field so
+  // callers can keep applying logic consistently if they just reactivated.
+  const writeRangeTime = (
+    hour: number,
+    minute: number,
+    field: 'in' | 'out',
+    advance: boolean,
+  ) => {
     const nextTime = timeToString(hour, minute);
-    if (activeRangeField === 'in') setRangeClockIn(nextTime);
+    if (field === 'in') setRangeClockIn(nextTime);
     else setRangeClockOut(nextTime);
-    if (autoAdvance) setProgressTick(k => k + 1);
+    if (advance) setProgressTick(k => k + 1);
+  };
+
+  // True if, with the active field == 'out', the candidate hour/minute
+  // would land strictly before the existing clock-in. We reject those
+  // taps so clock-out can never precede clock-in.
+  const wouldPrecedeClockIn = (hour: number, minute: number): boolean => {
+    if (!rangeClockIn) return false;
+    const parsed = parseTime(rangeClockIn);
+    if (!parsed) return false;
+    return hour * 60 + minute < parsed.hour * 60 + parsed.minute;
   };
 
   const handleHourSelect = (hour: number) => {
-    setSelectedHour(hour);
-    if (isRangeMode) {
-      recordRangeTime(hour, selectedMinute);
+    if (!isRangeMode) {
+      setSelectedHour(hour);
+      return;
     }
+
+    // Idle dial-tap reactivates clock-out in manual mode — user still
+    // wants to change clock-out but is tweaking, not restarting the timer.
+    let nextField = activeRangeField;
+    let nextAutoAdvance = autoAdvance;
+    if (nextField === null) {
+      nextField = 'out';
+      nextAutoAdvance = false;
+      setActiveRangeField('out');
+      setAutoAdvance(false);
+      setProgressTick(0);
+    }
+
+    // Clock-out cannot precede clock-in.
+    if (nextField === 'out' && wouldPrecedeClockIn(hour, selectedMinute)) {
+      return;
+    }
+
+    setSelectedHour(hour);
+    writeRangeTime(hour, selectedMinute, nextField, nextAutoAdvance);
   };
 
   const handleMinuteSelect = (minute: number) => {
-    setSelectedMinute(minute);
-    if (isRangeMode && selectedHour !== null) {
-      recordRangeTime(selectedHour, minute);
+    if (!isRangeMode) {
+      setSelectedMinute(minute);
+      return;
     }
+
+    let nextField = activeRangeField;
+    let nextAutoAdvance = autoAdvance;
+    if (nextField === null) {
+      nextField = 'out';
+      nextAutoAdvance = false;
+      setActiveRangeField('out');
+      setAutoAdvance(false);
+      setProgressTick(0);
+    }
+
+    if (selectedHour === null) {
+      // No hour yet — just update the visible minute state; nothing to write.
+      setSelectedMinute(minute);
+      return;
+    }
+
+    if (nextField === 'out' && wouldPrecedeClockIn(selectedHour, minute)) {
+      return;
+    }
+
+    setSelectedMinute(minute);
+    writeRangeTime(selectedHour, minute, nextField, nextAutoAdvance);
   };
 
   const handleRangeDone = () => {
