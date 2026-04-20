@@ -511,7 +511,7 @@ export default function SalaryTableTypeC({
         >
           <div
             ref={activeChipScrollRef}
-            className="flex items-center justify-end gap-1.5 min-w-0 overflow-x-auto whitespace-nowrap py-0.5 pl-1 pr-2 no-scrollbar"
+            className="flex items-center justify-end gap-1.5 min-w-0 overflow-x-auto whitespace-nowrap py-0.5 pl-1 pr-2 no-scrollbar [&_button]:focus:outline-none [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-0 [&_button]:focus-visible:ring-offset-0"
           >
             {/* "Khác" chip - opens analog clock */}
             <motion.button
@@ -523,7 +523,7 @@ export default function SalaryTableTypeC({
                 openCellClockPicker(e.entry_date, e.sort_order, isClockIn ? 'in' : 'out', isClockIn ? e.clock_in : e.clock_out);
                 setChipRowKey(null); // Hide chips when opening clock
               }}
-              className="inline-flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/60 px-2.5 py-1 text-[12px] font-semibold text-foreground hover:border-accent/60 hover:bg-accent/10 transition-colors"
+              className="inline-flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/60 px-2.5 py-1 text-[12px] font-semibold text-foreground hover:border-accent/60 hover:bg-accent/10 transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0"
               aria-label="Chọn giờ khác"
             >
               Khác
@@ -578,7 +578,7 @@ export default function SalaryTableTypeC({
                       setIsChipAnimating(false);
                     }, 300);
                   }}
-                  className={`inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-all duration-200 ${
+                  className={`inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
                     isHighlighted
                       ? 'border-accent bg-accent text-white shadow-lg'
                       : isSelected
