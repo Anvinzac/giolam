@@ -328,7 +328,7 @@ export default function AnalogClock({
                   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
                   const altMinute = selectedMinute === 0 ? 30 : 0;
                   const mainY = cy + 10;
-                  const altY = cy - 20;
+                  const altY = cy - 26;
                   // Both ":" characters are rendered as the first char of
                   // a start-anchored ":mm" text at this exact x. The hour
                   // is end-anchored at the same x. Result: colons line up
@@ -349,7 +349,8 @@ export default function AnalogClock({
                       >
                         {h12}
                       </text>
-                      {/* Current :mm (start-anchored at colonX). */}
+                      {/* Current :mm (start-anchored at colonX). Tapping
+                          it also swaps to the alternative minute. */}
                       <text
                         x={colonX}
                         y={mainY}
@@ -359,49 +360,28 @@ export default function AnalogClock({
                         fontWeight="700"
                         fontFamily="Space Grotesk"
                         fill="hsl(var(--foreground))"
-                      >
-                        {`:${selectedMinute.toString().padStart(2, '0')}`}
-                      </text>
-                      {/* Alternative :mm — wrapped in a pill container so
-                          it reads as a tappable button. Same font size as
-                          the hour; colon sits at the same colonX. */}
-                      <g
                         onClick={() => handleMinuteSelect(altMinute)}
                         style={{ cursor: 'pointer' }}
                       >
-                        <rect
-                          x={colonX - 6}
-                          y={altY - 17}
-                          width={54}
-                          height={34}
-                          rx={10}
-                          fill="hsl(var(--primary))"
-                          opacity={0.18}
-                        />
-                        <rect
-                          x={colonX - 6}
-                          y={altY - 17}
-                          width={54}
-                          height={34}
-                          rx={10}
-                          fill="transparent"
-                          stroke="hsl(var(--primary))"
-                          strokeOpacity={0.5}
-                          strokeWidth={1}
-                        />
-                        <text
-                          x={colonX}
-                          y={altY}
-                          textAnchor="start"
-                          dominantBaseline="central"
-                          fontSize="30"
-                          fontWeight="700"
-                          fontFamily="Space Grotesk"
-                          fill="hsl(var(--primary))"
-                        >
-                          {`:${altMinute.toString().padStart(2, '0')}`}
-                        </text>
-                      </g>
+                        {`:${selectedMinute.toString().padStart(2, '0')}`}
+                      </text>
+                      {/* Alternative :mm — plain text at 50% opacity; also
+                          tappable. Colon sits at the same colonX. */}
+                      <text
+                        x={colonX}
+                        y={altY}
+                        textAnchor="start"
+                        dominantBaseline="central"
+                        fontSize="30"
+                        fontWeight="700"
+                        fontFamily="Space Grotesk"
+                        fill="hsl(var(--primary))"
+                        opacity={0.5}
+                        onClick={() => handleMinuteSelect(altMinute)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {`:${altMinute.toString().padStart(2, '0')}`}
+                      </text>
                     </>
                   );
                 })()}
