@@ -622,6 +622,15 @@ export default function SalaryTableTypeC({
           }
         }}
       >
+        {!readOnly && !e.is_day_off && !isScheduledOffDay && !showClockChips && (
+          <button
+            data-toggle-button
+            type="button"
+            aria-label="Tắt ngày"
+            onClick={(ev) => { ev.stopPropagation(); toggleDayOff(e); }}
+            className="absolute top-0 left-0 w-[15%] h-full z-10 bg-transparent"
+          />
+        )}
         <AnimatePresence initial={false} mode="popLayout">
         {showClockChips ? (
           <motion.div
@@ -646,8 +655,8 @@ export default function SalaryTableTypeC({
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
-              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`-ml-3 pl-3 pr-6 -my-2.5 py-2.5 flex-shrink-0 flex items-start transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
-                <span className="mt-0.5 block">{e.is_day_off ? <X size={11} /> : <Check size={11} />}</span>
+              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+                {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
             )}
             {editingDateKey === `${cellKey}-date` && !readOnly ? (
@@ -773,11 +782,11 @@ export default function SalaryTableTypeC({
         </AnimatePresence>
       </div>
       <div 
-        className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
+        className={`relative hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
           e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
         } ${idx && idx % 2 !== 0 ? 'bg-muted/40' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
-        } ${showWeekSep ? 'relative' : ''}`}
+        }`}
         onClick={(ev) => {
           // Only activate if row is deactivated and not in readOnly mode
           if (!readOnly && e.is_day_off && !isScheduledOffDay) {
@@ -791,12 +800,21 @@ export default function SalaryTableTypeC({
           }
         }}
       >
+        {!readOnly && !e.is_day_off && !isScheduledOffDay && (
+          <button
+            data-toggle-button
+            type="button"
+            aria-label="Tắt ngày"
+            onClick={(ev) => { ev.stopPropagation(); toggleDayOff(e); }}
+            className="absolute top-0 left-0 w-[15%] h-full z-10 bg-transparent"
+          />
+        )}
         {/* Date + note */}
         <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
             {!readOnly && (
-              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`-ml-3 pl-3 pr-6 -my-2.5 py-2.5 flex-shrink-0 flex items-start transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
-                <span className="mt-0.5 block">{e.is_day_off ? <X size={11} /> : <Check size={11} />}</span>
+              <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
+                {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
             )}
             <div className="min-w-0 flex-1">
