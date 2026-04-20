@@ -476,6 +476,15 @@ export default function SalaryTableTypeC({
       const coreStartIndex = isClockIn ? CHIP_CORE_START_INDEX_CLOCK_IN : CHIP_CORE_START_INDEX;
       const allCandidates = offsets.map((o) => addMinutes(base, o));
       
+      // Accent colors based on origin
+      const accentColor = isClockIn ? 'orange-400' : 'accent';
+      const accentBorder = isClockIn ? 'border-orange-400' : 'border-accent';
+      const accentBg = isClockIn ? 'bg-orange-400' : 'bg-accent';
+      const accentBgLight = isClockIn ? 'bg-orange-400/15' : 'bg-accent/15';
+      const accentText = isClockIn ? 'text-orange-400' : 'text-accent';
+      const accentHoverBorder = isClockIn ? 'hover:border-orange-400/60' : 'hover:border-accent/60';
+      const accentHoverBg = isClockIn ? 'hover:bg-orange-400/10' : 'hover:bg-accent/10';
+      
       // Filter candidates based on constraints
       const candidates = allCandidates.filter((timeStr) => {
         const [h, m] = timeStr.split(':').map(Number);
@@ -519,7 +528,7 @@ export default function SalaryTableTypeC({
                 openCellClockPicker(e.entry_date, e.sort_order, isClockIn ? 'in' : 'out', isClockIn ? e.clock_in : e.clock_out);
                 setChipRowKey(null); // Hide chips when opening clock
               }}
-              className="inline-flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/60 px-2.5 py-1 text-[12px] font-semibold text-foreground hover:border-accent/60 hover:bg-accent/10 transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+              className={`inline-flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/60 px-2.5 py-1 text-[12px] font-semibold text-foreground ${accentHoverBorder} ${accentHoverBg} transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0`}
               aria-label="Chọn giờ khác"
             >
               Khác
@@ -576,10 +585,10 @@ export default function SalaryTableTypeC({
                   }}
                   className={`inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
                     isHighlighted
-                      ? 'border-accent bg-accent text-white shadow-lg'
+                      ? `${accentBorder} ${accentBg} text-white shadow-lg`
                       : isSelected
-                      ? 'border-accent/60 bg-accent/15 text-accent'
-                      : 'border-transparent bg-muted/60 text-foreground hover:border-accent/60 hover:bg-accent/10'
+                      ? `${accentBorder}/60 ${accentBgLight} ${accentText}`
+                      : `border-transparent bg-muted/60 text-foreground ${accentHoverBorder} ${accentHoverBg}`
                   }`}
                   aria-label={`Đặt giờ ${isClockIn ? 'vào' : 'ra'}: ${t}`}
                 >

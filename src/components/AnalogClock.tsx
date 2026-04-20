@@ -513,14 +513,24 @@ export default function AnalogClock({
                   }
                 }}
                 className={`relative py-3 rounded-xl font-display font-semibold text-xs transition-colors flex items-center justify-center gap-2 ${
-                  activeRangeField === 'in'
+                  clockInDone
                     ? 'gradient-gold text-primary-foreground'
-                    : 'bg-muted text-orange-400'
+                    : activeRangeField === 'in'
+                    ? 'bg-background border-2 border-orange-400 text-orange-400'
+                    : 'bg-muted text-muted-foreground border-2 border-transparent'
                 }`}
               >
-                {clockInDone && (
-                  <Check size={16} className="shrink-0" />
-                )}
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                  clockInDone
+                    ? 'border-white bg-white/20'
+                    : activeRangeField === 'in'
+                    ? 'border-orange-400'
+                    : 'border-muted-foreground/30'
+                }`}>
+                  {clockInDone && (
+                    <Check size={14} strokeWidth={3} className="text-white" />
+                  )}
+                </div>
                 <span>Vào {rangeClockIn || '--:--'}</span>
               </motion.button>
               <motion.button
@@ -536,14 +546,24 @@ export default function AnalogClock({
                   }
                 }}
                 className={`relative py-3 rounded-xl font-display font-semibold text-xs transition-colors flex items-center justify-center gap-2 ${
-                  activeRangeField === 'out'
+                  clockOutDone
                     ? 'gradient-gold text-primary-foreground'
-                    : 'bg-muted text-accent'
+                    : activeRangeField === 'out'
+                    ? 'bg-background border-2 border-accent text-accent'
+                    : 'bg-muted text-muted-foreground border-2 border-transparent'
                 }`}
               >
-                {clockOutDone && (
-                  <Check size={16} className="shrink-0" />
-                )}
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                  clockOutDone
+                    ? 'border-white bg-white/20'
+                    : activeRangeField === 'out'
+                    ? 'border-accent'
+                    : 'border-muted-foreground/30'
+                }`}>
+                  {clockOutDone && (
+                    <Check size={14} strokeWidth={3} className="text-white" />
+                  )}
+                </div>
                 <span>Ra {rangeClockOut || '--:--'}</span>
               </motion.button>
             </div>
