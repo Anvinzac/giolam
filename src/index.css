@@ -300,3 +300,14 @@
     transparent 100%
   );
 }
+
+html.light .week-separator {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(215 80% 55% / 0.45) 20%,
+    hsl(270 70% 60% / 0.65) 50%,
+    hsl(215 80% 55% / 0.45) 80%,
+    transparent 100%
+  );
+}
