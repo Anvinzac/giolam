@@ -1023,10 +1023,10 @@ export default function SalaryTableTypeC({
     );
   };
 
-  const renderEmptyRow = (dateStr: string | null, idx: number) => (
+  const renderEmptyRow = (dateStr: string | null, idx: number, showWeekSep: boolean = false) => (
     <div key={`empty-${dateStr || idx}`}>
-      <div 
-        className={`flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
+      <div
+        className={`${showWeekSep ? 'relative ' : ''}flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
           idx % 2 !== 0 ? 'bg-muted/40' : ''
         } ${dateStr ? 'opacity-50' : ''} ${
           !readOnly && dateStr && !scheduledOffDays.has(dateStr) ? 'cursor-pointer hover:opacity-70' : ''
@@ -1088,9 +1088,12 @@ export default function SalaryTableTypeC({
           <span className="num-cell w-[30px] text-right text-muted-foreground font-semibold">—</span>
           <span className="num-cell w-[40px] text-right text-[13px] text-muted-foreground font-bold">—</span>
         </div>
+        {showWeekSep && (
+          <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
+        )}
       </div>
-      <div 
-        className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
+      <div
+        className={`${showWeekSep ? 'relative ' : ''}hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
           idx % 2 !== 0 ? 'bg-muted/40' : ''
         } ${dateStr ? 'opacity-50' : ''} ${
           !readOnly && dateStr && !scheduledOffDays.has(dateStr) ? 'cursor-pointer hover:opacity-70' : ''
@@ -1153,6 +1156,9 @@ export default function SalaryTableTypeC({
         <span className="num-cell-sm justify-self-end text-right text-muted-foreground font-semibold">—</span>
         <span className="num-cell-sm justify-self-end text-right text-muted-foreground font-semibold">—</span>
         <span className="num-cell-md justify-self-end text-right text-[13px] sm:text-[15px] text-muted-foreground font-bold">—</span>
+        {showWeekSep && (
+          <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />
+        )}
       </div>
     </div>
   );
@@ -1265,7 +1271,11 @@ export default function SalaryTableTypeC({
           {renderTableHeader()}
           <div className="divide-y divide-border/20">
             {workingEntries.map((e, idx) => renderRow(e, idx, workingEntries))}
-            {emptyRows.map(({ idx, dateStr }) => renderEmptyRow(dateStr, idx))}
+            {emptyRows.map(({ idx, dateStr }, mapIdx) => {
+              const isSun = dateStr ? new Date(dateStr + 'T00:00:00').getDay() === 0 : false;
+              const showWeekSep = isSun && mapIdx < emptyRows.length - 1;
+              return renderEmptyRow(dateStr, idx, showWeekSep);
+            })}
           </div>
         </div>
       </div>
@@ -1316,11 +1326,12 @@ export default function SalaryTableTypeC({
           )}
           {renderTableHeader()}
           <div className="divide-y divide-border/20">
-            {pageRows.map((row, idx) =>
-              row.entry
-                ? renderRow(row.entry, idx, orderedEntries)
-                : renderEmptyRow(row.dateStr, idx)
-            )}
+            {pageRows.map((row, idx) => {
+              if (row.entry) return renderRow(row.entry, idx, orderedEntries);
+              const isSun = row.dateStr ? new Date(row.dateStr + 'T00:00:00').getDay() === 0 : false;
+              const showWeekSep = isSun && idx < pageRows.length - 1;
+              return renderEmptyRow(row.dateStr, idx, showWeekSep);
+            })}
           </div>
         </div>
       </div>
