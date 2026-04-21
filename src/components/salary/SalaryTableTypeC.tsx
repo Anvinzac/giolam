@@ -1418,25 +1418,43 @@ export default function SalaryTableTypeC({
       {/* Allowances */}
       {mode === 'employee' ? (
         <div className="glass-card p-3">
-          <button
-            onClick={() => {
-              // Auto-save is already handled by useEffect in parent
-              // This button is just for user feedback
-              console.log('Manual save triggered');
-            }}
-            disabled={readOnly}
-            className={`w-full py-3 rounded-lg font-semibold text-sm transition-all shadow-lg ${
-              readOnly
-                ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
-            }`}
-          >
-            {readOnly ? 'Đã công bố - Không thể chỉnh sửa' : 'Lưu'}
-          </button>
-          {!readOnly && (
-            <p className="text-[11px] text-muted-foreground text-center mt-2">
-              Thay đổi được lưu tự động. Bạn có thể tiếp tục chỉnh sửa cho đến khi admin công bố.
-            </p>
+          {/* Display gui_xe value for Type C and D employees */}
+          {(shiftType === 'notice_only' || shiftType === 'lunar_rate') && breakdown?.allowances?.find(a => a.key === 'gui_xe' && a.enabled) ? (
+            <div className="flex items-center justify-between py-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-muted-foreground">Gửi xe</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+                  Tự động
+                </span>
+              </div>
+              <span className="text-lg font-bold text-emerald-400">
+                {(breakdown.allowances.find(a => a.key === 'gui_xe')?.amount || 0).toLocaleString('vi-VN')}đ
+              </span>
+            </div>
+          ) : (
+            <>
+              {/* Save button - temporarily hidden, replaced with gui_xe display above */}
+              {/* <button
+                onClick={() => {
+                  // Auto-save is already handled by useEffect in parent
+                  // This button is just for user feedback
+                  console.log('Manual save triggered');
+                }}
+                disabled={readOnly}
+                className={`w-full py-3 rounded-lg font-semibold text-sm transition-all shadow-lg ${
+                  readOnly
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
+                }`}
+              >
+                {readOnly ? 'Đã công bố - Không thể chỉnh sửa' : 'Lưu'}
+              </button>
+              {!readOnly && (
+                <p className="text-[11px] text-muted-foreground text-center mt-2">
+                  Thay đổi được lưu tự động. Bạn có thể tiếp tục chỉnh sửa cho đến khi admin công bố.
+                </p>
+              )} */}
+            </>
           )}
         </div>
       ) : (

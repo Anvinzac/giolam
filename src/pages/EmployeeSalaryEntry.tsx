@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -347,14 +347,28 @@ export default function EmployeeSalaryEntry() {
             <ArrowLeft size={20} />
           </motion.button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-xl font-bold text-gradient-gold truncate">
+            <h1 className="font-display text-xl font-bold text-gradient-gold truncate flex items-center gap-2">
               Chấm công của tôi
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => navigate('/settings')}
+                aria-label="Cài đặt"
+                className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Settings size={16} />
+              </motion.button>
             </h1>
             {(profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && selectedPeriod && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-[11px] text-muted-foreground">
                   {formatDateViet(selectedPeriod.start_date)} - {formatDateViet(selectedPeriod.end_date)}
                 </span>
+                {/* Display gui_xe for Type C and D */}
+                {breakdown?.allowances?.find(a => a.key === 'gui_xe' && a.enabled) && (
+                  <span className="text-[11px] text-emerald-400 font-semibold">
+                    • Gửi xe: {(breakdown.allowances.find(a => a.key === 'gui_xe')?.amount || 0).toLocaleString('vi-VN')}đ
+                  </span>
+                )}
               </div>
             )}
             {profile.shift_type !== 'notice_only' && profile.default_clock_in && (
