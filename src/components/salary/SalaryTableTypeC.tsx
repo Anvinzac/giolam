@@ -1362,38 +1362,45 @@ export default function SalaryTableTypeC({
                 </div>
               )}
 
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-muted-foreground mr-1">Mặc định:</span>
-                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-orange-400 hover:bg-muted transition-colors">
-                  {defaultClockIn}
-                </button>
-                <span className="text-muted-foreground text-[10px]">-</span>
-                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'out', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-accent hover:bg-muted transition-colors">
-                  {defaultClockOut}
-                </button>
+              {/* Default clock values and toggle buttons - inline */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground mr-1">Mặc định:</span>
+                  <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-orange-400 hover:bg-muted transition-colors">
+                    {defaultClockIn}
+                  </button>
+                  <span className="text-muted-foreground text-[10px]">-</span>
+                  <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'out', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-accent hover:bg-muted transition-colors">
+                    {defaultClockOut}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCompact(!compact)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${
+                      compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {compact ? <Check size={14} /> : <X size={14} />}
+                    Gọn
+                  </button>
+
+                  <button
+                    onClick={() => setSeparateClockColumns(!separateClockColumns)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${
+                      separateClockColumns ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {separateClockColumns ? <Check size={14} /> : <X size={14} />}
+                    Tách
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCompact(!compact)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${
-                  compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {compact ? <Check size={14} /> : <X size={14} />}
-                Gọn
-              </button>
-
-              <button
-                onClick={() => setSeparateClockColumns(!separateClockColumns)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors ${
-                  separateClockColumns ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {separateClockColumns ? <Check size={14} /> : <X size={14} />}
-                Tách
-              </button>
+            <div className="hidden">
+              {/* Removed duplicate toggle buttons section */}
             </div>
           </div>
         </div>
