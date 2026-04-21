@@ -1362,8 +1362,8 @@ export default function SalaryTableTypeC({
                 </div>
               )}
 
-              {/* Default clock values and toggle buttons - inline, never wrap */}
-              <div className="flex items-center gap-2 min-w-0">
+              {/* Default clock values and toggle buttons - toggles pushed to right */}
+              <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <span className="text-[10px] text-muted-foreground mr-1">Mặc định:</span>
                   <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-orange-400 hover:bg-muted transition-colors">
@@ -1375,25 +1375,25 @@ export default function SalaryTableTypeC({
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
                     onClick={() => setCompact(!compact)}
-                    className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-semibold transition-colors min-w-0 flex-1 ${
+                    className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
                       compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
                     }`}
                   >
-                    {compact ? <Check size={12} /> : <X size={12} />}
-                    <span className="truncate">Gọn</span>
+                    {compact ? <Check size={14} /> : <X size={14} />}
+                    Gọn
                   </button>
 
                   <button
                     onClick={() => setSeparateClockColumns(!separateClockColumns)}
-                    className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-semibold transition-colors min-w-0 flex-1 ${
+                    className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
                       separateClockColumns ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
                     }`}
                   >
-                    {separateClockColumns ? <Check size={12} /> : <X size={12} />}
-                    <span className="truncate">Tách</span>
+                    {separateClockColumns ? <Check size={14} /> : <X size={14} />}
+                    Tách
                   </button>
                 </div>
               </div>
