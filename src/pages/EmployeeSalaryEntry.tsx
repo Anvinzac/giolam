@@ -339,21 +339,14 @@ export default function EmployeeSalaryEntry() {
     <div className="min-h-screen bg-background pb-8">
       <header className="px-6 pt-12 pb-4">
         <div className="flex items-center gap-3">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/')}
-            className="p-2 rounded-xl bg-muted text-muted-foreground"
-          >
-            <ArrowLeft size={20} />
-          </motion.button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-xl font-bold text-gradient-gold truncate flex items-center gap-2">
+            <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
               Chấm công của tôi
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate('/settings')}
                 aria-label="Cài đặt"
-                className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
               >
                 <Settings size={16} />
               </motion.button>
@@ -363,15 +356,9 @@ export default function EmployeeSalaryEntry() {
                 <span className="text-[11px] text-muted-foreground">
                   {formatDateViet(selectedPeriod.start_date)} - {formatDateViet(selectedPeriod.end_date)}
                 </span>
-                {/* Display gui_xe for Type C and D */}
-                {breakdown?.allowances?.find(a => a.key === 'gui_xe' && a.enabled) && (
-                  <span className="text-[11px] text-emerald-400 font-semibold">
-                    • Gửi xe: {(breakdown.allowances.find(a => a.key === 'gui_xe')?.amount || 0).toLocaleString('vi-VN')}đ
-                  </span>
-                )}
               </div>
             )}
-            {profile.shift_type !== 'notice_only' && profile.default_clock_in && (
+            {profile.shift_type !== 'notice_only' && profile.shift_type !== 'lunar_rate' && profile.default_clock_in && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                   <ClockIcon size={11} /> Giờ vào: {globalClockIn}

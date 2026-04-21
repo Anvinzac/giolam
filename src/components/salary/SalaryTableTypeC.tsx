@@ -1427,16 +1427,23 @@ export default function SalaryTableTypeC({
         <div className="glass-card p-3">
           {/* Display gui_xe value for Type C and D employees */}
           {(shiftType === 'notice_only' || shiftType === 'lunar_rate') && breakdown?.allowances?.find(a => a.key === 'gui_xe' && a.enabled) ? (
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-muted-foreground">Gửi xe</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
-                  Tự động
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-muted-foreground">Gửi xe</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+                    Tự động
+                  </span>
+                </div>
+                <span className="text-lg font-bold text-emerald-400">
+                  {(breakdown.allowances.find(a => a.key === 'gui_xe')?.amount || 0).toLocaleString('vi-VN')}đ
                 </span>
               </div>
-              <span className="text-lg font-bold text-emerald-400">
-                {(breakdown.allowances.find(a => a.key === 'gui_xe')?.amount || 0).toLocaleString('vi-VN')}đ
-              </span>
+              {!readOnly && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Thay đổi được lưu tự động. Bạn có thể tiếp tục chỉnh sửa cho đến khi admin công bố.
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -1455,12 +1462,12 @@ export default function SalaryTableTypeC({
                 }`}
               >
                 {readOnly ? 'Đã công bố - Không thể chỉnh sửa' : 'Lưu'}
-              </button>
+              </button> */}
               {!readOnly && (
-                <p className="text-[11px] text-muted-foreground text-center mt-2">
+                <p className="text-[11px] text-muted-foreground text-center py-2">
                   Thay đổi được lưu tự động. Bạn có thể tiếp tục chỉnh sửa cho đến khi admin công bố.
                 </p>
-              )} */}
+              )}
             </>
           )}
         </div>
