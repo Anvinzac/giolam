@@ -61,6 +61,7 @@ serve(async (req) => {
     }
 
     if (authData?.user) {
+      const newUserId = authData.user.id;
       await serviceClient.from("profiles").update({
         username,
         full_name,
@@ -69,7 +70,54 @@ serve(async (req) => {
         default_clock_in: default_clock_in || null,
         default_clock_out: default_clock_out || null,
         must_change_password: true,
-      }).eq("user_id", authData.user.id);
+      }).eq("user_id", newUserId);
+
+      // Type B (overtime): pre-activate every day of every existing period with
+      // the employee's default clock-in. They only need to fill clock-out or
+      // toggle day-off. Skip if no default_clock_in is set.
+      if ((shift_type || "basic") === "overtime" && default_clock_in) {
+        const { data: periods } = await serviceClient
+          .from("working_periods")
+          .select("id, start_date, end_date");
+
+        for (const period of periods || []) {
+          // Ensure draft salary_record exists
+          await serviceClient
+            .from("salary_records")
+            .upsert(
+              { user_id: newUserId, period_id: period.id, status: "draft" },
+              { onConflict: "user_id,period_id", ignoreDuplicates: true }
+            );
+
+          // Generate every date in the period
+          const entries: any[] = [];
+          const start = new Date(period.start_date + "T00:00:00Z");
+          const end = new Date(period.end_date + "T00:00:00Z");
+          const cur = new Date(start);
+          while (cur <= end) {
+            entries.push({
+              user_id: newUserId,
+              period_id: period.id,
+              entry_date: cur.toISOString().slice(0, 10),
+              sort_order: 0,
+              is_day_off: false,
+              clock_in: default_clock_in,
+              clock_out: null,
+              is_admin_reviewed: true,
+            });
+            cur.setUTCDate(cur.getUTCDate() + 1);
+          }
+
+          if (entries.length) {
+            await serviceClient
+              .from("salary_entries")
+              .upsert(entries, {
+                onConflict: "user_id,period_id,entry_date,sort_order",
+                ignoreDuplicates: true,
+              });
+          }
+        }
+      }
     }
 
     return new Response(JSON.stringify({ success: true, user_id: authData?.user?.id }), {

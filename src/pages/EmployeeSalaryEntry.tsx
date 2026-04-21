@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
 import SalaryTableTypeB from '@/components/salary/SalaryTableTypeB';
 import SalaryTableTypeC from '@/components/salary/SalaryTableTypeC';
+import ImmersiveInputTypeB from '@/components/salary/ImmersiveInputTypeB';
+import ViewToggle, { ViewMode } from '@/components/salary/ViewToggle';
 import { useSpecialDayRates } from '@/hooks/useSpecialDayRates';
 import { useEmployeeAllowances } from '@/hooks/useEmployeeAllowances';
 import { useSalaryEntries } from '@/hooks/useSalaryEntries';
@@ -58,6 +60,17 @@ export default function EmployeeSalaryEntry() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
+  
+  // View mode state with sessionStorage persistence (Task 10.2)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const stored = sessionStorage.getItem('typeB_viewMode');
+    return (stored === 'immersive' || stored === 'table') ? stored : 'immersive';
+  });
+
+  // Persist view mode to sessionStorage when it changes
+  useEffect(() => {
+    sessionStorage.setItem('typeB_viewMode', viewMode);
+  }, [viewMode]);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -337,7 +350,7 @@ export default function EmployeeSalaryEntry() {
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      <header className="px-6 pt-12 pb-4">
+      <header className="px-6 pt-4 pb-2">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
@@ -385,6 +398,13 @@ export default function EmployeeSalaryEntry() {
             <LogOut size={18} />
           </motion.button>
         </div>
+        
+        {/* ViewToggle for Type B employees */}
+        {profile.shift_type === 'overtime' && (
+          <div className="mt-2 flex justify-center">
+            <ViewToggle currentView={viewMode} onToggle={setViewMode} />
+          </div>
+        )}
       </header>
 
       <div className="px-4 space-y-4">
@@ -409,27 +429,45 @@ export default function EmployeeSalaryEntry() {
         )}
 
         {selectedPeriod && profile.shift_type === 'overtime' && (
-          <SalaryTableTypeB
-            entries={employeeVisibleEntries}
-            rates={rates}
-            allowances={allowances}
-            baseSalary={profile.base_salary}
-            hourlyRate={profile.hourly_rate}
-            globalClockIn={globalClockIn}
-            onGlobalClockInChange={() => {}}
-            periodStart={selectedPeriod.start_date}
-            periodEnd={selectedPeriod.end_date}
-            onEntryUpdate={updateEntry}
-            onAddDuplicateRow={addDuplicateRow}
-            onRemoveEntry={removeEntry}
-            onAllowanceToggle={toggleAllowance}
-            onAllowanceUpdate={updateAllowance}
-            onAddAllowance={addAllowance}
-            onHourlyRateChange={noop}
-            breakdown={breakdown}
-            editMode="employee"
-            currentUserId={userId}
-          />
+          <>
+            {viewMode === 'table' ? (
+              <SalaryTableTypeB
+                entries={employeeVisibleEntries}
+                rates={rates}
+                allowances={allowances}
+                baseSalary={profile.base_salary}
+                hourlyRate={profile.hourly_rate}
+                globalClockIn={globalClockIn}
+                onGlobalClockInChange={() => {}}
+                periodStart={selectedPeriod.start_date}
+                periodEnd={selectedPeriod.end_date}
+                onEntryUpdate={updateEntry}
+                onAddDuplicateRow={addDuplicateRow}
+                onRemoveEntry={removeEntry}
+                onAllowanceToggle={toggleAllowance}
+                onAllowanceUpdate={updateAllowance}
+                onAddAllowance={addAllowance}
+                onHourlyRateChange={noop}
+                breakdown={breakdown}
+                editMode="employee"
+                currentUserId={userId}
+              />
+            ) : (
+              <ImmersiveInputTypeB
+                entries={entries}
+                rates={rates}
+                allowances={allowances}
+                baseSalary={profile.base_salary}
+                hourlyRate={profile.hourly_rate}
+                globalClockIn={globalClockIn}
+                periodStart={selectedPeriod.start_date}
+                periodEnd={selectedPeriod.end_date}
+                onEntryUpdate={updateEntry}
+                breakdown={breakdown}
+                currentUserId={userId}
+              />
+            )}
+          </>
         )}
 
         {selectedPeriod && (profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && (

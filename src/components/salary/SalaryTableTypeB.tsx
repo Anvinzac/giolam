@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatDateViet, formatVND } from '@/lib/salaryCalculations';
@@ -268,14 +268,14 @@ export default function SalaryTableTypeB({
             <motion.button
               key={time}
               data-chip-core-start={i === CHIP_CORE_START_INDEX ? 'true' : undefined}
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              initial={{ opacity: 0, scale: 0.82, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 26, delay: i * 0.015 }}
               onClick={() => handleChipSelect(entry, pageEntries, time)}
-              className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
+              className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors backdrop-blur-sm ${
                 entry.clock_out === time
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10'
+                  ? 'border-primary/70 bg-primary text-primary-foreground shadow-[0_4px_14px_-4px_hsl(var(--primary)/0.55)]'
+                  : 'border-primary/25 bg-background/70 text-foreground hover:border-primary/60 hover:bg-primary/10'
               }`}
             >
               {formatClockDecimal(time)}
@@ -375,6 +375,7 @@ export default function SalaryTableTypeB({
         <span className="text-right">Tổng</span>
       </div>
 
+      <LayoutGroup>
       <div className="divide-y divide-border/20">
         {pageRows.map((row, idx) => {
           if (!row.entry) return renderEmptyRow(row.dateStr, idx);
@@ -397,15 +398,68 @@ export default function SalaryTableTypeB({
           const showWeekSep = isLastSundayRow && nextRow !== undefined;
 
           return (
-            <div key={cellKey}>
+            <motion.div
+              key={cellKey}
+              layout
+              transition={{ layout: { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } }}
+            >
               {/* ── Mobile row ─────────────────────────────────────────────── */}
-              <div className={`flex items-start justify-between gap-2 py-3.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden ${
+              <motion.div
+                layout
+                animate={{
+                  scale: chipsActive ? 1 : 1,
+                }}
+                transition={{ layout: { type: 'spring', stiffness: 380, damping: 34 } }}
+                className={`relative flex items-center justify-between gap-2 min-h-[62px] py-3 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden overflow-hidden ${
                 e.is_day_off ? 'opacity-40' : ''
-              } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+              } ${idx % 2 !== 0 && !isPending && !chipsActive ? 'bg-muted/20' : ''} ${
                 isMoonDay ? 'moon-accent-row' : ''
-              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
+              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}>
+                {/* Gradient glow (focused row only) */}
+                <AnimatePresence>
+                  {chipsActive && (
+                    <motion.div
+                      key="glow"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.28, ease: 'easeOut' }}
+                      className="pointer-events-none absolute inset-0 -z-0"
+                      aria-hidden
+                    >
+                      {/* Ambient radial wash */}
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'radial-gradient(130% 120% at 0% 50%, hsl(var(--primary) / 0.22) 0%, hsl(var(--accent) / 0.14) 42%, transparent 78%)',
+                        }}
+                      />
+                      {/* Ring / inner glow */}
+                      <div
+                        className="absolute inset-x-2 inset-y-1 rounded-xl"
+                        style={{
+                          boxShadow:
+                            '0 0 0 1px hsl(var(--primary) / 0.45) inset, 0 10px 28px -10px hsl(var(--primary) / 0.55), 0 0 20px -4px hsl(var(--accent) / 0.35)',
+                          background:
+                            'linear-gradient(135deg, hsl(var(--primary) / 0.08) 0%, transparent 55%, hsl(var(--accent) / 0.10) 100%)',
+                        }}
+                      />
+                      {/* Accent sheen along the left */}
+                      <div
+                        className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full"
+                        style={{
+                          background:
+                            'linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)',
+                          boxShadow: '0 0 12px 2px hsl(var(--primary) / 0.6)',
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Left: date + note */}
-                <div className="min-w-0 flex-1 pr-1">
+                <div className="relative z-10 min-w-0 flex-1 pr-1">
                   <div className="flex items-start gap-1">
                     {!readOnly && (
                       isDupe ? (
@@ -459,37 +513,57 @@ export default function SalaryTableTypeB({
                   </div>
                 </div>
 
-                {/* Right: chips OR normal columns */}
-                {chipsActive ? (
-                  renderChips(e, orderedEntries)
-                ) : (
-                  <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
-                    {/* RA (clock-out) */}
-                    <button
-                      onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
-                      className={`w-[38px] text-right text-sm font-medium ${
-                        !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
-                      }`}
-                    >
-                      {formatClockDecimal(e.clock_out)}
-                    </button>
-                    <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
-                    <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
-                      {extraWage > 0 ? formatCompact(extraWage) : '—'}
-                    </span>
-                    <span className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
-                      {allowance > 0 ? formatCompact(allowance) : ''}
-                    </span>
-                    <span className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
-                      {formatCompact(total)}
-                    </span>
-                  </div>
-                )}
+                {/* Right: chips OR normal columns — swap with slide-up transition */}
+                <div className="relative z-10 flex-shrink-0 flex items-center">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {chipsActive ? (
+                      <motion.div
+                        key="chips"
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -18 }}
+                        transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+                        className="flex-1 min-w-0"
+                      >
+                        {renderChips(e, orderedEntries)}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="cols"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+                        className="ml-1 flex shrink-0 items-center gap-3 text-right"
+                      >
+                        {/* RA (clock-out) */}
+                        <button
+                          onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
+                          className={`w-[38px] text-right text-sm font-medium ${
+                            !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
+                          }`}
+                        >
+                          {formatClockDecimal(e.clock_out)}
+                        </button>
+                        <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
+                        <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
+                          {extraWage > 0 ? formatCompact(extraWage) : '—'}
+                        </span>
+                        <span className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
+                          {allowance > 0 ? formatCompact(allowance) : ''}
+                        </span>
+                        <span className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+                          {formatCompact(total)}
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {showWeekSep && (
-                  <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
+                  <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator z-10" />
                 )}
-              </div>
+              </motion.div>
 
               {/* ── Desktop row ────────────────────────────────────────────── */}
               <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
@@ -640,10 +714,11 @@ export default function SalaryTableTypeB({
                   )}
                 </div>
               )}
-            </div>
+            </motion.div>
           );
         })}
       </div>
+      </LayoutGroup>
     </div>
   );
   };

@@ -401,6 +401,7 @@ export default function SalaryTableTypeC({
             clock_in: defaultClockIn,
             clock_out: defaultClockOut,
             total_hours: calcHoursFromTimes(defaultClockIn, defaultClockOut),
+            note: null, // Clear note when activating
           }
         : { clock_in: null, clock_out: null, total_hours: null }),
     });
