@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import SalaryAdmin from "./pages/SalaryAdmin";
 import SalaryEmployee from "./pages/SalaryEmployee";
 import EmployeeSalaryEntry from "./pages/EmployeeSalaryEntry";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import TestTypeC from "./pages/TestTypeC";
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/admin/salary" element={<SalaryAdmin />} />
           <Route path="/salary" element={<SalaryEmployee />} />
           <Route path="/salary/edit" element={<EmployeeSalaryEntry />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/test" element={<TestTypeC />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
