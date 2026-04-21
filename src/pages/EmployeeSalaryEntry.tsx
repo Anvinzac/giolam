@@ -67,10 +67,7 @@ export default function EmployeeSalaryEntry() {
     selectedPeriod?.end_date,
     selectedPeriod?.off_days || []
   );
-  const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
-    userId,
-    selectedPeriodId
-  );
+  
   const {
     entries,
     updateEntry,
@@ -82,6 +79,17 @@ export default function EmployeeSalaryEntry() {
     editorMode: 'employee',
     enableRealtime: true,
   });
+  
+  // Calculate working days count for gui_xe
+  const workingDaysCount = useMemo(() => {
+    return entries.filter(e => !e.is_day_off && (e.clock_in || e.clock_out)).length;
+  }, [entries]);
+  
+  const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
+    userId,
+    selectedPeriodId,
+    workingDaysCount
+  );
   const { saveDraft, isPublished } = useSalaryRecord(userId, selectedPeriodId);
 
   const globalClockIn = useMemo(() => {

@@ -272,14 +272,22 @@ export default function SalaryAdmin() {
     selectedPeriod?.end_date,
     selectedPeriod?.off_days || []
   );
-  const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
-    selectedEmployee?.user_id || null,
-    selectedPeriodId
-  );
+  
   const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, acceptEntry, isSaving } = useSalaryEntries(
     selectedEmployee?.user_id || null,
     selectedPeriodId,
     { editorMode: 'admin', enableRealtime: true }
+  );
+  
+  // Calculate working days count for gui_xe
+  const workingDaysCount = useMemo(() => {
+    return entries.filter(e => !e.is_day_off && (e.clock_in || e.clock_out)).length;
+  }, [entries]);
+  
+  const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
+    selectedEmployee?.user_id || null,
+    selectedPeriodId,
+    workingDaysCount
   );
   const { record, saveDraft, publish, isPublished } = useSalaryRecord(
     selectedEmployee?.user_id || null,
@@ -727,7 +735,7 @@ export default function SalaryAdmin() {
                           onChange={ev => setNameInput(ev.target.value)}
                           onBlur={() => { handleNameChange(nameInput); setEditingName(false); }}
                           onKeyDown={ev => { if (ev.key === 'Enter') { handleNameChange(nameInput); setEditingName(false); } if (ev.key === 'Escape') setEditingName(false); }}
-                          className="w-full px-2 py-0.5 pr-7 rounded bg-background border border-border text-xl font-bold text-foreground"
+                          className="w-full px-2 py-0.5 pr-7 rounded bg-background border border-border text-xl font-bold text-foreground [text-fill-color:initial] [-webkit-text-fill-color:initial]"
                           autoFocus
                         />
                         {nameInput && (
@@ -805,7 +813,7 @@ export default function SalaryAdmin() {
           </div>
           
           {/* Salary summary row */}
-          {selectedEmployee && selectedEmployee.shift_type !== 'notice_only' && (
+          {selectedEmployee && selectedEmployee.shift_type !== 'notice_only' && selectedEmployee.shift_type !== 'lunar_rate' && (
             <div className="mt-2 pl-[44px] pr-2">
               <div className="grid grid-cols-3 items-start gap-x-4">
                <EditableAmount

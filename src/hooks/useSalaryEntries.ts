@@ -5,12 +5,12 @@ import { SalaryEntry } from '@/types/salary';
 const sortEntries = (entries: SalaryEntry[]) =>
   [...entries].sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.sort_order - b.sort_order);
 
-const buildEmptyEntry = (userId: string, periodId: string, entryDate: string, sortOrder: number): Omit<SalaryEntry, 'id'> => ({
+const buildEmptyEntry = (userId: string, periodId: string, entryDate: string, sortOrder: number, isActive: boolean = false): Omit<SalaryEntry, 'id'> => ({
   user_id: userId,
   period_id: periodId,
   entry_date: entryDate,
   sort_order: sortOrder,
-  is_day_off: false,
+  is_day_off: !isActive,
   off_percent: 0,
   note: null,
   clock_in: null,
@@ -198,7 +198,7 @@ export function useSalaryEntries(
     if (!userId || !periodId) return;
     const existing = entries.filter(e => e.entry_date === entryDate);
     const maxSort = existing.reduce((max, e) => Math.max(max, e.sort_order), 0);
-    const newEntry = buildEmptyEntry(userId, periodId, entryDate, maxSort + 1);
+    const newEntry = buildEmptyEntry(userId, periodId, entryDate, maxSort + 1, false); // inactive by default
 
     const { data, error } = await insertWithAudit(newEntry);
     if (error) { console.error('Failed to add duplicate row:', error); return; }
@@ -213,7 +213,7 @@ export function useSalaryEntries(
     const nextSortOrder = existing.length === 0
       ? 0
       : existing.reduce((max, e) => Math.max(max, e.sort_order), 0) + 1;
-    const newEntry = buildEmptyEntry(userId, periodId, entryDate, nextSortOrder);
+    const newEntry = buildEmptyEntry(userId, periodId, entryDate, nextSortOrder, false); // inactive by default
 
     const { data, error } = await insertWithAudit(newEntry);
     if (error) { console.error('Failed to add row at date:', error); return; }

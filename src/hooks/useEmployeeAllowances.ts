@@ -25,7 +25,11 @@ const ensureBuiltInDefaults = (defaults: AllowanceDefault[], userId: string) => 
   return [...builtIns, ...customs];
 };
 
-export function useEmployeeAllowances(userId: string | null, periodId: string | null) {
+export function useEmployeeAllowances(
+  userId: string | null, 
+  periodId: string | null,
+  workingDaysCount?: number
+) {
   const [allowances, setAllowances] = useState<EmployeeAllowance[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -124,22 +128,56 @@ export function useEmployeeAllowances(userId: string | null, periodId: string | 
     init();
   }, [userId, periodId]);
 
+  // Auto-update gui_xe amount when working days count changes
+  useEffect(() => {
+    const guiXe = allowances.find(a => a.allowance_key === 'gui_xe');
+    if (!guiXe || !guiXe.is_enabled || workingDaysCount === undefined) return;
+    
+    const calculatedAmount = workingDaysCount * 10000;
+    if (calculatedAmount === guiXe.amount) return; // No change needed
+    
+    console.log('🚗 Auto-updating gui_xe amount:', { workingDaysCount, calculatedAmount, currentAmount: guiXe.amount });
+    
+    // Update local state
+    setAllowances(prev => prev.map(a =>
+      a.allowance_key === 'gui_xe' ? { ...a, amount: calculatedAmount } : a
+    ));
+    
+    // Update database
+    if (guiXe.id) {
+      supabase.from('employee_allowances').update({ amount: calculatedAmount }).eq('id', guiXe.id);
+    }
+  }, [workingDaysCount, allowances]);
+
   const toggleAllowance = useCallback(async (key: AllowanceKey) => {
     const current = allowances.find(a => a.allowance_key === key);
     if (!current?.id) return;
     const newEnabled = !current.is_enabled;
+    
+    // Auto-calculate gui_xe amount when toggling on
+    let calculatedAmount = current.amount;
+    if (key === 'gui_xe' && newEnabled) {
+      calculatedAmount = (workingDaysCount || 0) * 10000;
+      console.log('🚗 Auto-calculating gui_xe:', { workingDaysCount, calculatedAmount });
+    }
+    
     setAllowances(prev => prev.map(a =>
-      a.allowance_key === key ? { ...a, is_enabled: newEnabled } : a
+      a.allowance_key === key ? { ...a, is_enabled: newEnabled, amount: calculatedAmount } : a
     ));
-    await supabase.from('employee_allowances').update({ is_enabled: newEnabled }).eq('id', current.id);
+    
+    await supabase.from('employee_allowances').update({ 
+      is_enabled: newEnabled,
+      amount: calculatedAmount
+    }).eq('id', current.id);
+    
     await supabase.from('employee_allowance_defaults').upsert({
       user_id: current.user_id,
       allowance_key: current.allowance_key,
       label: current.label,
-      amount: current.amount,
+      amount: calculatedAmount,
       is_enabled: newEnabled,
     }, { onConflict: 'user_id,allowance_key' });
-  }, [allowances]);
+  }, [allowances, workingDaysCount]);
 
   const updateAllowance = useCallback(async (
     key: AllowanceKey,

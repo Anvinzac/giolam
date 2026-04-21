@@ -1139,13 +1139,25 @@ export default function SalaryTableTypeC({
             </div>
           </div>
         </div>
-        <span className="hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
-          {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
-        </span>
+        {/* Note/Chips column - needed for alignment in separate clock mode */}
+        {separateClockColumns ? (
+          <span className="hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
+            {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
+          </span>
+        ) : (
+          <span className="hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
+            {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
+          </span>
+        )}
+        {/* Clock columns */}
         {separateClockColumns ? (
           <>
-            <span className="justify-self-center text-center text-muted-foreground">—</span>
-            <span className="justify-self-center text-center text-muted-foreground">—</span>
+            <div className="flex items-center justify-center h-full gap-1">
+              <span className="text-center text-muted-foreground">—</span>
+            </div>
+            <div className="flex items-center justify-center h-full">
+              <span className="text-center text-muted-foreground">—</span>
+            </div>
           </>
         ) : (
           <div className="flex flex-col gap-[0.15rem] text-muted-foreground min-h-[38px] items-center justify-self-end w-full">
