@@ -1324,7 +1324,7 @@ export default function SalaryTableTypeC({
       {!readOnly && (
         <div className="glass-card p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 flex-1 min-w-0">
               {mode === 'admin' && (
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
@@ -1362,45 +1362,40 @@ export default function SalaryTableTypeC({
                 </div>
               )}
 
-              {/* Default clock values and toggle buttons - toggles pushed to right */}
-              <div className="flex items-center justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-[10px] text-muted-foreground mr-1">Mặc định:</span>
-                  <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-orange-400 hover:bg-muted transition-colors">
-                    {defaultClockIn}
-                  </button>
-                  <span className="text-muted-foreground text-[10px]">-</span>
-                  <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'out', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-accent hover:bg-muted transition-colors">
-                    {defaultClockOut}
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    onClick={() => setCompact(!compact)}
-                    className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
-                      compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {compact ? <Check size={14} /> : <X size={14} />}
-                    Gọn
-                  </button>
-
-                  <button
-                    onClick={() => setSeparateClockColumns(!separateClockColumns)}
-                    className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
-                      separateClockColumns ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {separateClockColumns ? <Check size={14} /> : <X size={14} />}
-                    Tách
-                  </button>
-                </div>
+              {/* Default clock values */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-[10px] text-muted-foreground mr-1">Mặc định:</span>
+                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'in', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-orange-400 hover:bg-muted transition-colors">
+                  {defaultClockIn}
+                </button>
+                <span className="text-muted-foreground text-[10px]">-</span>
+                <button onClick={() => setPickingClock({ scope: 'default', activeKind: 'out', clockIn: defaultClockIn, clockOut: defaultClockOut })} className="px-2 py-0.5 rounded bg-muted/50 border border-border text-[13px] font-semibold text-accent hover:bg-muted transition-colors">
+                  {defaultClockOut}
+                </button>
               </div>
             </div>
 
-            <div className="hidden">
-              {/* Removed duplicate toggle buttons section */}
+            {/* Toggle buttons - pushed to right edge */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                onClick={() => setCompact(!compact)}
+                className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
+                  compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {compact ? <Check size={14} /> : <X size={14} />}
+                Gọn
+              </button>
+
+              <button
+                onClick={() => setSeparateClockColumns(!separateClockColumns)}
+                className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
+                  separateClockColumns ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {separateClockColumns ? <Check size={14} /> : <X size={14} />}
+                Tách
+              </button>
             </div>
           </div>
         </div>
