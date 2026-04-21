@@ -681,8 +681,8 @@ export default function SalaryTableTypeC({
                 onClick={() => toggleDayOff(e)}
                 className={`block -mt-0.5 leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
               >
-                <span className="font-light text-[11px] opacity-50 mr-1.5 inline-block w-[18px] text-right">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
-                <span className="font-semibold text-[17px]">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>
+                <span className="font-light text-[11px] opacity-50 mr-1.5">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
+                <span className="font-semibold text-[17px] inline-block w-[20px] text-right">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>
               </button>
             )}
           </div>
@@ -840,8 +840,8 @@ export default function SalaryTableTypeC({
                   onClick={() => toggleDayOff(e)}
                   className={`block -mt-0.5 leading-none sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
                 >
-                  <span className="font-light text-[10px] sm:text-[9px] opacity-50 mr-1.5 inline-block w-[16px] sm:w-[14px] text-right">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
-                  <span className="font-semibold text-[15px] sm:text-[14px]">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>
+                  <span className="font-light text-[10px] sm:text-[9px] opacity-50 mr-1.5">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
+                  <span className="font-semibold text-[15px] sm:text-[14px] inline-block w-[18px] sm:w-[16px] text-right">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>
                 </button>
               )}
 
@@ -1060,8 +1060,8 @@ export default function SalaryTableTypeC({
                     !readOnly && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
                   }`}
                 >
-                  <span className="font-light text-[11px] opacity-50 mr-1.5 inline-block w-[18px] text-right">{formatVietnameseDay(dateStr).split(' ')[0]}</span>
-                  <span className="font-semibold text-[17px]">{formatVietnameseDay(dateStr).split(' ')[1]}</span>
+                  <span className="font-light text-[11px] opacity-50 mr-1.5">{formatVietnameseDay(dateStr).split(' ')[0]}</span>
+                  <span className="font-semibold text-[17px] inline-block w-[20px] text-right">{formatVietnameseDay(dateStr).split(' ')[1]}</span>
                 </button>
               ) : (
                 <span className="block font-semibold text-[15px] leading-none whitespace-nowrap opacity-0">00</span>
@@ -1127,8 +1127,8 @@ export default function SalaryTableTypeC({
                     !readOnly && !scheduledOffDays.has(dateStr) ? 'hover:underline' : 'cursor-default'
                   }`}
                 >
-                  <span className="font-light text-[10px] sm:text-[9px] opacity-50 mr-1.5 inline-block w-[16px] sm:w-[14px] text-right">{formatVietnameseDay(dateStr).split(' ')[0]}</span>
-                  <span className="font-semibold text-[15px] sm:text-[14px]">{formatVietnameseDay(dateStr).split(' ')[1]}</span>
+                  <span className="font-light text-[10px] sm:text-[9px] opacity-50 mr-1.5">{formatVietnameseDay(dateStr).split(' ')[0]}</span>
+                  <span className="font-semibold text-[15px] sm:text-[14px] inline-block w-[18px] sm:w-[16px] text-right">{formatVietnameseDay(dateStr).split(' ')[1]}</span>
                 </button>
               ) : (
                 <span className="block font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap opacity-0">00</span>
