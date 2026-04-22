@@ -462,6 +462,7 @@ export default function EmployeeSalaryEntry() {
                 globalClockIn={globalClockIn}
                 periodStart={selectedPeriod.start_date}
                 periodEnd={selectedPeriod.end_date}
+                offDays={selectedPeriod.off_days || []}
                 onEntryUpdate={updateEntry}
                 breakdown={breakdown}
                 currentUserId={userId}

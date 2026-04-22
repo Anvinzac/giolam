@@ -16,6 +16,7 @@ export interface ImmersiveInputTypeBProps {
   globalClockIn: string;
   periodStart: string;
   periodEnd: string;
+  offDays: string[];
   onEntryUpdate: (entryDate: string, sortOrder: number, updates: Partial<SalaryEntry>) => void;
   breakdown: SalaryBreakdown | null;
   currentUserId: string;
@@ -37,6 +38,7 @@ export default function ImmersiveInputTypeB({
   globalClockIn,
   periodStart,
   periodEnd,
+  offDays,
   onEntryUpdate,
   breakdown,
   currentUserId,
@@ -61,10 +63,9 @@ export default function ImmersiveInputTypeB({
   const isDragging = useRef(false);
   const lastWheelTime = useRef(0);
 
-  // Filter to only working days (is_day_off === false) and sort by sort_order
+  // Show all days (including off-days) sorted by sort_order
   const workingDays = useMemo(() => {
     return entries
-      .filter(entry => !entry.is_day_off)
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [entries]);
 
@@ -467,6 +468,7 @@ export default function ImmersiveInputTypeB({
                   dailyBase={0}
                   hourlyRate={hourlyRate}
                   state={isFocus ? 'focus' : 'review'}
+                  isGlobalOffDay={offDays.includes(entry.entry_date)}
                   onClockOutSelect={(time) => {
                     if (isFocus) {
                       handleChipSelect(time);

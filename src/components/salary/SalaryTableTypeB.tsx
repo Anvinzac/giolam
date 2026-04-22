@@ -775,11 +775,19 @@ export default function SalaryTableTypeB({
         />
       )}
 
-      {/* Total */}
-      <TotalSalaryDisplay
-        total={breakdown?.total ?? 0}
-        onTap={() => setShowBreakdown(true)}
-      />
+      {/* Total - show notice for employees, amount for admin */}
+      {mode === 'employee' ? (
+        <div className="glass-card p-4 sm:p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Tổng lương sẽ được hiển thị sau khi quản lý xác nhận
+          </p>
+        </div>
+      ) : (
+        <TotalSalaryDisplay
+          total={breakdown?.total ?? 0}
+          onTap={() => setShowBreakdown(true)}
+        />
+      )}
 
       <SalaryBreakdownPopup
         isOpen={showBreakdown}

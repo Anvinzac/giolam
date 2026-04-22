@@ -11,6 +11,7 @@ export interface SquircleCardProps {
   dailyBase: number;
   hourlyRate: number;
   state: 'focus' | 'review';
+  isGlobalOffDay: boolean;
   onClockOutSelect: (time: string) => void;
   onDayOff?: () => void;
   onCardTap?: () => void;
@@ -24,6 +25,7 @@ function SquircleCard({
   dailyBase,
   hourlyRate,
   state,
+  isGlobalOffDay,
   onClockOutSelect,
   onDayOff,
   onCardTap,
@@ -33,10 +35,10 @@ function SquircleCard({
   const isReview = state === 'review';
   const prefersReducedMotion = useReducedMotion();
 
-  // Check if this is an off-day or has no clock-in (should be grayed out and disabled)
-  const isOffDay = entry.is_day_off;
+  // Only gray out global off-days (restaurant closed)
+  // Individual no-work days (no clock-in/out) are shown normally
+  const isDisabled = isGlobalOffDay;
   const hasNoClockIn = !entry.clock_in && !globalClockIn;
-  const isDisabled = isOffDay || hasNoClockIn;
 
   // Format clock-in time without seconds
   const formatTime = (time: string | null): string => {
@@ -128,7 +130,7 @@ function SquircleCard({
       initial={false}
       style={{ willChange: isTransitioning ? 'transform, opacity' : 'auto' }}
       role="article"
-      aria-label={`${isFocus ? 'Ngày hiện tại' : 'Ngày trước đó'}: ${day} ${weekday}${isOffDay ? ' - Nghỉ' : ''}`}
+      aria-label={`${isFocus ? 'Ngày hiện tại' : 'Ngày trước đó'}: ${day} ${weekday}${isGlobalOffDay ? ' - Nghỉ' : ''}`}
     >
       {/* Header: Date and Weekday */}
       <div className="p-4 sm:p-6 pb-3 sm:pb-4">
@@ -138,7 +140,7 @@ function SquircleCard({
               {day}
             </time>
             <span className="text-xl sm:text-2xl text-muted-foreground">{weekday}</span>
-            {isOffDay && (
+            {isGlobalOffDay && (
               <span className="text-sm sm:text-base text-destructive font-medium">Nghỉ</span>
             )}
           </div>
@@ -157,7 +159,7 @@ function SquircleCard({
         <div className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 flex items-center justify-center">
           <div className="text-center text-muted-foreground">
             <p className="text-sm sm:text-base">
-              {isOffDay ? 'Ngày nghỉ' : 'Không có giờ vào'}
+              Ngày nghỉ
             </p>
           </div>
         </div>
@@ -195,7 +197,7 @@ function SquircleCard({
         </div>
       )}
 
-      {/* Summary footer */}
+      {/* Summary footer - empty for employees, total hidden */}
       <div 
         className={`px-4 sm:px-6 py-3 sm:py-4 border-t border-border/20 ${isReview && onCardTap && !isDisabled ? 'cursor-pointer hover:bg-muted/20' : ''}`}
         role="region" 
