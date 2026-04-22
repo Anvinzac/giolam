@@ -1,4 +1,4 @@
-import { SalaryEntry } from '@/types/salary';
+import { SalaryEntry, SpecialDayRate } from '@/types/salary';
 import ClockOutChipGrid from './ClockOutChipGrid';
 import { motion } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
@@ -6,7 +6,7 @@ import { memo, useMemo } from 'react';
 
 export interface SquircleCardProps {
   entry: SalaryEntry;
-  rate: number;
+  specialRate: SpecialDayRate | null;
   globalClockIn: string;
   dailyBase: number;
   hourlyRate: number;
@@ -19,7 +19,7 @@ export interface SquircleCardProps {
 
 function SquircleCard({
   entry,
-  rate,
+  specialRate,
   globalClockIn,
   dailyBase,
   hourlyRate,
@@ -33,10 +33,22 @@ function SquircleCard({
   const isReview = state === 'review';
   const prefersReducedMotion = useReducedMotion();
 
+  // Check if this is an off-day or has no clock-in (should be grayed out and disabled)
+  const isOffDay = entry.is_day_off;
+  const hasNoClockIn = !entry.clock_in && !globalClockIn;
+  const isDisabled = isOffDay || hasNoClockIn;
+
+  // Format clock-in time without seconds
+  const formatTime = (time: string | null): string => {
+    if (!time) return '';
+    const parts = time.split(':');
+    return `${parts[0]}:${parts[1]}`; // HH:MM only
+  };
+
   // Format date display (memoized)
   const { day, weekday } = useMemo(() => {
     const date = new Date(entry.entry_date + 'T00:00:00');
-    const day = date.getDate();
+    const day = date.getDate().toString().padStart(2, '0'); // Add leading zero
     const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     const weekday = weekdays[date.getDay()];
     return { day, weekday };
@@ -69,6 +81,7 @@ function SquircleCard({
 
   // Calculate daily summary using Type B logic (memoized)
   const { allowanceAmount, hours, extraWage, totalWage } = useMemo(() => {
+    const rate = specialRate?.rate_percent ?? 0;
     const allowanceAmount = Math.round((dailyBase * rate) / 100 / 1000) * 1000;
     
     // Calculate hours: use total_hours if available, otherwise calculate from clock times
@@ -96,7 +109,7 @@ function SquircleCard({
     const totalWage = entry.is_day_off ? 0 : dailyBase + allowanceAmount + extraWage;
 
     return { allowanceAmount, hours, extraWage, totalWage };
-  }, [entry.total_hours, entry.clock_in, entry.clock_out, entry.is_day_off, globalClockIn, dailyBase, rate, hourlyRate]);
+  }, [entry.total_hours, entry.clock_in, entry.clock_out, entry.is_day_off, globalClockIn, dailyBase, specialRate, hourlyRate]);
 
   const formatVND = (amount: number) => {
     return `${(amount / 1000).toFixed(0)}k`;
@@ -108,68 +121,87 @@ function SquircleCard({
         bg-card/60 backdrop-blur-xl border border-glass-border transition-all duration-300
         rounded-[24px] sm:rounded-[28px] h-full flex flex-col
         ${isTransitioning ? 'pointer-events-none' : ''}
+        ${isDisabled ? 'opacity-50 grayscale' : ''}
       `}
       variants={cardVariants}
       animate={isFocus ? 'focus' : 'review'}
       initial={false}
       style={{ willChange: isTransitioning ? 'transform, opacity' : 'auto' }}
       role="article"
-      aria-label={`${isFocus ? 'Ngày hiện tại' : 'Ngày trước đó'}: ${day} ${weekday}`}
+      aria-label={`${isFocus ? 'Ngày hiện tại' : 'Ngày trước đó'}: ${day} ${weekday}${isOffDay ? ' - Nghỉ' : ''}`}
     >
       {/* Header: Date and Weekday */}
       <div className="p-4 sm:p-6 pb-3 sm:pb-4">
-        <div className="flex items-baseline gap-2 sm:gap-3">
-          <time className="text-4xl sm:text-5xl font-bold" dateTime={entry.entry_date}>
-            {day}
-          </time>
-          <span className="text-xl sm:text-2xl text-muted-foreground">{weekday}</span>
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="flex items-baseline gap-2 sm:gap-3">
+            <time className="text-4xl sm:text-5xl font-bold" dateTime={entry.entry_date}>
+              {day}
+            </time>
+            <span className="text-xl sm:text-2xl text-muted-foreground">{weekday}</span>
+            {isOffDay && (
+              <span className="text-sm sm:text-base text-destructive font-medium">Nghỉ</span>
+            )}
+          </div>
+          {/* Special day notice - top right corner */}
+          {specialRate && !isDisabled && (
+            <div className="text-xs sm:text-sm text-accent font-medium text-right">
+              {specialRate.description_vi}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main content area: Hours display (left 1/3) + Chip grid (right 2/3) */}
-      <div className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 flex gap-3 sm:gap-4" role="region" aria-label="Chọn giờ ra">
-        {/* Left side: Hours display */}
-        <div className="w-1/3 flex flex-col justify-center items-center gap-2 sm:gap-3">
-          <div className="text-center">
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Giờ vào</div>
-            <time className="text-lg sm:text-xl font-semibold" dateTime={`${entry.entry_date}T${globalClockIn}`}>
-              {globalClockIn}
-            </time>
+      {/* Main content area */}
+      {isDisabled ? (
+        /* Disabled state: show message */
+        <div className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 flex items-center justify-center">
+          <div className="text-center text-muted-foreground">
+            <p className="text-sm sm:text-base">
+              {isOffDay ? 'Ngày nghỉ' : 'Không có giờ vào'}
+            </p>
           </div>
-          <div className="text-center">
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Giờ làm</div>
-            <div className="text-2xl sm:text-3xl font-bold text-accent">
-              {hours > 0 ? `${hours}h` : '_'}
+        </div>
+      ) : (
+        /* Active state: show hours and chips */
+        <div className="flex-1 px-4 sm:px-6 pb-4 sm:pb-6 flex gap-3 sm:gap-4" role="region" aria-label="Chọn giờ ra">
+          {/* Left side: Hours display */}
+          <div className="w-1/3 flex flex-col justify-center items-center gap-2 sm:gap-3">
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-muted-foreground mb-1">Giờ vào</div>
+              <time className="text-lg sm:text-xl font-semibold" dateTime={`${entry.entry_date}T${entry.clock_in || globalClockIn}`}>
+                {formatTime(entry.clock_in || globalClockIn)}
+              </time>
+            </div>
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-muted-foreground mb-1">Giờ làm</div>
+              <div className="text-2xl sm:text-3xl font-bold text-accent">
+                {hours > 0 ? `${hours}h` : '_'}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right side: Clock-out chip grid (2/3 width) */}
-        <div className="w-2/3">
-          <ClockOutChipGrid
-            baseTime={globalClockIn}
-            selectedTime={entry.clock_out}
-            onSelect={onClockOutSelect}
-            onDayOff={onDayOff}
-            disabled={isTransitioning}
-            cardState={state}
-          />
+          {/* Right side: Clock-out chip grid (2/3 width) */}
+          <div className="w-2/3">
+            <ClockOutChipGrid
+              baseTime={formatTime(entry.clock_in || globalClockIn)}
+              selectedTime={entry.clock_out}
+              onSelect={onClockOutSelect}
+              onDayOff={onDayOff}
+              disabled={isTransitioning}
+              cardState={state}
+              isOffDay={entry.is_day_off}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Summary footer */}
       <div 
-        className={`px-4 sm:px-6 py-3 sm:py-4 border-t border-border/20 ${isReview && onCardTap ? 'cursor-pointer hover:bg-muted/20' : ''}`}
+        className={`px-4 sm:px-6 py-3 sm:py-4 border-t border-border/20 ${isReview && onCardTap && !isDisabled ? 'cursor-pointer hover:bg-muted/20' : ''}`}
         role="region" 
         aria-label="Tóm tắt lương"
-        onClick={isReview && onCardTap ? onCardTap : undefined}
+        onClick={isReview && onCardTap && !isDisabled ? onCardTap : undefined}
       >
-        {/* Special day notice - show if rate > 0 */}
-        {rate > 0 && (
-          <div className="mb-2 text-xs sm:text-sm text-accent font-medium">
-            Ngày đặc biệt • Phụ cấp +{rate}%
-          </div>
-        )}
       </div>
     </motion.div>
   );

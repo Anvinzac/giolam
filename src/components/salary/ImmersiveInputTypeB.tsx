@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, SalaryBreakdown } from '@/types/salary';
 import SquircleCard from './SquircleCard';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -55,6 +55,12 @@ export default function ImmersiveInputTypeB({
   const lastTapTime = useRef<number>(0);
   const DEBOUNCE_MS = 300;
 
+  // Motion value for smooth scrolling
+  const scrollY = useMotionValue(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const lastWheelTime = useRef(0);
+
   // Filter to only working days (is_day_off === false) and sort by sort_order
   const workingDays = useMemo(() => {
     return entries
@@ -86,6 +92,68 @@ export default function ImmersiveInputTypeB({
     }),
     [],
   );
+
+  // Virtual scrolling: render cards from -2 to +1 relative to current (4 cards total)
+  // This ensures smooth scrolling in both directions
+  const visibleCardIndices = useMemo(() => {
+    const indices: number[] = [];
+    // Render: above-above (-2), above/review (-1), focus (0), below (+1)
+    for (let i = Math.max(0, state.currentDayIndex - 2); i <= Math.min(workingDays.length - 1, state.currentDayIndex + 1); i++) {
+      indices.push(i);
+    }
+    return indices;
+  }, [state.currentDayIndex, workingDays.length]);
+
+  // Handle wheel scroll
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (isDragging.current || state.isTransitioning) return;
+      
+      const now = Date.now();
+      if (now - lastWheelTime.current < 100) return; // Throttle wheel events
+      lastWheelTime.current = now;
+
+      const delta = e.deltaY;
+      if (Math.abs(delta) < 10) return; // Ignore tiny scrolls
+
+      if (delta > 0 && state.currentDayIndex < workingDays.length - 1) {
+        // Scroll down = next day
+        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex + 1 }));
+      } else if (delta < 0 && state.currentDayIndex > 0) {
+        // Scroll up = previous day
+        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex - 1 }));
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: true });
+      return () => container.removeEventListener('wheel', handleWheel);
+    }
+  }, [state.currentDayIndex, state.isTransitioning, workingDays.length]);
+
+  // Handle drag/swipe
+  const handleDragEnd = useCallback((_: any, info: PanInfo) => {
+    isDragging.current = false;
+    if (state.isTransitioning) return;
+
+    const threshold = 50; // pixels
+    const velocity = info.velocity.y;
+    const offset = info.offset.y;
+
+    if (Math.abs(offset) > threshold || Math.abs(velocity) > 500) {
+      if (offset > 0 && state.currentDayIndex > 0) {
+        // Swipe down = previous day
+        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex - 1 }));
+      } else if (offset < 0 && state.currentDayIndex < workingDays.length - 1) {
+        // Swipe up = next day
+        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex + 1 }));
+      }
+    }
+    
+    // Reset scroll position
+    animate(scrollY, 0, { type: 'spring', stiffness: 300, damping: 30 });
+  }, [state.currentDayIndex, state.isTransitioning, workingDays.length, scrollY]);
 
   // Advance to next day after successful clock-out selection
   const advanceToNextDay = useCallback(() => {
@@ -133,9 +201,9 @@ export default function ImmersiveInputTypeB({
   }, [state.isTransitioning, state.currentDayIndex, workingDays, onEntryUpdate, prefersReducedMotion, advanceToNextDay]);
 
   // Helper to get special rate for a given entry date
-  const getSpecialRate = useCallback((entryDate: string): number => {
-    const matchingRate = rates.find(r => r.entry_date === entryDate);
-    return matchingRate?.rate ?? 0;
+  const getSpecialRate = useCallback((entryDate: string): SpecialDayRate | null => {
+    const matchingRate = rates.find(r => r.special_date === entryDate);
+    return matchingRate || null;
   }, [rates]);
 
   // Handle day-off selection
@@ -315,7 +383,16 @@ export default function ImmersiveInputTypeB({
   }
 
   return (
-    <div className="relative h-[calc(100vh-160px)] min-h-[520px] sm:min-h-[620px] overflow-hidden pb-16 sm:pb-20">
+    <motion.div 
+      ref={containerRef}
+      className="relative h-[calc(100vh-160px)] min-h-[520px] sm:min-h-[620px] overflow-hidden pb-16 sm:pb-20"
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={0.2}
+      onDragStart={() => { isDragging.current = true; }}
+      onDragEnd={handleDragEnd}
+      style={{ y: scrollY }}
+    >
       {/* Screen reader announcements */}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {isCompleted
@@ -324,11 +401,12 @@ export default function ImmersiveInputTypeB({
         }
       </div>
 
-      {/* Card stack — every working day is rendered once at a stable position,
-          and only translateY animates. This is the "infinite scrollview"
-          illusion: advancing the day slides the whole sheet up by one slot. */}
-      {workingDays.map((entry, i) => {
-        const offset = i - state.currentDayIndex; // 0 = focus, -1 = review, +1 = below
+      {/* Virtual scrolling: only render visible cards (4 max) */}
+      {visibleCardIndices.map((i) => {
+        const entry = workingDays[i];
+        if (!entry) return null;
+
+        const offset = i - state.currentDayIndex; // -2 = above-above, -1 = review, 0 = focus, +1 = below
         const isFocus = offset === 0;
         const isReview = offset === -1;
 
@@ -340,8 +418,8 @@ export default function ImmersiveInputTypeB({
             animate={{ y: `${offset * 100}%` }}
             transition={trackSpring}
             style={{ willChange: 'transform' }}
-            // Hide far-away cards from assistive tech + pointer events to keep
-            // the review/focus pair the only interactive surface.
+            // Hide far-away cards from assistive tech + pointer events
+            // Keep review (-1) and focus (0) interactive
             aria-hidden={offset < -1 || offset > 0}
           >
             <div
@@ -384,7 +462,7 @@ export default function ImmersiveInputTypeB({
               <div className="relative z-10 h-full w-full">
                 <SquircleCard
                   entry={entry}
-                  rate={getSpecialRate(entry.entry_date)}
+                  specialRate={getSpecialRate(entry.entry_date)}
                   globalClockIn={globalClockIn}
                   dailyBase={0}
                   hourlyRate={hourlyRate}
@@ -405,6 +483,6 @@ export default function ImmersiveInputTypeB({
           </motion.div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

@@ -5,6 +5,7 @@ export interface ClockOutChipGridProps {
   onDayOff?: () => void;
   disabled: boolean;
   cardState?: 'focus' | 'review';
+  isOffDay?: boolean;
 }
 
 // Generate time options in 30-minute increments from +0.5h to +5h
@@ -37,9 +38,15 @@ export default function ClockOutChipGrid({
   onDayOff,
   disabled,
   cardState = 'focus',
+  isOffDay = false,
 }: ClockOutChipGridProps) {
   const chipTimes = generateChipTimes(baseTime);
   const isReview = cardState === 'review';
+
+  // Normalize selectedTime to HH:MM format (remove seconds if present)
+  const normalizedSelectedTime = selectedTime 
+    ? selectedTime.split(':').slice(0, 2).join(':') 
+    : null;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, time: string) => {
     if (disabled) return;
@@ -68,7 +75,7 @@ export default function ClockOutChipGrid({
       aria-label="Chọn giờ ra"
     >
       {chipTimes.map(time => {
-        const isSelected = time === selectedTime;
+        const isSelected = !isOffDay && time === normalizedSelectedTime;
         
         return (
           <button
@@ -97,20 +104,25 @@ export default function ClockOutChipGrid({
         );
       })}
       
-      {/* Day-off button */}
+      {/* Day-off button - highlighted when day is marked as off */}
       {onDayOff && (
         <button
           onClick={() => !disabled && onDayOff()}
           onKeyDown={handleDayOffKeyDown}
           disabled={disabled}
           aria-label="Đánh dấu nghỉ"
+          aria-pressed={isOffDay}
           className={`
             min-h-[44px] min-w-[44px] rounded-xl sm:rounded-2xl border-2 
             text-base sm:text-lg font-semibold
-            transition-all duration-200
+            transition-all duration-500
             focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2
-            border-destructive/60 bg-destructive/10 text-destructive 
-            hover:border-destructive hover:bg-destructive/20 hover:scale-105
+            ${isOffDay
+              ? isReview
+                ? 'border-destructive/40 bg-destructive/20 text-destructive scale-105'
+                : 'border-destructive bg-destructive text-destructive-foreground scale-105'
+              : 'border-destructive/60 bg-destructive/10 text-destructive hover:border-destructive hover:bg-destructive/20 hover:scale-105'
+            }
             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
           `}
         >
