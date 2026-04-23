@@ -72,10 +72,20 @@ serve(async (req) => {
         must_change_password: true,
       }).eq("user_id", newUserId);
 
-      // Type B (overtime): pre-activate every day of every existing period with
-      // the employee's default clock-in. They only need to fill clock-out or
-      // toggle day-off. Skip if no default_clock_in is set.
-      if ((shift_type || "basic") === "overtime" && default_clock_in) {
+      // Pre-activate every day of every existing period so the allowance/base
+      // accrues by default. Two shift types need this:
+      //   • overtime (Type B) — seeded with the default clock-in so the user
+      //     only fills clock-out or toggles day-off. Skipped if no
+      //     default_clock_in is set.
+      //   • basic (Type A) — seeded as "working" (no clock times); the daily
+      //     base + allowance rate applies automatically unless the day is
+      //     later flipped to off.
+      const resolvedShift = shift_type || "basic";
+      const shouldPreActivate =
+        resolvedShift === "basic" ||
+        (resolvedShift === "overtime" && !!default_clock_in);
+
+      if (shouldPreActivate) {
         const { data: periods } = await serviceClient
           .from("working_periods")
           .select("id, start_date, end_date");
@@ -101,7 +111,9 @@ serve(async (req) => {
               entry_date: cur.toISOString().slice(0, 10),
               sort_order: 0,
               is_day_off: false,
-              clock_in: default_clock_in,
+              // Type B gets its default clock-in preloaded; Type A doesn't
+              // use clock times for base pay so leave it null.
+              clock_in: resolvedShift === "overtime" ? default_clock_in : null,
               clock_out: null,
               is_admin_reviewed: true,
             });
