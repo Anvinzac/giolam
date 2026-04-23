@@ -69,7 +69,7 @@ export default function ClockOutChipGrid({
 
   return (
     <div 
-      className="grid grid-cols-3 gap-2 sm:gap-3 w-full" 
+      className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full" 
       data-testid="clock-out-chip-grid"
       role="group"
       aria-label="Chọn giờ ra"
@@ -86,10 +86,10 @@ export default function ClockOutChipGrid({
             aria-label={`Chọn giờ ra ${formatTimeDecimal(time)}`}
             aria-pressed={isSelected}
             className={`
-              min-h-[44px] min-w-[44px] rounded-xl sm:rounded-2xl border-2 
-              text-base sm:text-lg font-semibold
+              h-10 sm:h-11 rounded-xl border-2 
+              text-sm sm:text-base font-semibold
               transition-all duration-500
-              focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+              focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
               ${isSelected 
                 ? isReview
                   ? 'border-primary/40 bg-primary/20 text-foreground scale-105'
@@ -104,7 +104,6 @@ export default function ClockOutChipGrid({
         );
       })}
       
-      {/* Day-off button - highlighted when day is marked as off */}
       {onDayOff && (
         <button
           onClick={() => !disabled && onDayOff()}
@@ -113,10 +112,10 @@ export default function ClockOutChipGrid({
           aria-label="Đánh dấu nghỉ"
           aria-pressed={isOffDay}
           className={`
-            min-h-[44px] min-w-[44px] rounded-xl sm:rounded-2xl border-2 
-            text-base sm:text-lg font-semibold
+            h-10 sm:h-11 rounded-xl border-2 
+            text-sm sm:text-base font-semibold
             transition-all duration-500
-            focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2
+            focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-1
             ${isOffDay
               ? isReview
                 ? 'border-destructive/40 bg-destructive/20 text-destructive scale-105'

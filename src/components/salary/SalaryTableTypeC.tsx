@@ -11,6 +11,7 @@ import SalaryBreakdownPopup from './SalaryBreakdownPopup';
 import AnalogClock from '../AnalogClock';
 import DateInput from './DateInput';
 import PeriodDatePicker from './PeriodDatePicker';
+import FormulaTooltip from './FormulaTooltip';
 
 // Clock-in offsets: 6 chips in 30-minute increments
 const CHIP_OFFSETS_CLOCK_IN_ALL = [-90, -60, -30, 0, 30, 60];
@@ -226,6 +227,39 @@ export default function SalaryTableTypeC({
     if (Number.isNaN(hours) || Number.isNaN(minutes)) return '—';
     const decimalHours = hours + minutes / 60;
     return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
+  };
+
+  // ── Formula builders (shown in tap-to-reveal tooltips) ──────────────────
+  // Every calculated number gets an explanation of how it was derived, using
+  // the same units as displayed (hours decimal, money in thousands, rate %).
+  const formatK = (n: number) => {
+    const k = Math.round(n / 1000);
+    return `${k}`;
+  };
+  const formulaHours = (e: SalaryEntry): string | null => {
+    // Only show derivation when both clock times are present — if total_hours
+    // was entered directly there's no subtraction to explain.
+    if (!e.clock_in || !e.clock_out) return null;
+    const a = formatClockDecimal(e.clock_in);
+    const b = formatClockDecimal(e.clock_out);
+    if (a === '—' || b === '—') return null;
+    return `${b} − ${a}`;
+  };
+  const formulaWage = (hours: number): string | null => {
+    if (hours <= 0 || hourlyRate <= 0) return null;
+    const hoursStr = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
+    const rateK = hourlyRate / 1000;
+    const rateStr = Number.isInteger(rateK) ? `${rateK}` : rateK.toFixed(1);
+    return `${hoursStr} × ${rateStr}`;
+  };
+  const formulaAllowance = (rate: number, baseWage: number): string | null => {
+    if (baseWage <= 0 || rate <= 0) return null;
+    return `${rate}% × ${formatK(baseWage)}`;
+  };
+  const formulaTotal = (baseWage: number, allowanceAmt: number): string | null => {
+    // Only meaningful when both parts exist — a single component isn't a sum.
+    if (baseWage <= 0 || allowanceAmt <= 0) return null;
+    return `${formatK(baseWage)} + ${formatK(allowanceAmt)}`;
   };
 
   const formatDayOnly = (dateStr: string) => dateStr.slice(8, 10);
@@ -767,14 +801,18 @@ export default function SalaryTableTypeC({
               )}
             </div>
           )}
-          <span className="num-cell w-[24px] text-right font-semibold text-[13px]">{formatHours(hours)}</span>
-          <span className="num-cell w-[34px] text-right font-medium text-[13px] text-foreground/70">
+          <FormulaTooltip formula={formulaHours(e)} className="num-cell w-[24px] text-right font-semibold text-[13px]">
+            {formatHours(hours)}
+          </FormulaTooltip>
+          <FormulaTooltip formula={formulaWage(hours)} className="num-cell w-[34px] text-right font-medium text-[13px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
-          </span>
-          <span className="num-cell w-[30px] text-right allowance-amt font-semibold text-[13px]">
+          </FormulaTooltip>
+          <FormulaTooltip formula={formulaAllowance(rate, baseWage)} className="num-cell w-[30px] text-right allowance-amt font-semibold text-[13px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
-          </span>
-          <span className="num-cell-lg w-[40px] text-right font-bold text-[14px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
+          </FormulaTooltip>
+          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt)} className="num-cell-lg w-[40px] text-right font-bold text-[14px]">
+            {total > 0 ? (total / 1000).toFixed(0) : '—'}
+          </FormulaTooltip>
         </div>
         {showWeekSep && (
           <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator" />
@@ -996,26 +1034,30 @@ export default function SalaryTableTypeC({
 
         {/* Hours */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="num-cell-sm text-right font-semibold text-[13px] sm:text-[14px]">{formatHours(hours)}</span>
+          <FormulaTooltip formula={formulaHours(e)} className="num-cell-sm text-right font-semibold text-[13px] sm:text-[14px]">
+            {formatHours(hours)}
+          </FormulaTooltip>
         </div>
 
         {/* Wage (hours × rate) */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="num-cell-sm text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
+          <FormulaTooltip formula={formulaWage(hours)} className="num-cell-sm text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
-          </span>
+          </FormulaTooltip>
         </div>
 
         {/* Allowance */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="num-cell-sm text-right allowance-amt font-semibold text-[13px] sm:text-[14px]">
+          <FormulaTooltip formula={formulaAllowance(rate, baseWage)} className="num-cell-sm text-right allowance-amt font-semibold text-[13px] sm:text-[14px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
-          </span>
+          </FormulaTooltip>
         </div>
 
         {/* Total */}
         <div className="justify-self-end flex items-center h-full">
-          <span className="num-cell-xl text-right font-bold text-[14px] sm:text-[16px]">{total > 0 ? (total / 1000).toFixed(0) : '—'}</span>
+          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt)} className="num-cell-xl text-right font-bold text-[14px] sm:text-[16px]">
+            {total > 0 ? (total / 1000).toFixed(0) : '—'}
+          </FormulaTooltip>
         </div>
         {showWeekSep && (
           <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full week-separator" />

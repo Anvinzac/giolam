@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, SalaryBreakdown } from '@/types/salary';
 import SquircleCard from './SquircleCard';
 import { toast } from 'sonner';
-import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, animate, PanInfo } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -94,8 +94,46 @@ export default function ImmersiveInputTypeB({
     [],
   );
 
+  // ── Slot geometry (single source of truth) ──────────────────────────────
+  // Every card — intro notice AND day cards — occupies exactly one slot of
+  // this size, with SLOT_GAP_PX of vertical breathing room between slots.
+  // This prevents: (a) cards sticking to each other, (b) intro overflowing
+  // behind the focus card, (c) the top card getting cropped when siblings
+  // above the component change the parent layout.
+  const SLOT_CSS = 'clamp(260px, 42vh, 400px)';
+  const SLOT_GAP_PX = 16;
+  const BOTTOM_PAD_PX = 64;
+  const CONTAINER_MIN_H = `calc(2 * ${SLOT_CSS} + ${SLOT_GAP_PX + BOTTOM_PAD_PX}px)`;
+
+  // Hidden sentinel lets us read the slot's pixel height after CSS resolves
+  // the clamp(). Used to translate cards by (slot + gap) instead of by a
+  // content-dependent measurement that differs between intro and day cards.
+  const slotSentinelRef = useRef<HTMLDivElement>(null);
+  const [slotPx, setSlotPx] = useState(0);
+  useLayoutEffect(() => {
+    const el = slotSentinelRef.current;
+    if (!el) return;
+    const update = () => {
+      const h = el.getBoundingClientRect().height;
+      if (h > 0) setSlotPx(h);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Translation per offset slot (slot size + gap so cards never touch).
+  const slotStep = slotPx > 0 ? slotPx + SLOT_GAP_PX : 0;
+
+  // Intro card visibility — kept above day 0 as an anchor note. Hidden once
+  // the user is two+ days in to avoid it hanging around off-screen.
+  const showIntroCard = state.currentDayIndex <= 1;
+  const introOffset = -1 - state.currentDayIndex;
+
   // Virtual scrolling: render cards from -2 to +1 relative to current (4 cards total)
   // This ensures smooth scrolling in both directions
+  // Index -1 in the virtual list = intro card (shown before day 0)
   const visibleCardIndices = useMemo(() => {
     const indices: number[] = [];
     // Render: above-above (-2), above/review (-1), focus (0), below (+1)
@@ -121,7 +159,7 @@ export default function ImmersiveInputTypeB({
         // Scroll down = next day
         setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex + 1 }));
       } else if (delta < 0 && state.currentDayIndex > 0) {
-        // Scroll up = previous day
+        // Scroll up = previous day (can't go below 0 — intro card is purely visual)
         setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex - 1 }));
       }
     };
@@ -383,16 +421,34 @@ export default function ImmersiveInputTypeB({
     );
   }
 
+  // Common geometry used by every slot (intro + day cards) so they're
+  // guaranteed identical in size and never bleed into each other.
+  const slotClassName = 'absolute inset-x-0 px-3 sm:px-4';
+  const slotInlineStyle: React.CSSProperties = {
+    bottom: BOTTOM_PAD_PX,
+    height: SLOT_CSS,
+    willChange: 'transform',
+  };
+
   return (
-    <motion.div 
+    <motion.div
       ref={containerRef}
-      className="relative h-[calc(100vh-160px)] min-h-[520px] sm:min-h-[620px] overflow-hidden pb-16 sm:pb-20"
+      className="relative w-full overflow-hidden"
+      style={{
+        // Deterministic height: enough for 2 slots + gap + bottom pad, so
+        // the component never depends on sibling layout above it.
+        minHeight: CONTAINER_MIN_H,
+        height: CONTAINER_MIN_H,
+        y: scrollY,
+      }}
+      // Drag-to-swipe detection WITHOUT visually translating the container.
+      // dragConstraints locked to 0 + zero elasticity means the outer box
+      // stays put while onDragEnd still fires with offset/velocity info.
       drag="y"
       dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={0.2}
+      dragElastic={0}
       onDragStart={() => { isDragging.current = true; }}
       onDragEnd={handleDragEnd}
-      style={{ y: scrollY }}
     >
       {/* Screen reader announcements */}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -402,25 +458,72 @@ export default function ImmersiveInputTypeB({
         }
       </div>
 
-      {/* Virtual scrolling: only render visible cards (4 max) */}
+      {/* Hidden sentinel — same CSS size as a real slot. Measures the
+          resolved pixel height of one slot so we can animate cards by
+          (slot + gap) px. Never rendered visibly. */}
+      <div
+        ref={slotSentinelRef}
+        aria-hidden
+        className={`${slotClassName} pointer-events-none invisible`}
+        style={slotInlineStyle}
+      />
+
+      {/* Intro notice — occupies one slot above day 0. Clipped to slot
+          height (overflow-hidden) so its content can never spill down
+          behind the focus card. */}
+      {showIntroCard && (
+        <motion.div
+          key="intro-card"
+          className={slotClassName}
+          initial={false}
+          animate={{
+            y: introOffset * slotStep,
+            opacity: introOffset === -1 ? 0.9 : 0.25,
+          }}
+          transition={trackSpring}
+          style={slotInlineStyle}
+          aria-hidden
+        >
+          <div className="h-full w-full overflow-hidden flex flex-col items-center justify-end gap-3 pb-4 text-center">
+            <span className="text-4xl select-none">👋</span>
+            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 justify-center">
+                <span>👆</span>
+                <span>Chạm vào số giờ để chọn giờ ra</span>
+              </div>
+              <div className="flex items-center gap-2 justify-center">
+                <span>🔴</span>
+                <span>Nhấn "Nghỉ" nếu không đi làm hôm đó</span>
+              </div>
+              <div className="flex items-center gap-2 justify-center">
+                <span>↕️</span>
+                <span>Vuốt lên/xuống để xem ngày khác</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground/50">{workingDays.length} ngày trong kỳ này</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Virtual scrolling: only render a small window of day cards.
+          Each card occupies exactly one slot (same size as intro), and
+          translates by (slot + gap) px per offset so they never touch. */}
       {visibleCardIndices.map((i) => {
         const entry = workingDays[i];
         if (!entry) return null;
 
-        const offset = i - state.currentDayIndex; // -2 = above-above, -1 = review, 0 = focus, +1 = below
+        const offset = i - state.currentDayIndex;
         const isFocus = offset === 0;
         const isReview = offset === -1;
 
         return (
           <motion.div
             key={entry.id ?? `${entry.entry_date}-${entry.sort_order}`}
-            className="absolute inset-x-0 bottom-16 sm:bottom-20 h-[44%] p-3 sm:p-4"
+            className={slotClassName}
             initial={false}
-            animate={{ y: `${offset * 100}%` }}
+            animate={{ y: offset * slotStep }}
             transition={trackSpring}
-            style={{ willChange: 'transform' }}
-            // Hide far-away cards from assistive tech + pointer events
-            // Keep review (-1) and focus (0) interactive
+            style={slotInlineStyle}
             aria-hidden={offset < -1 || offset > 0}
           >
             <div
@@ -429,14 +532,13 @@ export default function ImmersiveInputTypeB({
                 pointerEvents: offset === 0 || offset === -1 ? 'auto' : 'none',
               }}
             >
-              {/* Gradient glow effect - embedded in card wrapper, opacity animates */}
-              <motion.div 
-                aria-hidden 
+              {/* Gradient glow — pinned to this card's slot; opacity
+                  animates with focus state. */}
+              <motion.div
+                aria-hidden
                 className="pointer-events-none absolute -inset-1 z-0"
                 initial={false}
-                animate={{
-                  opacity: isFocus ? 1 : 0,
-                }}
+                animate={{ opacity: isFocus ? 1 : 0 }}
                 transition={{
                   duration: prefersReducedMotion ? 0.01 : 0.5,
                   ease: [0.4, 0.0, 0.2, 1],
@@ -459,8 +561,9 @@ export default function ImmersiveInputTypeB({
                 />
               </motion.div>
 
-              {/* Card content */}
-              <div className="relative z-10 h-full w-full">
+              {/* Card content fills the slot exactly. overflow-hidden keeps
+                  any content that's larger than the slot contained. */}
+              <div className="relative z-10 h-full w-full overflow-hidden">
                 <SquircleCard
                   entry={entry}
                   specialRate={getSpecialRate(entry.entry_date)}
