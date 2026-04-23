@@ -91,6 +91,7 @@ export default function EmployeeSalaryEntry() {
   } = useSalaryEntries(userId, selectedPeriodId, {
     editorMode: 'employee',
     enableRealtime: true,
+    seedAllDays: profile?.shift_type === 'basic',
   });
   
   // Calculate working days count for gui_xe

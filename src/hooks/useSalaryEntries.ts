@@ -28,6 +28,8 @@ export type SalaryEditorMode = 'admin' | 'employee';
 export interface UseSalaryEntriesOptions {
   editorMode?: SalaryEditorMode;
   enableRealtime?: boolean;
+  /** For Type A: auto-seed working entries for each special day in the rates table */
+  seedAllDays?: boolean;
 }
 
 export function useSalaryEntries(
@@ -35,7 +37,7 @@ export function useSalaryEntries(
   periodId: string | null,
   options: UseSalaryEntriesOptions = {}
 ) {
-  const { editorMode = 'admin', enableRealtime = false } = options;
+  const { editorMode = 'admin', enableRealtime = false, seedAllDays = false } = options;
   const [entries, setEntries] = useState<SalaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -79,12 +81,68 @@ export function useSalaryEntries(
         .order('sort_order', { ascending: true });
 
       if (error) console.error('Failed to fetch salary entries:', error);
-      setEntries(sortEntries((data || []) as SalaryEntry[]));
+      let loaded = (data || []) as SalaryEntry[];
+
+      // Type A: keep only entries that match a special day in the rates table
+      if (seedAllDays && periodId) {
+        const existingDates = new Set(loaded.map(e => e.entry_date));
+
+        // Fetch special day rates for this period
+        const { data: ratesData } = await supabase
+          .from('special_day_rates')
+          .select('special_date, rate_percent')
+          .eq('period_id', periodId);
+
+        const specialDates = new Set(
+          (ratesData || [])
+            .filter((r: { special_date: string; rate_percent: number }) => r.rate_percent > 0)
+            .map((r: { special_date: string }) => r.special_date)
+        );
+
+        // Delete entries that are NOT in the special days list
+        const toDelete = loaded.filter(e => e.id && !specialDates.has(e.entry_date));
+        if (toDelete.length > 0) {
+          await supabase
+            .from('salary_entries')
+            .delete()
+            .in('id', toDelete.map(e => e.id!));
+          loaded = loaded.filter(e => specialDates.has(e.entry_date));
+        }
+
+        // Fix existing entries that are wrongly marked as day-off (e.g. seeded before fix)
+        const wronglyOff = loaded.filter(e => e.id && specialDates.has(e.entry_date) && e.is_day_off);
+        if (wronglyOff.length > 0) {
+          await supabase
+            .from('salary_entries')
+            .update({ is_day_off: false, off_percent: 0 })
+            .in('id', wronglyOff.map(e => e.id!));
+          loaded = loaded.map(e =>
+            wronglyOff.find(w => w.id === e.id) ? { ...e, is_day_off: false, off_percent: 0 } : e
+          );
+        }
+
+        // Seed missing special days
+        const toSeed = [...specialDates].filter(d => !existingDates.has(d));
+        if (toSeed.length > 0) {
+          const rows = toSeed.map(dateStr =>
+            buildEmptyEntry(userId, periodId, dateStr, 0, true)
+          );
+          const { data: inserted, error: insertErr } = await supabase
+            .from('salary_entries')
+            .insert(rows)
+            .select();
+          if (!insertErr && inserted) {
+            loaded = sortEntries([...loaded, ...(inserted as SalaryEntry[])]);
+          }
+        }
+      }
+
+      setEntries(sortEntries(loaded));
       setLoading(false);
     };
 
     fetch();
-  }, [userId, periodId]);
+  }, [userId, periodId, seedAllDays]);
 
   // Optional realtime subscription — merges remote changes into local state.
   useEffect(() => {

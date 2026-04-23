@@ -13,13 +13,13 @@ import DateInput from './DateInput';
 import PeriodDatePicker from './PeriodDatePicker';
 import FormulaTooltip from './FormulaTooltip';
 
-// Clock-in offsets: 6 chips in 30-minute increments
-const CHIP_OFFSETS_CLOCK_IN_ALL = [-90, -60, -30, 0, 30, 60];
+// Clock-in offsets: 2 before + 6 after the default value (8 chips + "Khác" = 9 total)
+const CHIP_OFFSETS_CLOCK_IN_ALL = [-60, -30, 30, 60, 90, 120, 150, 180];
 
 // Clock-out offsets: 6 chips in 30-minute increments
 const CHIP_OFFSETS_ALL = [-120, -90, -60, -30, 0, 30];
 
-const CHIP_CORE_START_INDEX_CLOCK_IN = 3; // Index of the 0 offset (center chip)
+const CHIP_CORE_START_INDEX_CLOCK_IN = 2; // First "after" chip (+30) sits at left edge
 const CHIP_CORE_START_INDEX = 4; // Index of the 0 offset (center chip)
 const CHIP_FADE_MASK =
   'linear-gradient(to right, transparent 0, black 28px, black calc(100% - 28px), transparent 100%)';

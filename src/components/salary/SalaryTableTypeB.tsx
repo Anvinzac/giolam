@@ -404,139 +404,90 @@ export default function SalaryTableTypeB({
               transition={{ layout: { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } }}
             >
               {/* ── Mobile row ─────────────────────────────────────────────── */}
-              <motion.div
-                layout
-                animate={{
-                  scale: chipsActive ? 1 : 1,
-                }}
-                transition={{ layout: { type: 'spring', stiffness: 380, damping: 34 } }}
-                className={`relative flex items-center justify-between gap-2 min-h-[62px] py-3 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden overflow-hidden ${
-                e.is_day_off ? 'opacity-40' : ''
-              } ${idx % 2 !== 0 && !isPending && !chipsActive ? 'bg-muted/20' : ''} ${
-                isMoonDay ? 'moon-accent-row' : ''
-              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}>
-                {/* Gradient glow (focused row only) */}
-                <AnimatePresence>
-                  {chipsActive && (
+              <div
+                className={`relative min-h-[52px] py-2.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden overflow-hidden ${
+                  e.is_day_off ? 'opacity-40' : ''
+                } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+                  isMoonDay ? 'moon-accent-row' : ''
+                } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}
+              >
+                <AnimatePresence initial={false} mode="popLayout">
+                  {chipsActive ? (
                     <motion.div
-                      key="glow"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.28, ease: 'easeOut' }}
-                      className="pointer-events-none absolute inset-0 -z-0"
-                      aria-hidden
+                      key="chips"
+                      initial={{ y: '180%' }}
+                      animate={{ y: 0 }}
+                      exit={{ y: '-180%' }}
+                      transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+                      className="w-full min-h-[38px] flex items-center"
                     >
-                      {/* Ambient radial wash */}
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            'radial-gradient(130% 120% at 0% 50%, hsl(var(--primary) / 0.22) 0%, hsl(var(--accent) / 0.14) 42%, transparent 78%)',
-                        }}
-                      />
-                      {/* Ring / inner glow */}
-                      <div
-                        className="absolute inset-x-2 inset-y-1 rounded-xl"
-                        style={{
-                          boxShadow:
-                            '0 0 0 1px hsl(var(--primary) / 0.45) inset, 0 10px 28px -10px hsl(var(--primary) / 0.55), 0 0 20px -4px hsl(var(--accent) / 0.35)',
-                          background:
-                            'linear-gradient(135deg, hsl(var(--primary) / 0.08) 0%, transparent 55%, hsl(var(--accent) / 0.10) 100%)',
-                        }}
-                      />
-                      {/* Accent sheen along the left */}
-                      <div
-                        className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full"
-                        style={{
-                          background:
-                            'linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)',
-                          boxShadow: '0 0 12px 2px hsl(var(--primary) / 0.6)',
-                        }}
-                      />
+                      {renderChips(e, orderedEntries)}
                     </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Left: date + note */}
-                <div className="relative z-10 min-w-0 flex-1 pr-1">
-                  <div className="flex items-start gap-1">
-                    {!readOnly && (
-                      isDupe ? (
-                        canDelete ? (
-                          <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
-                            <Trash2 size={10} />
-                          </button>
-                        ) : null
-                      ) : (
-                        <button onClick={() => onAddDuplicateRow(e.entry_date)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
-                          <Plus size={10} />
-                        </button>
-                      )
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <button
-                        onClick={() => handleDateTap(e)}
-                        className={`block font-semibold text-[15px] leading-none ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
-                      >
-                        {isDupe ? '↳' : formatDayOnly(e.entry_date)}
-                      </button>
-                      {editingCell === `${cellKey}-note` && !readOnly ? (
-                        <div className="relative mt-1">
-                          <input
-                            value={cellValue}
-                            onChange={ev => setCellValue(ev.target.value)}
-                            onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                            onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                            className="block w-full rounded bg-background border border-border px-2 py-1 pr-6 text-[12px] min-w-0"
-                            autoFocus
-                          />
-                          {cellValue && (
-                            <button
-                              onMouseDown={ev => { ev.preventDefault(); setCellValue(''); }}
-                              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5 text-[10px]"
-                              tabIndex={-1}
-                            >✕</button>
+                  ) : (
+                    <motion.div
+                      key="body"
+                      initial={{ y: '180%' }}
+                      animate={{ y: 0 }}
+                      exit={{ y: '-180%' }}
+                      transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+                      className="flex items-center justify-between gap-2 w-full"
+                    >
+                      {/* Left: date + note */}
+                      <div className="min-w-0 flex-1 pr-1">
+                        <div className="flex items-start gap-1">
+                          {!readOnly && (
+                            isDupe ? (
+                              canDelete ? (
+                                <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
+                                  <Trash2 size={10} />
+                                </button>
+                              ) : null
+                            ) : (
+                              <button onClick={() => onAddDuplicateRow(e.entry_date)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
+                                <Plus size={10} />
+                              </button>
+                            )
                           )}
+                          <div className="min-w-0 flex-1">
+                            <button
+                              onClick={() => handleDateTap(e)}
+                              className={`block font-semibold text-[15px] leading-none ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
+                            >
+                              {isDupe ? '↳' : formatDayOnly(e.entry_date)}
+                            </button>
+                            {editingCell === `${cellKey}-note` && !readOnly ? (
+                              <div className="relative mt-1">
+                                <input
+                                  value={cellValue}
+                                  onChange={ev => setCellValue(ev.target.value)}
+                                  onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                                  onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                                  className="block w-full rounded bg-background border border-border px-2 py-1 pr-6 text-[12px] min-w-0"
+                                  autoFocus
+                                />
+                                {cellValue && (
+                                  <button
+                                    onMouseDown={ev => { ev.preventDefault(); setCellValue(''); }}
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5 text-[10px]"
+                                    tabIndex={-1}
+                                  >✕</button>
+                                )}
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
+                                className={`mt-1 block text-left text-[12px] leading-tight ${
+                                  isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+                                } ${!readOnly && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+                              >
+                                {e.is_day_off ? 'Nghỉ' : (e.note || rateDesc || '—')}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
-                          className={`mt-1 block text-left text-[12px] leading-tight ${
-                            isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-                          } ${!readOnly && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
-                        >
-                          {e.is_day_off ? 'Nghỉ' : (e.note || rateDesc || '—')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: chips OR normal columns — swap with slide-up transition */}
-                <div className="relative z-10 flex-shrink-0 flex items-center">
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    {chipsActive ? (
-                      <motion.div
-                        key="chips"
-                        initial={{ opacity: 0, y: 14 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -18 }}
-                        transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-                        className="flex-1 min-w-0"
-                      >
-                        {renderChips(e, orderedEntries)}
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="cols"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-                        className="ml-1 flex shrink-0 items-center gap-3 text-right"
-                      >
-                        {/* RA (clock-out) */}
+                      </div>
+                      {/* Right: normal columns */}
+                      <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
                         <button
                           onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
                           className={`w-[38px] text-right text-sm font-medium ${
@@ -555,15 +506,15 @@ export default function SalaryTableTypeB({
                         <span className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                           {formatCompact(total)}
                         </span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {showWeekSep && (
                   <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full week-separator z-10" />
                 )}
-              </motion.div>
+              </div>
+
 
               {/* ── Desktop row ────────────────────────────────────────────── */}
               <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${

@@ -276,7 +276,11 @@ export default function SalaryAdmin() {
   const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, acceptEntry, isSaving } = useSalaryEntries(
     selectedEmployee?.user_id || null,
     selectedPeriodId,
-    { editorMode: 'admin', enableRealtime: true }
+    {
+      editorMode: 'admin',
+      enableRealtime: true,
+      seedAllDays: selectedEmployee?.shift_type === 'basic',
+    }
   );
   
   // Calculate working days count for gui_xe
