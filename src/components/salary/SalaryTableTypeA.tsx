@@ -75,6 +75,11 @@ export default function SalaryTableTypeA({
     }, 0);
   }, [visibleEntries, dailyBase, rates]);
 
+  const dailyTotals = useMemo(() =>
+    visibleEntries.map(e => computeRow(e).total),
+    [visibleEntries, dailyBase, rates]
+  );
+
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
 
   const guiXeSummary = useMemo(() => {
@@ -402,6 +407,7 @@ export default function SalaryTableTypeA({
         breakdown={breakdown}
         visibleAllowanceKeys={mode === 'employee' ? ['gui_xe'] : null}
         isPublished={mode === 'preview'}
+        dailyTotals={dailyTotals}
       />
     </div>
   );

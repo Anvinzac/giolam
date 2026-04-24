@@ -73,7 +73,7 @@ export default function SalaryTableTypeC({
   const canDeleteRow = (e: SalaryEntry) =>
     mode === 'admin' || (mode === 'employee' && e.is_admin_reviewed === false);
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const [compact, setCompact] = useState(() => mode === 'preview');
+  const [compact, setCompact] = useState(false);
   const [separateClockColumns, setSeparateClockColumns] = useState(true);
   // Track which clock field is showing chips: 'in' or 'out'
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
@@ -160,6 +160,15 @@ export default function SalaryTableTypeC({
     [filteredEntries]
   );
 
+  // Default compact based on working days count — only set once on load
+  const compactInitRef = useRef(false);
+  useEffect(() => {
+    if (compactInitRef.current) return;
+    if (filteredEntries.length === 0) return;
+    compactInitRef.current = true;
+    setCompact(workingEntries.length < 15);
+  }, [workingEntries.length, filteredEntries.length]);
+
   const guiXeSummary = useMemo(() => {
     const fromBreakdown = breakdown?.allowances?.find(a => a.key === 'gui_xe');
     const workingDays = entries.reduce((sum, e) => sum + (!e.is_day_off && (e.clock_in || e.clock_out) ? 1 : 0), 0);
@@ -169,6 +178,11 @@ export default function SalaryTableTypeC({
       enabled: fromBreakdown?.enabled ?? (allowances.find(a => a.allowance_key === 'gui_xe')?.is_enabled ?? false),
     };
   }, [breakdown, entries, allowances]);
+
+  const dailyTotals = useMemo(() =>
+    filteredEntries.filter(e => !e.is_day_off).map(e => computeRow(e).total),
+    [filteredEntries, rates, hourlyRate]
+  );
 
   useEffect(() => {
     scheduledOffDays.forEach((dateStr) => {
@@ -1420,15 +1434,24 @@ export default function SalaryTableTypeC({
 
             {/* Toggle buttons - pushed to right edge */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <button
-                onClick={() => setCompact(!compact)}
-                className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
-                  compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {compact ? <Check size={14} /> : <X size={14} />}
-                Gọn
-              </button>
+              <div className="flex rounded-lg overflow-hidden border border-border/60">
+                <button
+                  onClick={() => setCompact(true)}
+                  className={`px-3 py-1.5 text-[12px] font-semibold transition-colors whitespace-nowrap ${
+                    compact ? 'gradient-gold text-primary-foreground' : 'bg-muted/40 text-muted-foreground'
+                  }`}
+                >
+                  Gọn
+                </button>
+                <button
+                  onClick={() => setCompact(false)}
+                  className={`px-3 py-1.5 text-[12px] font-semibold transition-colors whitespace-nowrap ${
+                    !compact ? 'gradient-gold text-primary-foreground' : 'bg-muted/40 text-muted-foreground'
+                  }`}
+                >
+                  Đủ
+                </button>
+              </div>
 
               <button
                 onClick={() => setSeparateClockColumns(!separateClockColumns)}
@@ -1447,14 +1470,24 @@ export default function SalaryTableTypeC({
       {/* Compact toggle for preview/published mode */}
       {readOnly && (
         <div className="flex justify-end px-1 mb-1">
-          <button
-            onClick={() => setCompact(!compact)}
-            className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
-              compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-            }`}
-          >
-            {compact ? 'Gọn' : 'Đầy đủ'}
-          </button>
+          <div className="flex rounded-lg overflow-hidden border border-border/60">
+            <button
+              onClick={() => setCompact(true)}
+              className={`px-3 py-1.5 text-[12px] font-semibold transition-colors whitespace-nowrap ${
+                compact ? 'gradient-gold text-primary-foreground' : 'bg-muted/40 text-muted-foreground'
+              }`}
+            >
+              Gọn
+            </button>
+            <button
+              onClick={() => setCompact(false)}
+              className={`px-3 py-1.5 text-[12px] font-semibold transition-colors whitespace-nowrap ${
+                !compact ? 'gradient-gold text-primary-foreground' : 'bg-muted/40 text-muted-foreground'
+              }`}
+            >
+              Đủ
+            </button>
+          </div>
         </div>
       )}
 
@@ -1546,6 +1579,7 @@ export default function SalaryTableTypeC({
         breakdown={breakdown}
         visibleAllowanceKeys={mode === 'employee' ? ['gui_xe'] : null}
         isPublished={mode === 'preview'}
+        dailyTotals={dailyTotals}
       />
 
       {pickingClock && (

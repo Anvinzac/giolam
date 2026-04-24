@@ -1,28 +1,14 @@
 import { useState, useEffect, useRef, ReactNode, MouseEvent, TouchEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FormulaTooltipProps {
-  /**
-   * The formula string to display, e.g. "22 − 15", "7 × 25", "15% × 175",
-   * "175 + 26". When `null`, tapping is a no-op (nothing to explain).
-   */
   formula: string | null;
-  /** The visible number/text. */
   children: ReactNode;
-  /** Passes through to the wrapper <span>. */
   className?: string;
-  /** How long the tooltip stays visible before auto-hiding, in ms. */
   autoHideMs?: number;
 }
 
-/**
- * Tap-to-reveal tooltip that explains how a calculated number was derived.
- * Renders the value inline; on tap a small dark chip appears above the value
- * showing the formula. Auto-hides on outside tap or after a timeout.
- *
- * Designed to be drop-in compatible with `<span>` usage so it can replace
- * existing number spans without layout shift.
- */
 export default function FormulaTooltip({
   formula,
   children,
@@ -31,9 +17,8 @@ export default function FormulaTooltip({
 }: FormulaTooltipProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
-  const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null);
+  const [tipPos, setTipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Outside-tap + auto-hide lifecycle
   useEffect(() => {
     if (!open) return;
     const onDown = (e: Event) => {
@@ -54,17 +39,52 @@ export default function FormulaTooltip({
   const handleTap = (e: MouseEvent<HTMLSpanElement> | TouchEvent<HTMLSpanElement>) => {
     if (!formula) return;
     e.stopPropagation();
-    if (!open && ref.current) {
+    if (ref.current) {
       const rect = ref.current.getBoundingClientRect();
       setTipPos({
         x: rect.left + rect.width / 2,
-        y: rect.top - 6,
+        y: rect.top,
       });
     }
-    setOpen((v) => !v);
+    setOpen(v => !v);
   };
 
   const interactive = !!formula;
+
+  const tooltip = open && formula
+    ? createPortal(
+        <AnimatePresence>
+          <motion.span
+            key="tip"
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            className="pointer-events-none fixed z-[9999]"
+            style={{
+              left: tipPos.x,
+              top: tipPos.y - 4,
+              transform: 'translate(-50%, -100%)',
+            }}
+            aria-hidden
+          >
+            <span className="block whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-mono font-semibold text-background shadow-lg">
+              {formula}
+            </span>
+            {/* Arrow pointing down at the number */}
+            <span
+              className="absolute left-1/2 top-full block h-0 w-0 -translate-x-1/2"
+              style={{
+                borderLeft: '5px solid transparent',
+                borderRight: '5px solid transparent',
+                borderTop: '5px solid hsl(var(--foreground))',
+              }}
+            />
+          </motion.span>
+        </AnimatePresence>,
+        document.body
+      )
+    : null;
 
   return (
     <span
@@ -76,25 +96,7 @@ export default function FormulaTooltip({
       aria-label={interactive && formula ? `Công thức: ${formula}` : undefined}
     >
       {children}
-      <AnimatePresence>
-        {open && formula && tipPos && (
-          <motion.span
-            key="tip"
-            initial={{ opacity: 0, y: 4, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 2, scale: 0.95 }}
-            transition={{ duration: 0.14, ease: 'easeOut' }}
-            className="pointer-events-none fixed z-[9999] -translate-x-1/2 -translate-y-full"
-            style={{ left: tipPos.x, top: tipPos.y }}
-            aria-hidden
-          >
-            <span className="block whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-mono font-semibold text-background shadow-lg">
-              {formula}
-            </span>
-            <span className="absolute left-1/2 top-full block h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-x-transparent border-t-foreground" />
-          </motion.span>
-        )}
-      </AnimatePresence>
+      {tooltip}
     </span>
   );
 }

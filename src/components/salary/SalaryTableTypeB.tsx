@@ -129,6 +129,11 @@ export default function SalaryTableTypeB({
     };
   }, [breakdown, entries, allowances]);
 
+  const dailyTotals = useMemo(() =>
+    entries.map(e => computeRow(e).total),
+    [entries, dailyBase, rates, hourlyRate, globalClockIn]
+  );
+
   // ── Chip helpers ────────────────────────────────────────────────────────────
   const startChipAutoHide = (rowKey: string) => {
     if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
@@ -746,6 +751,7 @@ export default function SalaryTableTypeB({
         breakdown={breakdown}
         visibleAllowanceKeys={mode === 'employee' ? ['gui_xe'] : null}
         isPublished={mode === 'preview'}
+        dailyTotals={dailyTotals}
       />
     </div>
   );
