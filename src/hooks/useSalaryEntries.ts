@@ -44,6 +44,11 @@ export function useSalaryEntries(
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUpdatesRef = useRef<Map<string, Partial<SalaryEntry>>>(new Map());
   const currentUidRef = useRef<string | null>(null);
+  // Mirror of entries state so async flushUpdates can inspect the latest
+  // row shape without having to dep on `entries` (which would churn the
+  // debounced callback identity).
+  const entriesRef = useRef<SalaryEntry[]>([]);
+  useEffect(() => { entriesRef.current = entries; }, [entries]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -52,12 +57,26 @@ export function useSalaryEntries(
   }, []);
 
   // Build audit-trail fields we attach to every write.
-  const buildAuditFields = useCallback((): Partial<SalaryEntry> => {
+  //
+  // An employee edit normally flags the row as pending admin review. But
+  // a pure day-off toggle (no clock times) carries no payroll risk and
+  // should be auto-approved so admins aren't buried under a wall of
+  // yellow flags for days that were simply marked off. Pass the final
+  // merged row state so this helper can decide.
+  const buildAuditFields = useCallback((
+    effectiveRow?: Partial<SalaryEntry>
+  ): Partial<SalaryEntry> => {
     const uid = currentUidRef.current;
     if (editorMode === 'employee') {
+      const isOffDayNoTimes =
+        effectiveRow?.is_day_off === true &&
+        !effectiveRow?.clock_in &&
+        !effectiveRow?.clock_out;
       return {
         submitted_by: uid,
-        is_admin_reviewed: false,
+        // Auto-approve pure day-off rows — admins don't need to review
+        // an employee toggling "off" on a day with no claimed hours.
+        is_admin_reviewed: isOffDayNoTimes ? true : false,
         last_employee_edit_at: new Date().toISOString(),
       };
     }
@@ -194,7 +213,13 @@ export function useSalaryEntries(
       const [entryDate, sortOrderStr] = key.split('|');
       const sortOrder = parseInt(sortOrderStr);
 
-      const audit = buildAuditFields();
+      // Find current row state so buildAuditFields can judge the effective
+      // post-merge shape (e.g. pure day-off toggle → auto-approve).
+      const existingRow = entriesRef.current.find(
+        e => e.entry_date === entryDate && e.sort_order === sortOrder
+      );
+      const effectiveRow = { ...(existingRow || {}), ...upd };
+      const audit = buildAuditFields(effectiveRow);
 
       const { error } = await supabase
         .from('salary_entries')
@@ -244,7 +269,7 @@ export function useSalaryEntries(
   }, [userId, periodId, flushUpdates]);
 
   const insertWithAudit = useCallback(async (base: Omit<SalaryEntry, 'id'>) => {
-    const audit = buildAuditFields();
+    const audit = buildAuditFields(base);
     return supabase
       .from('salary_entries')
       .insert({ ...base, ...audit })
@@ -296,7 +321,8 @@ export function useSalaryEntries(
 
     pendingUpdatesRef.current.delete(`${currentEntryDate}|${currentSortOrder}`);
 
-    const audit = buildAuditFields();
+    const movedRow = entriesRef.current.find(e => e.id === id);
+    const audit = buildAuditFields(movedRow ? { ...movedRow, entry_date: nextEntryDate, sort_order: nextSortOrder } : undefined);
     const { error } = await supabase
       .from('salary_entries')
       .update({ entry_date: nextEntryDate, sort_order: nextSortOrder, ...audit })

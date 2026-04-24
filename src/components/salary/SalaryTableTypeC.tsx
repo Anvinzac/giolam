@@ -179,6 +179,22 @@ export default function SalaryTableTypeC({
     };
   }, [breakdown, entries, allowances]);
 
+  // NOTE: `computeRow` MUST be declared before any hook/useMemo that calls
+  // it, otherwise first render of the `dailyTotals` memo with non-empty
+  // worked days throws a TDZ ReferenceError and the whole page blanks
+  // out. This bit ptuan (Type C with 11 worked days) — the memo factory
+  // runs synchronously during render, and `.map(e => computeRow(e))`
+  // iterates immediately, accessing `computeRow` before its declaration
+  // line executes.
+  const computeRow = (e: SalaryEntry) => {
+    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
+    const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in, e.clock_out) ?? 0;
+    const baseWage = roundToThousand(hours * hourlyRate);
+    const allowanceAmt = roundToThousand(baseWage * rate / 100);
+    const total = e.is_day_off ? 0 : baseWage + allowanceAmt;
+    return { rate, hours, baseWage, allowanceAmt, total };
+  };
+
   const dailyTotals = useMemo(() =>
     filteredEntries.filter(e => !e.is_day_off).map(e => computeRow(e).total),
     [filteredEntries, rates, hourlyRate]
@@ -217,15 +233,6 @@ export default function SalaryTableTypeC({
     if (day === 6) return 'text-saturday';
     if (day === 0) return 'text-[hsl(280,60%,55%)]';
     return '';
-  };
-
-  const computeRow = (e: SalaryEntry) => {
-    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in, e.clock_out) ?? 0;
-    const baseWage = roundToThousand(hours * hourlyRate);
-    const allowanceAmt = roundToThousand(baseWage * rate / 100);
-    const total = e.is_day_off ? 0 : baseWage + allowanceAmt;
-    return { rate, hours, baseWage, allowanceAmt, total };
   };
 
   const formatHours = (hours: number) => {

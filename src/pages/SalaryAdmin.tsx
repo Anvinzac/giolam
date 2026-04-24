@@ -288,7 +288,7 @@ export default function SalaryAdmin() {
     return entries.filter(e => !e.is_day_off && (e.clock_in || e.clock_out)).length;
   }, [entries]);
   
-  const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
+  const { allowances, loading: allowancesLoading, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
     selectedEmployee?.user_id || null,
     selectedPeriodId,
     workingDaysCount
@@ -389,12 +389,19 @@ export default function SalaryAdmin() {
     }
   }, [selectedEmployee, selectedPeriodId, selectedPeriod, entries.length, rates]);
 
-  // Auto-save draft when breakdown changes
+  // Auto-save draft when breakdown changes.
+  //
+  // Guard against the async-load race: useEmployeeAllowances fetches from
+  // the DB, so on first render `allowances` is `[]` while `loading=true`.
+  // If we saved during that window, the stored breakdown would persist with
+  // `allowances: []` even though the employee has active allowances,
+  // making every downstream consumer of `record.total_salary`/
+  // `record.salary_breakdown` show 0 VND until admin re-opens the detail.
   useEffect(() => {
-    if (breakdown && selectedEmployee && !isPublished) {
-      saveDraft(breakdown.total, breakdown);
-    }
-  }, [breakdown, selectedEmployee, isPublished]);
+    if (!breakdown || !selectedEmployee || isPublished) return;
+    if (allowancesLoading) return;
+    saveDraft(breakdown.total, breakdown);
+  }, [breakdown, selectedEmployee, isPublished, allowancesLoading]);
 
   // Init
   useEffect(() => {

@@ -99,7 +99,7 @@ export default function EmployeeSalaryEntry() {
     return entries.filter(e => !e.is_day_off && (e.clock_in || e.clock_out)).length;
   }, [entries]);
   
-  const { allowances, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
+  const { allowances, loading: allowancesLoading, toggleAllowance, updateAllowance, addAllowance } = useEmployeeAllowances(
     userId,
     selectedPeriodId,
     workingDaysCount
@@ -248,10 +248,13 @@ export default function EmployeeSalaryEntry() {
   }, [employeeVisibleEntries, allowances, profile, rates, globalClockIn]);
 
   useEffect(() => {
-    if (breakdown && profile && !isPublished && selectedPeriodId) {
-      saveDraft(breakdown.total, breakdown);
-    }
-  }, [breakdown, profile, isPublished, selectedPeriodId, saveDraft]);
+    // Same race-guard as SalaryAdmin: don't snapshot the breakdown until
+    // async allowance load finishes, otherwise the stored record persists
+    // with allowances:[] and total_salary:0.
+    if (!breakdown || !profile || isPublished || !selectedPeriodId) return;
+    if (allowancesLoading) return;
+    saveDraft(breakdown.total, breakdown);
+  }, [breakdown, profile, isPublished, selectedPeriodId, allowancesLoading, saveDraft]);
 
   // Stub no-op handlers for admin-only actions
   const noop = useCallback(() => {
