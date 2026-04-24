@@ -742,7 +742,7 @@ export default function SalaryTableTypeC({
           ) : (
             <button 
               onClick={() => !readOnly && !e.is_day_off && !isScheduledOffDay && e.note && startCellEdit(`${cellKey}-note`, e.note || '')}
-              className={`block text-left text-[12px] leading-tight ${
+              className={`block text-left text-[12px] leading-tight truncate max-w-[120px] ${
                 isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
               } ${!readOnly && !e.is_day_off && !isScheduledOffDay && e.note ? 'hover:text-foreground transition-colors cursor-pointer' : 'cursor-default'}`}>
               {e.note || (isScheduledOffDay ? OFF_DAY_NOTE : rateDesc) || '—'}

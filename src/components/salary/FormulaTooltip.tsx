@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, ReactNode, MouseEvent, TouchEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface FormulaTooltipProps {
   formula: string | null;
@@ -27,12 +26,12 @@ export default function FormulaTooltip({
       if (!ref.current.contains(target)) setOpen(false);
     };
     const timer = window.setTimeout(() => setOpen(false), autoHideMs);
-    window.addEventListener('mousedown', onDown);
-    window.addEventListener('touchstart', onDown);
+    window.addEventListener('mousedown', onDown, true);
+    window.addEventListener('touchstart', onDown, true);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener('mousedown', onDown);
-      window.removeEventListener('touchstart', onDown);
+      window.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('touchstart', onDown, true);
     };
   }, [open, autoHideMs]);
 
@@ -43,48 +42,13 @@ export default function FormulaTooltip({
       const rect = ref.current.getBoundingClientRect();
       setTipPos({
         x: rect.left + rect.width / 2,
-        y: rect.top,
+        y: rect.top - 6,
       });
     }
     setOpen(v => !v);
   };
 
   const interactive = !!formula;
-
-  const tooltip = open && formula
-    ? createPortal(
-        <AnimatePresence>
-          <motion.span
-            key="tip"
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.12, ease: 'easeOut' }}
-            className="pointer-events-none fixed z-[9999]"
-            style={{
-              left: tipPos.x,
-              top: tipPos.y - 4,
-              transform: 'translate(-50%, -100%)',
-            }}
-            aria-hidden
-          >
-            <span className="block whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-mono font-semibold text-background shadow-lg">
-              {formula}
-            </span>
-            {/* Arrow pointing down at the number */}
-            <span
-              className="absolute left-1/2 top-full block h-0 w-0 -translate-x-1/2"
-              style={{
-                borderLeft: '5px solid transparent',
-                borderRight: '5px solid transparent',
-                borderTop: '5px solid hsl(var(--foreground))',
-              }}
-            />
-          </motion.span>
-        </AnimatePresence>,
-        document.body
-      )
-    : null;
 
   return (
     <span
@@ -96,7 +60,34 @@ export default function FormulaTooltip({
       aria-label={interactive && formula ? `Công thức: ${formula}` : undefined}
     >
       {children}
-      {tooltip}
+      {open && formula && createPortal(
+        <span
+          className="pointer-events-none"
+          style={{
+            position: 'fixed',
+            left: tipPos.x,
+            top: tipPos.y,
+            zIndex: 99999,
+            transform: 'translate(-50%, -100%)',
+          }}
+          aria-hidden
+        >
+          <span className="block whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-mono font-semibold text-background shadow-lg">
+            {formula}
+          </span>
+          <span
+            className="block mx-auto"
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '5px solid transparent',
+              borderRight: '5px solid transparent',
+              borderTop: '5px solid hsl(var(--foreground))',
+            }}
+          />
+        </span>,
+        document.body
+      )}
     </span>
   );
 }
