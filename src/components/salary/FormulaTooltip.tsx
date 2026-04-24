@@ -31,6 +31,7 @@ export default function FormulaTooltip({
 }: FormulaTooltipProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null);
 
   // Outside-tap + auto-hide lifecycle
   useEffect(() => {
@@ -53,6 +54,13 @@ export default function FormulaTooltip({
   const handleTap = (e: MouseEvent<HTMLSpanElement> | TouchEvent<HTMLSpanElement>) => {
     if (!formula) return;
     e.stopPropagation();
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setTipPos({
+        x: rect.left + rect.width / 2,
+        y: rect.top - 6,
+      });
+    }
     setOpen((v) => !v);
   };
 
@@ -69,14 +77,15 @@ export default function FormulaTooltip({
     >
       {children}
       <AnimatePresence>
-        {open && formula && (
+        {open && formula && tipPos && (
           <motion.span
             key="tip"
             initial={{ opacity: 0, y: 4, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 2, scale: 0.95 }}
             transition={{ duration: 0.14, ease: 'easeOut' }}
-            className="pointer-events-none absolute left-1/2 bottom-full z-50 mb-1 -translate-x-1/2"
+            className="pointer-events-none fixed z-[9999] -translate-x-1/2 -translate-y-full"
+            style={{ left: tipPos.x, top: tipPos.y }}
             aria-hidden
           >
             <span className="block whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-mono font-semibold text-background shadow-lg">

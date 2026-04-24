@@ -9,31 +9,34 @@ interface SalaryBreakdownPopupProps {
   onClose: () => void;
   breakdown: SalaryBreakdown | null;
   visibleAllowanceKeys?: AllowanceKey[] | null;
+  /** When true, show all allowances and the full total */
+  isPublished?: boolean;
 }
 
-export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown, visibleAllowanceKeys }: SalaryBreakdownPopupProps) {
+export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown, visibleAllowanceKeys, isPublished }: SalaryBreakdownPopupProps) {
   if (!breakdown) return null;
 
+  // Published: show everything. Employee draft: filter to allowed keys.
   const visibleAllowances = breakdown.allowances
     .filter(a => a.enabled)
-    .filter(a => !visibleAllowanceKeys || visibleAllowanceKeys.includes(a.key));
+    .filter(a => isPublished || !visibleAllowanceKeys || visibleAllowanceKeys.includes(a.key));
+
+  // Build a flat list of all non-zero components in thousands (no decimals)
+  // so user can paste "207+239+154+150" into a calculator and verify.
+  const toK = (n: number) => Math.round(n / 1000);
+
+  const expressionParts: number[] = [];
+  if (breakdown.total_daily_wages !== 0) expressionParts.push(toK(breakdown.total_daily_wages));
+  for (const a of visibleAllowances) {
+    if (a.amount !== 0) expressionParts.push(toK(a.amount));
+  }
+  if (breakdown.total_deductions > 0) expressionParts.push(-toK(breakdown.total_deductions));
+
+  const expression = expressionParts.join('+').replace('+-', '-');
 
   const handleCopy = () => {
-    const lines = [
-      `Tổng lương ngày: ${formatVND(breakdown.total_daily_wages)}`,
-      `Phụ cấp đặc biệt: ${formatVND(breakdown.total_allowances_from_rates)}`,
-    ];
-    if (breakdown.total_deductions > 0) {
-      lines.push(`Khấu trừ nghỉ: -${formatVND(breakdown.total_deductions)}`);
-    }
-    for (const a of visibleAllowances) {
-      lines.push(`${a.label}: ${formatVND(a.amount)}`);
-    }
-    lines.push(`---`);
-    lines.push(`TỔNG CỘNG: ${formatVND(breakdown.total)}`);
-
-    navigator.clipboard.writeText(lines.join('\n'));
-    toast.success('Đã sao chép!');
+    navigator.clipboard.writeText(expression);
+    toast.success('Đã sao chép biểu thức!');
   };
 
   return (
@@ -64,23 +67,30 @@ export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown, visib
 
               <div className="space-y-2 text-sm">
                 <Row label="Tổng lương ngày" amount={breakdown.total_daily_wages} />
-                <Row label="Phụ cấp đặc biệt" amount={breakdown.total_allowances_from_rates} />
                 {breakdown.total_deductions > 0 && (
                   <Row label="Khấu trừ nghỉ" amount={-breakdown.total_deductions} negative />
                 )}
-
                 {visibleAllowances.map(a => (
                   <Row key={a.key} label={a.label} amount={a.amount} />
                 ))}
 
-                <div className="border-t border-border pt-2 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-display font-bold text-foreground">TỔNG CỘNG</span>
-                    <span className="font-display font-bold text-lg text-gradient-gold">
-                      {formatVND(breakdown.total)}
-                    </span>
+                {/* Calculator expression */}
+                {expression && (
+                  <div className="rounded-lg bg-muted/60 px-3 py-2 font-mono text-[13px] text-foreground/80 break-all">
+                    {expression}
                   </div>
-                </div>
+                )}
+
+                {(isPublished || breakdown.total > 0) && (
+                  <div className="border-t border-border pt-2 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-display font-bold text-foreground">TỔNG CỘNG</span>
+                      <span className="font-display font-bold text-lg text-gradient-gold">
+                        {formatVND(breakdown.total)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <motion.button
@@ -89,7 +99,7 @@ export default function SalaryBreakdownPopup({ isOpen, onClose, breakdown, visib
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-gold text-primary-foreground font-display font-semibold text-sm"
               >
                 <Copy size={14} />
-                Sao chép
+                Sao chép biểu thức
               </motion.button>
             </div>
           </motion.div>

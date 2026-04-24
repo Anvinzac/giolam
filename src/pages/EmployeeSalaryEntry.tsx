@@ -424,7 +424,7 @@ export default function EmployeeSalaryEntry() {
             periodStart={selectedPeriod.start_date}
             periodEnd={selectedPeriod.end_date}
             breakdown={breakdown}
-            editMode="employee"
+            editMode={isPublished ? 'preview' : 'employee'}
             currentUserId={userId}
           />
         )}
@@ -450,7 +450,7 @@ export default function EmployeeSalaryEntry() {
                 onAddAllowance={addAllowance}
                 onHourlyRateChange={noop}
                 breakdown={breakdown}
-                editMode="employee"
+                editMode={isPublished ? 'preview' : 'employee'}
                 currentUserId={userId}
               />
             ) : (
@@ -497,7 +497,7 @@ export default function EmployeeSalaryEntry() {
             onCustomDateChange={() => {}}
             onRemoveEntry={removeEntry}
             breakdown={breakdown}
-            editMode="employee"
+            editMode={isPublished ? 'preview' : 'employee'}
             currentUserId={userId}
             shiftType={profile.shift_type}
           />

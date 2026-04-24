@@ -401,6 +401,7 @@ export default function SalaryTableTypeA({
         onClose={() => setShowBreakdown(false)}
         breakdown={breakdown}
         visibleAllowanceKeys={mode === 'employee' ? ['gui_xe'] : null}
+        isPublished={mode === 'preview'}
       />
     </div>
   );

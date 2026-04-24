@@ -125,6 +125,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
         isOpen={!!selectedRecord}
         onClose={() => setSelectedRecord(null)}
         breakdown={selectedRecord?.salary_breakdown as SalaryBreakdown | null}
+        isPublished={true}
       />
     </div>
   );

@@ -73,7 +73,7 @@ export default function SalaryTableTypeC({
   const canDeleteRow = (e: SalaryEntry) =>
     mode === 'admin' || (mode === 'employee' && e.is_admin_reviewed === false);
   const OFF_DAY_NOTE = 'Quán nghỉ';
-  const [compact, setCompact] = useState(false);
+  const [compact, setCompact] = useState(() => mode === 'preview');
   const [separateClockColumns, setSeparateClockColumns] = useState(true);
   // Track which clock field is showing chips: 'in' or 'out'
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
@@ -1444,6 +1444,20 @@ export default function SalaryTableTypeC({
         </div>
       )}
 
+      {/* Compact toggle for preview/published mode */}
+      {readOnly && (
+        <div className="flex justify-end px-1 mb-1">
+          <button
+            onClick={() => setCompact(!compact)}
+            className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap ${
+              compact ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            {compact ? 'Gọn' : 'Đầy đủ'}
+          </button>
+        </div>
+      )}
+
       {/* Table content */}
       <div className="-mx-4 sm:mx-0">
         {compact ? (
@@ -1531,6 +1545,7 @@ export default function SalaryTableTypeC({
         onClose={() => setShowBreakdown(false)}
         breakdown={breakdown}
         visibleAllowanceKeys={mode === 'employee' ? ['gui_xe'] : null}
+        isPublished={mode === 'preview'}
       />
 
       {pickingClock && (

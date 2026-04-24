@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, SalaryBreakdown } from '@/types/salary';
 import SquircleCard from './SquircleCard';
 import { toast } from 'sonner';
@@ -95,36 +95,28 @@ export default function ImmersiveInputTypeB({
   );
 
   // ── Slot geometry (single source of truth) ──────────────────────────────
-  // Every card — intro notice AND day cards — occupies exactly one slot of
-  // this size, with SLOT_GAP_PX of vertical breathing room between slots.
-  // This prevents: (a) cards sticking to each other, (b) intro overflowing
-  // behind the focus card, (c) the top card getting cropped when siblings
-  // above the component change the parent layout.
-  const SLOT_CSS = 'clamp(260px, 42vh, 400px)';
   const SLOT_GAP_PX = 16;
   const BOTTOM_PAD_PX = 64;
-  const CONTAINER_MIN_H = `calc(2 * ${SLOT_CSS} + ${SLOT_GAP_PX + BOTTOM_PAD_PX}px)`;
 
-  // Hidden sentinel lets us read the slot's pixel height after CSS resolves
-  // the clamp(). Used to translate cards by (slot + gap) instead of by a
-  // content-dependent measurement that differs between intro and day cards.
-  const slotSentinelRef = useRef<HTMLDivElement>(null);
-  const [slotPx, setSlotPx] = useState(0);
-  useLayoutEffect(() => {
-    const el = slotSentinelRef.current;
-    if (!el) return;
+  // Compute slot height directly from viewport — no sentinel needed.
+  // clamp(260px, 42vh, 400px) resolved in JS.
+  const [slotPx, setSlotPx] = useState(() => {
+    const vh42 = typeof window !== 'undefined' ? window.innerHeight * 0.42 : 300;
+    return Math.min(400, Math.max(260, vh42));
+  });
+
+  useEffect(() => {
     const update = () => {
-      const h = el.getBoundingClientRect().height;
-      if (h > 0) setSlotPx(h);
+      const vh42 = window.innerHeight * 0.42;
+      setSlotPx(Math.min(400, Math.max(260, vh42)));
     };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Translation per offset slot (slot size + gap so cards never touch).
-  const slotStep = slotPx > 0 ? slotPx + SLOT_GAP_PX : 0;
+  const SLOT_CSS = `${slotPx}px`;
+  const CONTAINER_MIN_H = `${2 * slotPx + SLOT_GAP_PX + BOTTOM_PAD_PX}px`;
+  const slotStep = slotPx + SLOT_GAP_PX;
 
   // Intro card visibility — kept above day 0 as an anchor note. Hidden once
   // the user is two+ days in to avoid it hanging around off-screen.
@@ -458,19 +450,7 @@ export default function ImmersiveInputTypeB({
         }
       </div>
 
-      {/* Hidden sentinel — same CSS size as a real slot. Measures the
-          resolved pixel height of one slot so we can animate cards by
-          (slot + gap) px. Never rendered visibly. */}
-      <div
-        ref={slotSentinelRef}
-        aria-hidden
-        className={`${slotClassName} pointer-events-none invisible`}
-        style={slotInlineStyle}
-      />
-
-      {/* Intro notice — occupies one slot above day 0. Clipped to slot
-          height (overflow-hidden) so its content can never spill down
-          behind the focus card. */}
+      {/* Intro notice — occupies one slot above day 0. */}
       {showIntroCard && (
         <motion.div
           key="intro-card"

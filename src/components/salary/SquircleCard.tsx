@@ -121,7 +121,7 @@ function SquircleCard({
     <motion.div
       className={`
         bg-card/60 backdrop-blur-xl border border-glass-border
-        rounded-[24px] sm:rounded-[28px] flex flex-col
+        rounded-[24px] sm:rounded-[28px] h-full flex flex-col
         ${isTransitioning ? 'pointer-events-none' : ''}
         ${isDisabled ? 'opacity-50 grayscale' : ''}
       `}
@@ -154,12 +154,12 @@ function SquircleCard({
 
       {/* Main content area */}
       {isDisabled ? (
-        <div className="px-4 sm:px-6 pb-4 sm:pb-5 flex items-center justify-center py-6">
+        <div className="flex-1 px-4 sm:px-6 pb-4 sm:pb-5 flex items-center justify-center">
           <p className="text-sm sm:text-base text-muted-foreground">Ngày nghỉ</p>
         </div>
       ) : (
         <div
-          className={`px-4 sm:px-6 pb-4 sm:pb-5 flex gap-3 sm:gap-4 ${isReview && onCardTap ? 'cursor-pointer' : ''}`}
+          className={`flex-1 px-4 sm:px-6 pb-4 sm:pb-5 flex gap-3 sm:gap-4 ${isReview && onCardTap ? 'cursor-pointer' : ''}`}
           role="region"
           aria-label="Chọn giờ ra"
           onClick={isReview && onCardTap && !isDisabled ? onCardTap : undefined}
