@@ -160,13 +160,19 @@ export default function SalaryTableTypeC({
     [filteredEntries]
   );
 
-  // Default compact based on working days count — only set once on load
+  // Default compact based on working days count — only set once on load.
+  // Employees always see full mode while editing; compact only kicks in
+  // for published/preview view with fewer than 15 working days.
   const compactInitRef = useRef(false);
   useEffect(() => {
     if (compactInitRef.current) return;
     if (filteredEntries.length === 0) return;
     compactInitRef.current = true;
-    setCompact(workingEntries.length < 15);
+    if (mode === 'employee') {
+      setCompact(false);
+    } else {
+      setCompact(workingEntries.length < 15);
+    }
   }, [workingEntries.length, filteredEntries.length]);
 
   const guiXeSummary = useMemo(() => {
