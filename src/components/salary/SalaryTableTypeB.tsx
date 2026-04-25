@@ -129,6 +129,20 @@ export default function SalaryTableTypeB({
     };
   }, [breakdown, entries, allowances]);
 
+  // NOTE: `computeRow` MUST be declared before this `dailyTotals` useMemo —
+  // the factory runs synchronously during render, and `.map(e => computeRow(e))`
+  // accesses `computeRow` immediately. With const arrow functions that's a
+  // temporal-dead-zone ReferenceError ("Cannot access X before initialization")
+  // and the whole page blanks. Same hazard already bit Type C; mirror that fix.
+  const computeRow = (e: SalaryEntry) => {
+    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
+    const allowance = roundToThousand(dailyBase * rate / 100);
+    const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
+    const extraWage = roundToThousand(hours * hourlyRate);
+    const total = e.is_day_off ? 0 : dailyBase + allowance + extraWage;
+    return { rate, allowance, hours, extraWage, total };
+  };
+
   const dailyTotals = useMemo(() =>
     entries.map(e => computeRow(e).total),
     [entries, dailyBase, rates, hourlyRate, globalClockIn]
@@ -208,15 +222,6 @@ export default function SalaryTableTypeB({
       note: null,
     });
     showRowChips(rowKey);
-  };
-
-  const computeRow = (e: SalaryEntry) => {
-    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const allowance = roundToThousand(dailyBase * rate / 100);
-    const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
-    const extraWage = roundToThousand(hours * hourlyRate);
-    const total = e.is_day_off ? 0 : dailyBase + allowance + extraWage;
-    return { rate, allowance, hours, extraWage, total };
   };
 
   const startCellEdit = (key: string, val: string) => {
