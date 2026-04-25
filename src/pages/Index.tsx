@@ -71,6 +71,16 @@ export default function Index() {
         currentPeriod = upcoming?.[0];
       }
 
+      // Fallback: most recent period (employees can still edit after end_date)
+      if (!currentPeriod) {
+        const { data: recent } = await withTimeout(
+          supabase.from('working_periods').select('*').order('end_date', { ascending: false }).limit(1),
+          10000,
+          'Recent period lookup timed out.',
+        );
+        currentPeriod = recent?.[0];
+      }
+
       if (currentPeriod) {
         // Employees should use the same 10-day paged salary tables as admin.
         // The old weekly shift view writes to a different table and is no

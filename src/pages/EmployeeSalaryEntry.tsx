@@ -163,8 +163,9 @@ export default function EmployeeSalaryEntry() {
           default_clock_out: (prof as any).default_clock_out || null,
         });
 
-        // Only show the period containing today. Employees may not edit past
-        // periods (even if unpublished) or browse to other periods.
+        // Find the period containing today. If none exists, fall back to the
+        // most recent period so employees can still register work even if the
+        // period dates don't perfectly cover today.
         const today = new Date().toISOString().split('T')[0];
         const { data: pAll } = await withTimeout(
           supabase.from('working_periods')
@@ -176,7 +177,21 @@ export default function EmployeeSalaryEntry() {
           'Working period lookup timed out.'
         );
         if (!mounted) return;
-        const activePeriod = ((pAll || []) as Period[])[0];
+        let activePeriod = ((pAll || []) as Period[])[0];
+
+        // Fallback: if no period covers today, grab the most recent one
+        if (!activePeriod) {
+          const { data: fallback } = await withTimeout(
+            supabase.from('working_periods')
+              .select('*')
+              .order('end_date', { ascending: false })
+              .limit(1),
+            10000,
+            'Fallback period lookup timed out.'
+          );
+          if (!mounted) return;
+          activePeriod = ((fallback || []) as Period[])[0];
+        }
 
         // If the active period is already published for this employee, there's
         // nothing editable.
