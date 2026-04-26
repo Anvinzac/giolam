@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, DollarSign } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
@@ -75,7 +75,6 @@ export default function SalaryEmployee() {
             <ArrowLeft size={18} />
           </motion.button>
           <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
-            <DollarSign size={20} />
             {fullName ? buildEmployeeTitle(fullName, 'Bảng lương') : 'Bảng lương'}
           </h1>
         </div>

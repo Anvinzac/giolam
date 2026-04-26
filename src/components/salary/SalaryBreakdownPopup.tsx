@@ -1,8 +1,8 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy } from 'lucide-react';
+import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import { AllowanceKey, SalaryBreakdown, SalaryEntry } from '@/types/salary';
 import { formatVND } from './TotalSalaryDisplay';
-import { toast } from 'sonner';
 
 interface SalaryBreakdownPopupProps {
   isOpen: boolean;
@@ -10,13 +10,14 @@ interface SalaryBreakdownPopupProps {
   breakdown: SalaryBreakdown | null;
   visibleAllowanceKeys?: AllowanceKey[] | null;
   isPublished?: boolean;
-  /** Per-row daily totals for the detailed expression */
   dailyTotals?: number[];
 }
 
 export default function SalaryBreakdownPopup({
   isOpen, onClose, breakdown, visibleAllowanceKeys, isPublished, dailyTotals,
 }: SalaryBreakdownPopupProps) {
+  const [copied, setCopied] = useState(false);
+
   if (!breakdown) return null;
 
   const visibleAllowances = breakdown.allowances
@@ -25,7 +26,6 @@ export default function SalaryBreakdownPopup({
 
   const toK = (n: number) => Math.round(n / 1000);
 
-  // Build expression: every non-zero daily wage + each allowance
   const parts: number[] = [];
   if (dailyTotals && dailyTotals.length > 0) {
     for (const d of dailyTotals) {
@@ -42,9 +42,30 @@ export default function SalaryBreakdownPopup({
     .map((v, i) => i === 0 ? `${v}` : v < 0 ? `${v}` : `+${v}`)
     .join('');
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(expression);
-    toast.success('Đã sao chép!');
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(expression);
+    } catch {
+      // Fallback for mobile/HTTP: use a temporary textarea
+      const ta = document.createElement('textarea');
+      ta.value = expression;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+  };
+
+  const handleVerify = () => {
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(expression)}`, '_blank');
+  };
+
+  const handleClose = () => {
+    setCopied(false);
+    onClose();
   };
 
   return (
@@ -55,7 +76,7 @@ export default function SalaryBreakdownPopup({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
           />
           <motion.div
@@ -68,7 +89,7 @@ export default function SalaryBreakdownPopup({
             <div className="glass-card p-5 max-w-sm mx-auto space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-display font-semibold text-foreground">= {formatVND(breakdown.total)}</h3>
-                <button onClick={onClose} className="p-1 rounded-lg bg-muted text-muted-foreground">
+                <button onClick={handleClose} className="p-1 rounded-lg bg-muted text-muted-foreground">
                   <X size={16} />
                 </button>
               </div>
@@ -80,14 +101,50 @@ export default function SalaryBreakdownPopup({
                 {expression}
               </div>
 
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={handleCopy}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-gold text-primary-foreground font-display font-semibold text-sm"
-              >
-                <Copy size={14} />
-                Sao chép
-              </motion.button>
+              <AnimatePresence mode="wait">
+                {!copied ? (
+                  <motion.button
+                    key="copy"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleCopy}
+                    initial={{ opacity: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-gold text-primary-foreground font-display font-semibold text-sm"
+                  >
+                    <Copy size={14} />
+                    Sao chép
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    key="verify"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center justify-center gap-2 py-1.5 text-emerald-400 text-sm font-semibold">
+                      <motion.div
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: 'spring', damping: 12, stiffness: 200 }}
+                      >
+                        <Check size={18} strokeWidth={3} />
+                      </motion.div>
+                      Đã sao chép
+                    </div>
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleVerify}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/15 border border-accent/30 text-accent font-display font-semibold text-sm"
+                    >
+                      <ExternalLink size={14} />
+                      Kiểm tra
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </>

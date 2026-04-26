@@ -1,62 +1,159 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { SalaryRecord, SalaryBreakdown } from '@/types/salary';
+import {
+  SalaryRecord,
+  SalaryBreakdown,
+  SalaryEntry,
+  SpecialDayRate,
+  EmployeeAllowance,
+  EmployeeShiftType,
+} from '@/types/salary';
 import { formatVND } from './TotalSalaryDisplay';
-import SalaryBreakdownPopup from './SalaryBreakdownPopup';
+import SalaryTableTypeA from './SalaryTableTypeA';
+import SalaryTableTypeB from './SalaryTableTypeB';
+import SalaryTableTypeC from './SalaryTableTypeC';
+import {
+  computeTotalSalaryTypeA,
+  computeTotalSalaryTypeB,
+  computeTotalSalaryTypeC,
+  computeTotalSalaryTypeD,
+  formatDateViet,
+} from '@/lib/salaryCalculations';
 
 interface EmployeeSalaryViewProps {
   userId: string;
 }
 
-interface RecordWithPeriod extends SalaryRecord {
-  period_start?: string;
-  period_end?: string;
+interface PeriodInfo {
+  id: string;
+  start_date: string;
+  end_date: string;
+  off_days: string[];
+}
+
+interface ProfileInfo {
+  shift_type: EmployeeShiftType;
+  base_salary: number;
+  hourly_rate: number;
+  default_clock_in: string | null;
+  default_clock_out: string | null;
 }
 
 export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) {
-  const [records, setRecords] = useState<RecordWithPeriod[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRecord, setSelectedRecord] = useState<RecordWithPeriod | null>(null);
+  const [record, setRecord] = useState<SalaryRecord | null>(null);
+  const [period, setPeriod] = useState<PeriodInfo | null>(null);
+  const [profile, setProfile] = useState<ProfileInfo | null>(null);
+  const [entries, setEntries] = useState<SalaryEntry[]>([]);
+  const [rates, setRates] = useState<SpecialDayRate[]>([]);
+  const [allowances, setAllowances] = useState<EmployeeAllowance[]>([]);
 
   useEffect(() => {
-    const fetchRecords = async () => {
+    const fetchAll = async () => {
       setLoading(true);
-      // Fetch published salary records with period info
-      const { data: salaryRecords } = await supabase
+
+      // 1. Most recent published salary record
+      const { data: recData } = await supabase
         .from('salary_records')
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'published')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (!salaryRecords || salaryRecords.length === 0) {
-        setLoading(false);
-        return;
+      if (!recData) { setLoading(false); return; }
+      const rec = recData as unknown as SalaryRecord;
+      setRecord(rec);
+
+      // 2. Period
+      const { data: pData } = await supabase
+        .from('working_periods')
+        .select('*')
+        .eq('id', rec.period_id)
+        .single();
+      const per = pData as PeriodInfo | null;
+      setPeriod(per);
+
+      // 3. Profile
+      const { data: profData } = await supabase
+        .from('profiles')
+        .select('shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
+        .eq('user_id', userId)
+        .single();
+      const prof = profData as ProfileInfo | null;
+      setProfile(prof);
+
+      // 4. Entries for this period
+      const { data: entData } = await supabase
+        .from('salary_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('period_id', rec.period_id)
+        .order('entry_date')
+        .order('sort_order');
+      setEntries((entData || []) as SalaryEntry[]);
+
+      // 5. Special day rates
+      if (per) {
+        const { data: rData } = await supabase
+          .from('special_day_rates')
+          .select('*')
+          .eq('period_id', rec.period_id);
+        setRates((rData || []) as SpecialDayRate[]);
       }
 
-      // Fetch period dates for each record
-      const periodIds = [...new Set(salaryRecords.map(r => r.period_id))];
-      const { data: periods } = await supabase
-        .from('working_periods')
-        .select('id, start_date, end_date')
-        .in('id', periodIds);
+      // 6. Allowances — fix gui_xe amount from actual working days
+      const { data: aData } = await supabase
+        .from('employee_allowances')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('period_id', rec.period_id);
+      const loadedAllowances = (aData || []) as EmployeeAllowance[];
+      const loadedEntries = (entData || []) as SalaryEntry[];
+      const workingDays = loadedEntries.filter(
+        e => !e.is_day_off && (e.clock_in || e.clock_out)
+      ).length;
+      setAllowances(loadedAllowances.map(a =>
+        a.allowance_key === 'gui_xe' && a.is_enabled
+          ? { ...a, amount: workingDays * 10000 }
+          : a
+      ));
 
-      const periodMap = new Map(periods?.map(p => [p.id, p]) || []);
-
-      const enriched: RecordWithPeriod[] = salaryRecords.map(r => ({
-        ...(r as unknown as SalaryRecord),
-        period_start: periodMap.get(r.period_id)?.start_date,
-        period_end: periodMap.get(r.period_id)?.end_date,
-      }));
-
-      setRecords(enriched);
       setLoading(false);
     };
 
-    fetchRecords();
+    fetchAll();
   }, [userId]);
+
+  const globalClockIn = useMemo(() => {
+    const raw = profile?.default_clock_in || '17:00';
+    return raw.length > 5 ? raw.slice(0, 5) : raw;
+  }, [profile?.default_clock_in]);
+
+  const globalClockOut = useMemo(() => {
+    const raw = profile?.default_clock_out || '17:30';
+    return raw.length > 5 ? raw.slice(0, 5) : raw;
+  }, [profile?.default_clock_out]);
+
+  const breakdown = useMemo<SalaryBreakdown | null>(() => {
+    if (!profile || entries.length === 0) return record?.salary_breakdown as SalaryBreakdown | null;
+    switch (profile.shift_type) {
+      case 'basic':
+        return computeTotalSalaryTypeA(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
+      case 'overtime':
+        return computeTotalSalaryTypeB(entries, allowances, profile.base_salary, profile.hourly_rate, rates, globalClockIn);
+      case 'notice_only':
+        return computeTotalSalaryTypeC(entries, allowances, profile.hourly_rate, rates);
+      case 'lunar_rate':
+        return computeTotalSalaryTypeD(entries, allowances, 27000, 35000, rates);
+      default:
+        return null;
+    }
+  }, [entries, allowances, profile, rates, globalClockIn, record]);
+
+  const noop = () => {};
 
   if (loading) {
     return (
@@ -66,7 +163,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     );
   }
 
-  if (records.length === 0) {
+  if (!record || !period || !profile) {
     return (
       <div className="glass-card p-8 text-center space-y-2">
         <Calendar className="w-10 h-10 text-muted-foreground mx-auto" />
@@ -76,57 +173,89 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     );
   }
 
-  const formatPeriodLabel = (r: RecordWithPeriod) => {
-    if (!r.period_start || !r.period_end) return 'Kỳ lương';
-    const start = new Date(r.period_start);
-    const end = new Date(r.period_end);
-    return `${start.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} – ${end.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
-  };
-
-  // Determine if a record is current month
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
   return (
     <div className="space-y-3">
-      {records.map((r, idx) => {
-        const isCurrent = r.period_start?.startsWith(currentMonth);
-        return (
-          <motion.button
-            key={r.id || idx}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSelectedRecord(r)}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className={`w-full glass-card p-4 text-left ${
-              isCurrent ? 'ring-1 ring-primary/40' : ''
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{formatPeriodLabel(r)}</p>
-                <p className="font-display font-bold text-lg text-foreground mt-0.5">
-                  {formatVND(r.total_salary)}
-                </p>
-                {r.published_at && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Công bố: {new Date(r.published_at).toLocaleDateString('vi-VN')}
-                  </p>
-                )}
-              </div>
-              <ChevronDown size={16} className="text-muted-foreground" />
-            </div>
-          </motion.button>
-        );
-      })}
+      {/* Period label + total */}
+      <div className="glass-card p-4">
+        <p className="text-xs text-muted-foreground">
+          {formatDateViet(period.start_date)} – {formatDateViet(period.end_date)}
+        </p>
+        <p className="font-display font-bold text-xl text-foreground mt-1">
+          {formatVND(record.total_salary)}
+        </p>
+        {record.published_at && (
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Công bố: {new Date(record.published_at).toLocaleDateString('vi-VN')}
+          </p>
+        )}
+      </div>
 
-      <SalaryBreakdownPopup
-        isOpen={!!selectedRecord}
-        onClose={() => setSelectedRecord(null)}
-        breakdown={selectedRecord?.salary_breakdown as SalaryBreakdown | null}
-        isPublished={true}
-      />
+      {/* Full salary table in preview mode */}
+      {profile.shift_type === 'basic' && (
+        <SalaryTableTypeA
+          entries={entries}
+          rates={rates}
+          allowances={allowances}
+          baseSalary={profile.base_salary}
+          hourlyRate={profile.hourly_rate}
+          onEntryUpdate={noop}
+          onAddRowAtDate={noop}
+          onAllowanceToggle={noop}
+          onAllowanceUpdate={noop}
+          periodStart={period.start_date}
+          periodEnd={period.end_date}
+          breakdown={breakdown}
+          editMode="preview"
+        />
+      )}
+
+      {profile.shift_type === 'overtime' && (
+        <SalaryTableTypeB
+          entries={entries}
+          rates={rates}
+          allowances={allowances}
+          baseSalary={profile.base_salary}
+          hourlyRate={profile.hourly_rate}
+          globalClockIn={globalClockIn}
+          onGlobalClockInChange={noop}
+          periodStart={period.start_date}
+          periodEnd={period.end_date}
+          onEntryUpdate={noop}
+          onAddDuplicateRow={noop}
+          onRemoveEntry={noop}
+          onAllowanceToggle={noop}
+          onAllowanceUpdate={noop}
+          onHourlyRateChange={noop}
+          breakdown={breakdown}
+          editMode="preview"
+        />
+      )}
+
+      {(profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && (
+        <SalaryTableTypeC
+          entries={entries}
+          rates={rates}
+          allowances={allowances}
+          offDays={period.off_days || []}
+          hourlyRate={profile.hourly_rate}
+          periodStart={period.start_date}
+          periodEnd={period.end_date}
+          customStartDate={null}
+          customEndDate={null}
+          defaultClockIn={globalClockIn}
+          defaultClockOut={globalClockOut}
+          onEntryUpdate={noop}
+          onEntryDateChange={noop}
+          onAddRowAtDate={noop}
+          onAllowanceToggle={noop}
+          onAllowanceUpdate={noop}
+          onHourlyRateChange={noop}
+          onCustomDateChange={noop}
+          breakdown={breakdown}
+          editMode="preview"
+          shiftType={profile.shift_type}
+        />
+      )}
     </div>
   );
 }
