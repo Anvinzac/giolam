@@ -25,6 +25,7 @@ import { generateDateRange } from '@/lib/salaryPaging';
 import { EmployeeShiftType, SalaryBreakdown } from '@/types/salary';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
+import { buildEmployeeTitle } from '@/lib/employeeGreeting';
 
 interface Profile {
   user_id: string;
@@ -329,7 +330,7 @@ export default function EmployeeSalaryEntry() {
             <ArrowLeft size={20} />
           </motion.button>
           <h1 className="font-display text-xl font-bold text-gradient-gold flex-1 truncate">
-            Chấm công của tôi
+            {buildEmployeeTitle(profile.full_name)}
           </h1>
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -373,7 +374,7 @@ export default function EmployeeSalaryEntry() {
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
-              Chấm công của tôi
+              {buildEmployeeTitle(profile.full_name)}
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate('/settings')}

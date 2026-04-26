@@ -6,11 +6,13 @@ import { ArrowLeft, DollarSign } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
+import { buildEmployeeTitle } from '@/lib/employeeGreeting';
 
 export default function SalaryEmployee() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string>('');
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
@@ -33,6 +35,14 @@ export default function SalaryEmployee() {
           return;
         }
         setUserId(user.id);
+
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', user.id)
+          .single();
+        if (isMounted && prof) setFullName((prof as any).full_name || '');
+
         setLoading(false);
       } catch (error) {
         console.error('Failed to initialize salary employee page:', error);
@@ -66,7 +76,7 @@ export default function SalaryEmployee() {
           </motion.button>
           <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
             <DollarSign size={20} />
-            Bảng lương
+            {fullName ? buildEmployeeTitle(fullName, 'Bảng lương') : 'Bảng lương'}
           </h1>
         </div>
       </header>
