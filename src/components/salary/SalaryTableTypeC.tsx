@@ -283,10 +283,18 @@ export default function SalaryTableTypeC({
     if (baseWage <= 0 || rate <= 0) return null;
     return `${rate}% × ${formatK(baseWage)}`;
   };
-  const formulaTotal = (baseWage: number, allowanceAmt: number): string | null => {
-    // Only meaningful when both parts exist — a single component isn't a sum.
-    if (baseWage <= 0 || allowanceAmt <= 0) return null;
-    return `${formatK(baseWage)} + ${formatK(allowanceAmt)}`;
+  const formulaTotal = (baseWage: number, allowanceAmt: number, hours?: number): string | null => {
+    if (baseWage <= 0) return null;
+    // When both wage and allowance exist, show the sum
+    if (allowanceAmt > 0) return `${formatK(baseWage)} + ${formatK(allowanceAmt)}`;
+    // No allowance — show the wage derivation (hours × rate) instead
+    if (hours && hours > 0 && hourlyRate > 0) {
+      const hoursStr = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
+      const rateK = hourlyRate / 1000;
+      const rateStr = Number.isInteger(rateK) ? `${rateK}` : rateK.toFixed(1);
+      return `${hoursStr} × ${rateStr}`;
+    }
+    return null;
   };
 
   const formatDayOnly = (dateStr: string) => dateStr.slice(8, 10);
@@ -837,7 +845,7 @@ export default function SalaryTableTypeC({
           <FormulaTooltip formula={formulaAllowance(rate, baseWage)} className="num-cell w-[30px] text-right allowance-amt font-semibold text-[13px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </FormulaTooltip>
-          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt)} className="num-cell-lg w-[40px] text-right font-bold text-[14px]">
+          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt, hours)} className="num-cell-lg w-[40px] text-right font-bold text-[14px]">
             {total > 0 ? (total / 1000).toFixed(0) : '—'}
           </FormulaTooltip>
         </div>
@@ -1082,7 +1090,7 @@ export default function SalaryTableTypeC({
 
         {/* Total */}
         <div className="justify-self-end flex items-center h-full">
-          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt)} className="num-cell-xl text-right font-bold text-[14px] sm:text-[16px]">
+          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt, hours)} className="num-cell-xl text-right font-bold text-[14px] sm:text-[16px]">
             {total > 0 ? (total / 1000).toFixed(0) : '—'}
           </FormulaTooltip>
         </div>
