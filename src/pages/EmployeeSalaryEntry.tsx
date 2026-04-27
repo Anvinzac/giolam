@@ -334,6 +334,14 @@ export default function EmployeeSalaryEntry() {
           </h1>
           <motion.button
             whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/settings')}
+            aria-label="Cài đặt"
+            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Settings size={18} />
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}
             aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
             className={`p-2 rounded-xl transition-colors ${
@@ -493,7 +501,7 @@ export default function EmployeeSalaryEntry() {
 
         {selectedPeriod && (profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && (
           <SalaryTableTypeC
-            entries={employeeVisibleEntries}
+            entries={entries}
             rates={rates}
             allowances={allowances}
             offDays={selectedPeriod.off_days || []}
