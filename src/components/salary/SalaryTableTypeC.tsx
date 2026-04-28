@@ -53,6 +53,8 @@ interface SalaryTableTypeCProps {
   onRemoveEntry?: (id: string) => void;
   currentUserId?: string | null;
   shiftType?: 'notice_only' | 'lunar_rate';
+  deposit?: number;
+  onDepositChange?: (amount: number) => void;
 }
 
 export default function SalaryTableTypeC({
@@ -66,6 +68,8 @@ export default function SalaryTableTypeC({
   onDefaultClockOutChange,
   editMode, onAcceptEntry, onRemoveEntry, currentUserId,
   shiftType = 'notice_only',
+  deposit = 0,
+  onDepositChange,
 }: SalaryTableTypeCProps) {
   const mode: 'admin' | 'employee' | 'preview' =
     editMode ?? (isPreview ? 'preview' : 'admin');
@@ -1589,7 +1593,10 @@ export default function SalaryTableTypeC({
           {/* Total - only show for admin */}
           <TotalSalaryDisplay
             total={breakdown?.total ?? 0}
+            deposit={deposit}
             onTap={() => setShowBreakdown(true)}
+            onDepositChange={onDepositChange}
+            isAdmin={mode === 'admin'}
           />
         </>
       )}

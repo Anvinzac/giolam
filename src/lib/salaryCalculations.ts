@@ -24,9 +24,10 @@ export function calcAllowance(dailyBase: number, ratePercent: number): number {
   return roundToThousand(dailyBase * ratePercent / 100);
 }
 
-/** Negative deduction: dailyBase × offPercent / 100 */
+/** Negative deduction: dailyBase × offPercent / 100, capped at 100% */
 export function calcDayOffDeduction(dailyBase: number, offPercent: number): number {
-  return roundToThousand(dailyBase * offPercent / 100);
+  const capped = Math.min(offPercent, 100);
+  return roundToThousand(dailyBase * capped / 100);
 }
 
 /** Calculate decimal hours between two HH:MM times */
@@ -227,10 +228,10 @@ export function computeTotalSalaryTypeB(
 
   for (const e of entries) {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const allowance = roundToThousand(dailyBase * rate / 100);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
-    const rowTotal = e.is_day_off ? 0 : dailyBase + allowance + extraWage;
+    const allowance = roundToThousand((dailyBase + extraWage) * rate / 100);
+    const rowTotal = e.is_day_off ? -dailyBase : dailyBase + allowance + extraWage;
 
     totalDailyWages += rowTotal;
     totalAllowancesFromRates += allowance;

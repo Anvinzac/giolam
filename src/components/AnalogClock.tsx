@@ -217,6 +217,14 @@ export default function AnalogClock({
 
   const periodLabel = getPeriodLabel(selectedHour);
 
+  const handleBackdropClose = () => {
+    // In range mode, save whatever has been set so far
+    if (isRangeMode && rangeClockIn && rangeClockOut) {
+      onTimeRangeSelect?.({ clockIn: rangeClockIn, clockOut: rangeClockOut });
+    }
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -224,7 +232,7 @@ export default function AnalogClock({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={handleBackdropClose}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}

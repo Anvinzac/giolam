@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, ReactNode, MouseEvent, TouchEvent } from 'react';
+import { useState, useEffect, useRef, ReactNode, MouseEvent, TouchEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 interface FormulaTooltipProps {
@@ -8,6 +8,14 @@ interface FormulaTooltipProps {
   autoHideMs?: number;
 }
 
+const ARROW_H = 5;
+const ARROW_W = 5;
+const R = 7;
+const PAD_X = 12;
+const PAD_Y = 6;
+const FONT_SIZE = 11;
+const LINE_H = 16;
+
 export default function FormulaTooltip({
   formula,
   children,
@@ -16,74 +24,47 @@ export default function FormulaTooltip({
 }: FormulaTooltipProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
-  const tipRef = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<{ tipLeft: number; tipTop: number; arrowLeft: number } | null>(null);
+  const [style, setStyle] = useState<{ left: number; top: number; arrowX: number; w: number; h: number } | null>(null);
 
-  const reposition = useCallback(() => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    // Anchor to the right side of the element (where right-aligned text sits)
-    const anchorX = rect.right - Math.min(rect.width * 0.35, 16);
-    const anchorY = rect.top - 8;
-
-    // Estimate tooltip width (will refine after mount)
-    const estWidth = 120;
-    let tipLeft = anchorX - estWidth / 2;
-    let arrowLeft = estWidth / 2;
-
-    // Clamp to viewport edges with 8px padding
-    const vw = window.innerWidth;
-    if (tipLeft + estWidth > vw - 8) {
-      const overflow = tipLeft + estWidth - (vw - 8);
-      tipLeft -= overflow;
-      arrowLeft += overflow;
-    }
-    if (tipLeft < 8) {
-      const shift = 8 - tipLeft;
-      tipLeft = 8;
-      arrowLeft -= shift;
-    }
-
-    setPos({ tipLeft, tipTop: anchorY, arrowLeft });
-  }, []);
-
-  // Refine position after tooltip renders (actual width known)
   useEffect(() => {
-    if (!open || !pos || !tipRef.current || !ref.current) return;
-    const tipEl = tipRef.current;
-    const tipWidth = tipEl.offsetWidth;
+    if (!open || !ref.current || !formula) return;
+
+    // Measure text width using canvas
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    ctx.font = `bold ${FONT_SIZE}px ui-monospace, monospace`;
+    const textW = Math.ceil(ctx.measureText(formula).width);
+    const w = textW + PAD_X * 2;
+    const bodyH = LINE_H + PAD_Y * 2;
+    const totalH = bodyH + ARROW_H;
+
     const rect = ref.current.getBoundingClientRect();
     const anchorX = rect.right - Math.min(rect.width * 0.35, 16);
+    const anchorY = rect.top - 3;
+
     const vw = window.innerWidth;
+    let left = anchorX - w / 2;
+    let arrowX = w / 2;
 
-    let tipLeft = anchorX - tipWidth / 2;
-    let arrowLeft = tipWidth / 2;
-
-    if (tipLeft + tipWidth > vw - 8) {
-      const overflow = tipLeft + tipWidth - (vw - 8);
-      tipLeft -= overflow;
-      arrowLeft += overflow;
+    if (left + w > vw - 8) {
+      const ov = left + w - (vw - 8);
+      left -= ov;
+      arrowX += ov;
     }
-    if (tipLeft < 8) {
-      const shift = 8 - tipLeft;
-      tipLeft = 8;
-      arrowLeft -= shift;
+    if (left < 8) {
+      const sh = 8 - left;
+      left = 8;
+      arrowX -= sh;
     }
-    // Clamp arrow within tooltip bounds
-    arrowLeft = Math.max(10, Math.min(arrowLeft, tipWidth - 10));
+    arrowX = Math.max(R + ARROW_W + 2, Math.min(arrowX, w - R - ARROW_W - 2));
 
-    setPos(prev => {
-      if (prev && prev.tipLeft === tipLeft && prev.arrowLeft === arrowLeft) return prev;
-      return { tipLeft, tipTop: prev!.tipTop, arrowLeft };
-    });
-  }, [open, pos]);
+    setStyle({ left, top: anchorY - totalH, arrowX, w, h: bodyH });
+  }, [open, formula]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: Event) => {
-      const target = e.target as Node | null;
-      if (!ref.current || !target) return;
-      if (!ref.current.contains(target)) setOpen(false);
+      if (!ref.current || !ref.current.contains(e.target as Node)) setOpen(false);
     };
     const timer = window.setTimeout(() => setOpen(false), autoHideMs);
     window.addEventListener('mousedown', onDown, true);
@@ -98,7 +79,6 @@ export default function FormulaTooltip({
   const handleTap = (e: MouseEvent<HTMLSpanElement> | TouchEvent<HTMLSpanElement>) => {
     if (!formula) return;
     e.stopPropagation();
-    reposition();
     setOpen(v => !v);
   };
 
@@ -114,47 +94,68 @@ export default function FormulaTooltip({
       aria-label={interactive && formula ? `Công thức: ${formula}` : undefined}
     >
       {children}
-      {open && formula && pos && createPortal(
-        <span
-          ref={tipRef}
+      {open && formula && style && createPortal(
+        <div
           className="pointer-events-none"
           style={{
             position: 'fixed',
-            left: pos.tipLeft,
-            top: pos.tipTop,
+            left: style.left,
+            top: style.top,
             zIndex: 99999,
-            transform: 'translateY(-100%)',
           }}
           aria-hidden
         >
-          <span
-            className="block whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-mono font-bold tracking-wide shadow-xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
-              backdropFilter: 'blur(16px) saturate(1.6)',
-              WebkitBackdropFilter: 'blur(16px) saturate(1.6)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: 'hsl(var(--foreground))',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.25), 0 0 0 0.5px rgba(255,255,255,0.08) inset',
-            }}
+          <svg
+            width={style.w}
+            height={style.h + ARROW_H}
+            style={{ display: 'block', filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.4))' }}
           >
-            {formula}
-          </span>
-          <span
-            className="block"
-            style={{
-              width: 0,
-              height: 0,
-              marginLeft: pos.arrowLeft - 5,
-              borderLeft: '5px solid transparent',
-              borderRight: '5px solid transparent',
-              borderTop: '5px solid rgba(255,255,255,0.15)',
-              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
-            }}
-          />
-        </span>,
+            <defs>
+              <linearGradient id="tt-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="rgba(255,200,100,0.55)" />
+                <stop offset="50%" stopColor="rgba(180,140,255,0.45)" />
+                <stop offset="100%" stopColor="rgba(100,200,255,0.35)" />
+              </linearGradient>
+            </defs>
+            <path
+              d={bubblePath(style.w, style.h, ARROW_H, R, style.arrowX, ARROW_W)}
+              fill="rgba(22,22,30,0.92)"
+              stroke="url(#tt-grad)"
+              strokeWidth="1.2"
+            />
+            <text
+              x={PAD_X}
+              y={PAD_Y + FONT_SIZE - 1}
+              fill="rgba(255,255,255,0.92)"
+              fontFamily="ui-monospace, monospace"
+              fontSize={FONT_SIZE}
+              fontWeight="bold"
+              letterSpacing="0.02em"
+            >
+              {formula}
+            </text>
+          </svg>
+        </div>,
         document.body
       )}
     </span>
   );
+}
+
+function bubblePath(w: number, bh: number, ah: number, r: number, ax: number, aw: number): string {
+  return [
+    `M ${r} 0`,
+    `L ${w - r} 0`,
+    `Q ${w} 0 ${w} ${r}`,
+    `L ${w} ${bh - r}`,
+    `Q ${w} ${bh} ${w - r} ${bh}`,
+    `L ${ax + aw} ${bh}`,
+    `L ${ax} ${bh + ah}`,
+    `L ${ax - aw} ${bh}`,
+    `L ${r} ${bh}`,
+    `Q 0 ${bh} 0 ${bh - r}`,
+    `L 0 ${r}`,
+    `Q 0 0 ${r} 0`,
+    'Z',
+  ].join(' ');
 }

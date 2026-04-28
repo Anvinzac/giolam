@@ -346,7 +346,26 @@ export default function SalaryAdmin() {
   }, [selectedEmployee]);
 
   // Compute breakdown
-  const breakdown = useMemo<SalaryBreakdown | null>(() => {
+  const [deposit, setDeposit] = useState(0);
+
+  // Reset deposit immediately when switching employees
+  const prevEmployeeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const uid = selectedEmployee?.user_id || null;
+    if (uid !== prevEmployeeRef.current) {
+      setDeposit(0);
+      prevEmployeeRef.current = uid;
+    }
+  }, [selectedEmployee?.user_id]);
+
+  // Load deposit from saved breakdown once record loads
+  useEffect(() => {
+    if (!record?.salary_breakdown || !selectedEmployee) return;
+    if (record.user_id !== selectedEmployee.user_id) return;
+    setDeposit((record.salary_breakdown as SalaryBreakdown).deposit || 0);
+  }, [record, selectedEmployee?.user_id]);
+
+  const rawBreakdown = useMemo<SalaryBreakdown | null>(() => {
     if (!selectedEmployee || entries.length === 0) return null;
     switch (selectedEmployee.shift_type) {
       case 'basic':
@@ -361,6 +380,11 @@ export default function SalaryAdmin() {
         return null;
     }
   }, [entries, allowances, selectedEmployee, rates, globalClockIn]);
+
+  const breakdown = useMemo<SalaryBreakdown | null>(() => {
+    if (!rawBreakdown) return null;
+    return { ...rawBreakdown, deposit };
+  }, [rawBreakdown, deposit]);
 
   // Auto-seed entries when employee has none
   const seedingRef = useRef<string | null>(null);
@@ -958,6 +982,8 @@ export default function SalaryAdmin() {
                 editMode={isPreviewMode ? 'preview' : 'admin'}
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
+                deposit={deposit}
+                onDepositChange={setDeposit}
               />
             )}
 
@@ -984,6 +1010,8 @@ export default function SalaryAdmin() {
                 editMode={isPreviewMode ? 'preview' : 'admin'}
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
+                deposit={deposit}
+                onDepositChange={setDeposit}
               />
             )}
 
@@ -1016,6 +1044,8 @@ export default function SalaryAdmin() {
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
                 shiftType={selectedEmployee.shift_type}
+                deposit={deposit}
+                onDepositChange={setDeposit}
               />
             )}
 

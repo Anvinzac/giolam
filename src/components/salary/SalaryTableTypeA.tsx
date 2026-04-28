@@ -9,6 +9,7 @@ import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
 import PeriodDatePicker from './PeriodDatePicker';
+import FormulaTooltip from './FormulaTooltip';
 
 interface SalaryTableTypeAProps {
   entries: SalaryEntry[];
@@ -30,6 +31,8 @@ interface SalaryTableTypeAProps {
   editMode?: 'admin' | 'employee' | 'preview';
   onAcceptEntry?: (id: string) => void;
   currentUserId?: string | null;
+  deposit?: number;
+  onDepositChange?: (amount: number) => void;
 }
 
 export default function SalaryTableTypeA({
@@ -38,6 +41,7 @@ export default function SalaryTableTypeA({
   onHourlyRateChange,
   periodStart, periodEnd, breakdown, isPreview = false,
   editMode, onAcceptEntry, currentUserId,
+  deposit = 0, onDepositChange,
 }: SalaryTableTypeAProps) {
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
   const readOnly = mode === 'preview';
@@ -63,7 +67,8 @@ export default function SalaryTableTypeA({
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const allowance = roundToThousand(dailyBase * rate / 100);
     const extraWage = e.total_hours ? roundToThousand(e.total_hours * hourlyRate) : 0;
-    const deduction = e.is_day_off ? roundToThousand(dailyBase * e.off_percent / 100) : 0;
+    const cappedPercent = Math.min(e.off_percent, 100);
+    const deduction = e.is_day_off ? roundToThousand(dailyBase * cappedPercent / 100) : 0;
     const total = e.is_day_off ? -(deduction) : dailyBase + allowance + extraWage;
     return { rate, allowance, extraWage, deduction, total };
   };
@@ -81,6 +86,22 @@ export default function SalaryTableTypeA({
   );
 
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
+
+  const formatK = (n: number) => Math.round(n / 1000).toString();
+  const formulaAllowance = (rate: number): string | null => {
+    if (dailyBase <= 0 || rate <= 0) return null;
+    return `${rate}% × ${formatK(dailyBase)}`;
+  };
+  const formulaTotal = (e: SalaryEntry, allowance: number, extraWage: number, deduction: number): string | null => {
+    if (e.is_day_off) {
+      if (deduction <= 0) return null;
+      return `-${formatK(deduction)}`;
+    }
+    const parts = [formatK(dailyBase)];
+    if (allowance > 0) parts.push(formatK(allowance));
+    if (extraWage > 0) parts.push(formatK(extraWage));
+    return parts.length > 1 ? parts.join(' + ') : null;
+  };
 
   const guiXeSummary = useMemo(() => {
     const fromBreakdown = breakdown?.allowances?.find(a => a.key === 'gui_xe');
@@ -256,18 +277,18 @@ export default function SalaryTableTypeA({
                   )}
 
                   {/* Allowance */}
-                  <span className={`w-[46px] text-right text-[14px] font-semibold ${
+                  <FormulaTooltip formula={formulaAllowance(rate)} className={`w-[46px] text-right text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
-                  </span>
+                  </FormulaTooltip>
 
                   {/* Total */}
-                  <span className={`w-[62px] text-right text-[15px] font-bold ${
+                  <FormulaTooltip formula={formulaTotal(e, allowance, extraWage, deduction)} className={`w-[62px] text-right text-[15px] font-bold ${
                     total < 0 ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {formatCompact(total)}
-                  </span>
+                  </FormulaTooltip>
                 </div>
 
                 {/* Accept pending submission */}
@@ -398,7 +419,10 @@ export default function SalaryTableTypeA({
       {/* Total */}
       <TotalSalaryDisplay
         total={breakdown?.total ?? totalFromEntries}
+        deposit={deposit}
         onTap={() => setShowBreakdown(true)}
+        onDepositChange={onDepositChange}
+        isAdmin={mode === 'admin'}
       />
 
       <SalaryBreakdownPopup

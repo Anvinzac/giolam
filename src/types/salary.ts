@@ -74,6 +74,7 @@ export interface SalaryBreakdown {
   total_deductions: number;
   allowances: { key: AllowanceKey; label: string; amount: number; enabled: boolean }[];
   total: number;
+  deposit?: number;
 }
 
 export interface SalaryPage {

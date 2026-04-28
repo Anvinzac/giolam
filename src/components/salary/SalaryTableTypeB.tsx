@@ -8,6 +8,7 @@ import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
+import FormulaTooltip from './FormulaTooltip';
 
 interface SalaryTableTypeBProps {
   entries: SalaryEntry[];
@@ -31,6 +32,8 @@ interface SalaryTableTypeBProps {
   editMode?: 'admin' | 'employee' | 'preview';
   onAcceptEntry?: (id: string) => void;
   currentUserId?: string | null;
+  deposit?: number;
+  onDepositChange?: (amount: number) => void;
 }
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
@@ -72,6 +75,7 @@ export default function SalaryTableTypeB({
   breakdown,
   isPreview = false,
   editMode, onAcceptEntry, currentUserId,
+  deposit = 0, onDepositChange,
 }: SalaryTableTypeBProps) {
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
   const readOnly = mode === 'preview';
@@ -136,10 +140,10 @@ export default function SalaryTableTypeB({
   // and the whole page blanks. Same hazard already bit Type C; mirror that fix.
   const computeRow = (e: SalaryEntry) => {
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const allowance = roundToThousand(dailyBase * rate / 100);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
-    const total = e.is_day_off ? 0 : dailyBase + allowance + extraWage;
+    const allowance = roundToThousand((dailyBase + extraWage) * rate / 100);
+    const total = e.is_day_off ? -dailyBase : dailyBase + allowance + extraWage;
     return { rate, allowance, hours, extraWage, total };
   };
 
@@ -147,6 +151,42 @@ export default function SalaryTableTypeB({
     entries.map(e => computeRow(e).total),
     [entries, dailyBase, rates, hourlyRate, globalClockIn]
   );
+
+  const formatK = (n: number) => Math.round(n / 1000).toString();
+  const formulaHours = (e: SalaryEntry): string | null => {
+    if (!e.clock_in || !e.clock_out) return null;
+    const fmtDec = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      const d = h + m / 60;
+      return Number.isInteger(d) ? `${d}` : d.toFixed(1);
+    };
+    return `${fmtDec(e.clock_out)} − ${fmtDec(e.clock_in || globalClockIn)}`;
+  };
+  const formulaWage = (hours: number): string | null => {
+    if (hours <= 0 || hourlyRate <= 0) return null;
+    const h = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
+    const rK = hourlyRate / 1000;
+    const r = Number.isInteger(rK) ? `${rK}` : rK.toFixed(1);
+    return `${h} × ${r}`;
+  };
+  const formulaAllowance = (rate: number, extraWage: number): string | null => {
+    if ((dailyBase + extraWage) <= 0 || rate <= 0) return null;
+    return `${rate}% × (${formatK(dailyBase)}+${formatK(extraWage)})`;
+  };
+  const formulaTotal = (extraWage: number, allowance: number, hours: number): string | null => {
+    if (dailyBase <= 0) return null;
+    const parts = [formatK(dailyBase)];
+    if (allowance > 0) parts.push(formatK(allowance));
+    if (extraWage > 0) parts.push(formatK(extraWage));
+    if (parts.length > 1) return parts.join(' + ');
+    if (hours > 0 && hourlyRate > 0) {
+      const h = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
+      const rK = hourlyRate / 1000;
+      const r = Number.isInteger(rK) ? `${rK}` : rK.toFixed(1);
+      return `${h} × ${r}`;
+    }
+    return null;
+  };
 
   // ── Chip helpers ────────────────────────────────────────────────────────────
   const startChipAutoHide = (rowKey: string) => {
@@ -506,16 +546,16 @@ export default function SalaryTableTypeB({
                         >
                           {formatClockDecimal(e.clock_out)}
                         </button>
-                        <span className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</span>
-                        <span className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
+                        <FormulaTooltip formula={formulaHours(e)} className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
+                        <FormulaTooltip formula={formulaWage(hours)} className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
                           {extraWage > 0 ? formatCompact(extraWage) : '—'}
-                        </span>
-                        <span className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
+                        </FormulaTooltip>
+                        <FormulaTooltip formula={formulaAllowance(rate, extraWage)} className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
                           {allowance > 0 ? formatCompact(allowance) : ''}
-                        </span>
-                        <span className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+                        </FormulaTooltip>
+                        <FormulaTooltip formula={formulaTotal(extraWage, allowance, hours)} className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                           {formatCompact(total)}
-                        </span>
+                        </FormulaTooltip>
                       </div>
                     </motion.div>
                   )}
@@ -633,24 +673,24 @@ export default function SalaryTableTypeB({
                     </button>
 
                     {/* Hours */}
-                    <span className="justify-self-end text-right font-semibold text-[13px]">
+                    <FormulaTooltip formula={formulaHours(e)} className="justify-self-end text-right font-semibold text-[13px]">
                       {formatHours(hours)}
-                    </span>
+                    </FormulaTooltip>
 
                     {/* Wage */}
-                    <span className="justify-self-end text-right font-medium text-[13px] text-foreground/70">
+                    <FormulaTooltip formula={formulaWage(hours)} className="justify-self-end text-right font-medium text-[13px] text-foreground/70">
                       {extraWage > 0 ? formatCompact(extraWage) : '—'}
-                    </span>
+                    </FormulaTooltip>
 
                     {/* Allowance */}
-                    <span className="justify-self-end text-right allowance-amt font-semibold text-[13px]">
+                    <FormulaTooltip formula={formulaAllowance(rate, extraWage)} className="justify-self-end text-right allowance-amt font-semibold text-[13px]">
                       {allowance > 0 ? formatCompact(allowance) : ''}
-                    </span>
+                    </FormulaTooltip>
 
                     {/* Total */}
-                    <span className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+                    <FormulaTooltip formula={formulaTotal(extraWage, allowance, hours)} className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
                       {formatCompact(total)}
-                    </span>
+                    </FormulaTooltip>
                   </>
                 )}
 
@@ -746,7 +786,10 @@ export default function SalaryTableTypeB({
       ) : (
         <TotalSalaryDisplay
           total={breakdown?.total ?? 0}
+          deposit={deposit}
           onTap={() => setShowBreakdown(true)}
+          onDepositChange={onDepositChange}
+          isAdmin={mode === 'admin'}
         />
       )}
 

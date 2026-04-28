@@ -42,13 +42,20 @@ export default function SalaryBreakdownPopup({
     .map((v, i) => i === 0 ? `${v}` : v < 0 ? `${v}` : `+${v}`)
     .join('');
 
+  // Build deposit part separately for red styling
+  const depositK = breakdown.deposit ? toK(breakdown.deposit) : 0;
+
+  // Full expression for clipboard (plain text)
+  const fullExpression = depositK > 0
+    ? `${expression}-${depositK}`
+    : expression;
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(expression);
+      await navigator.clipboard.writeText(fullExpression);
     } catch {
-      // Fallback for mobile/HTTP: use a temporary textarea
       const ta = document.createElement('textarea');
-      ta.value = expression;
+      ta.value = fullExpression;
       ta.style.position = 'fixed';
       ta.style.opacity = '0';
       document.body.appendChild(ta);
@@ -60,7 +67,7 @@ export default function SalaryBreakdownPopup({
   };
 
   const handleVerify = () => {
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(expression)}`, '_blank');
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(fullExpression)}`, '_blank');
   };
 
   const handleClose = () => {
@@ -88,7 +95,14 @@ export default function SalaryBreakdownPopup({
           >
             <div className="glass-card p-5 max-w-sm mx-auto space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-display font-semibold text-foreground">= {formatVND(breakdown.total)}</h3>
+                <div>
+                  <h3 className="font-display font-semibold text-foreground">= {formatVND(breakdown.total)}</h3>
+                  {depositK > 0 && (
+                    <p className="font-display font-extrabold text-sm text-gradient-gold mt-0.5">
+                      Chuyển khoản: {formatVND(breakdown.total - (breakdown.deposit || 0))}
+                    </p>
+                  )}
+                </div>
                 <button onClick={handleClose} className="p-1 rounded-lg bg-muted text-muted-foreground">
                   <X size={16} />
                 </button>
@@ -98,7 +112,7 @@ export default function SalaryBreakdownPopup({
                 onClick={handleCopy}
                 className="rounded-xl bg-muted/60 border border-border/40 px-4 py-3 font-mono text-[13px] leading-relaxed text-foreground break-all active:bg-muted transition-colors cursor-pointer max-h-[40vh] overflow-y-auto"
               >
-                {expression}
+                {expression}{depositK > 0 && <span className="text-destructive font-bold">-{depositK}</span>}
               </div>
 
               <AnimatePresence mode="wait">
