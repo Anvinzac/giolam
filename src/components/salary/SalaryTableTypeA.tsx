@@ -92,16 +92,6 @@ export default function SalaryTableTypeA({
     if (dailyBase <= 0 || rate <= 0) return null;
     return `${rate}% × ${formatK(dailyBase)}`;
   };
-  const formulaTotal = (e: SalaryEntry, allowance: number, extraWage: number, deduction: number): string | null => {
-    if (e.is_day_off) {
-      if (deduction <= 0) return null;
-      return `-${formatK(deduction)}`;
-    }
-    const parts = [formatK(dailyBase)];
-    if (allowance > 0) parts.push(formatK(allowance));
-    if (extraWage > 0) parts.push(formatK(extraWage));
-    return parts.length > 1 ? parts.join(' + ') : null;
-  };
 
   const guiXeSummary = useMemo(() => {
     const fromBreakdown = breakdown?.allowances?.find(a => a.key === 'gui_xe');
@@ -188,8 +178,8 @@ export default function SalaryTableTypeA({
                 </button>
               </span>
               <span className="flex-1 text-center">Ghi chú</span>
-              <span className="w-[46px] text-right">Phụ cấp</span>
-              <span className="w-[62px] text-right">Tổng</span>
+              <span className="w-[36px] text-right">%</span>
+              <span className="w-[50px] text-right">Phụ cấp</span>
             </div>
 
         {addingDate && !readOnly && onAddRowAtDate && (
@@ -276,18 +266,18 @@ export default function SalaryTableTypeA({
                     </button>
                   )}
 
+                  {/* Rate % */}
+                  <span className={`w-[36px] text-right text-[13px] text-muted-foreground ${
+                    isOff ? 'text-destructive' : ''
+                  }`}>
+                    {isOff ? `-${e.off_percent}` : (rate > 0 ? `${rate}` : '—')}
+                  </span>
+
                   {/* Allowance */}
-                  <FormulaTooltip formula={formulaAllowance(rate)} className={`w-[46px] text-right text-[14px] font-semibold ${
+                  <FormulaTooltip formula={formulaAllowance(rate)} className={`w-[50px] text-right text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}>
                     {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
-                  </FormulaTooltip>
-
-                  {/* Total */}
-                  <FormulaTooltip formula={formulaTotal(e, allowance, extraWage, deduction)} className={`w-[62px] text-right text-[15px] font-bold ${
-                    total < 0 ? 'text-destructive' : 'text-foreground'
-                  }`}>
-                    {formatCompact(total)}
                   </FormulaTooltip>
                 </div>
 
