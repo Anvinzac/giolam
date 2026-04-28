@@ -87,6 +87,26 @@ export default function AnalogClock({
   const [clockInDone, setClockInDone] = useState(false);
   const [clockOutDone, setClockOutDone] = useState(false);
 
+  // Lock body scroll while clock is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    const prevPos = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevWidth = document.body.style.width;
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.style.position = prevPos;
+      document.body.style.top = prevTop;
+      document.body.style.width = prevWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   // Auto-dismiss when both are checked
   useEffect(() => {
     if (isRangeMode && clockInDone && clockOutDone && rangeClockIn && rangeClockOut) {
@@ -218,9 +238,18 @@ export default function AnalogClock({
   const periodLabel = getPeriodLabel(selectedHour);
 
   const handleBackdropClose = () => {
-    // In range mode, save whatever has been set so far
-    if (isRangeMode && rangeClockIn && rangeClockOut) {
-      onTimeRangeSelect?.({ clockIn: rangeClockIn, clockOut: rangeClockOut });
+    if (isRangeMode) {
+      // Commit the current clock face value to the active field before closing
+      let finalIn = rangeClockIn;
+      let finalOut = rangeClockOut;
+      if (selectedHour !== null && activeRangeField) {
+        const currentTime = timeToString(selectedHour, selectedMinute);
+        if (activeRangeField === 'in') finalIn = currentTime;
+        else finalOut = currentTime;
+      }
+      if (finalIn && finalOut) {
+        onTimeRangeSelect?.({ clockIn: finalIn, clockOut: finalOut });
+      }
     }
     onClose();
   };
@@ -233,6 +262,7 @@ export default function AnalogClock({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
         onClick={handleBackdropClose}
+        onTouchMove={(e) => e.preventDefault()}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -244,6 +274,25 @@ export default function AnalogClock({
           <h3 className="font-display text-lg text-foreground text-center">{label}</h3>
 
           <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto block w-full max-w-[320px] h-auto">
+            <style>{`
+              @keyframes segPop {
+                0% { opacity: 0; transform: scale(0.3); }
+                60% { opacity: 1; transform: scale(1.04); }
+                100% { opacity: 1; transform: scale(1); }
+              }
+              @keyframes centerReveal {
+                0% { opacity: 0; transform: scale(0); }
+                100% { opacity: 1; transform: scale(1); }
+              }
+              .seg-anim {
+                transform-origin: ${cx}px ${cy}px;
+                animation: segPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+              }
+              .center-anim {
+                transform-origin: ${cx}px ${cy}px;
+                animation: centerReveal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+              }
+            `}</style>
             {/* Outer ring — PM */}
             {CLOCK_POSITIONS.map((pos, i) => {
               const startA = i * segAngle + gap / 2 + rotateOffset;
@@ -260,8 +309,9 @@ export default function AnalogClock({
               return (
                 <g
                   key={`pm-${pos}`}
+                  className="seg-anim"
+                  style={{ cursor: active ? 'pointer' : 'default', animationDelay: `${i * 35}ms` }}
                   onClick={() => active && handleHourSelect(h24)}
-                  style={{ cursor: active ? 'pointer' : 'default' }}
                 >
                   <path
                     d={arcSegmentPath(cx, cy, outerInnerR, outerR, startA, endA)}
@@ -309,8 +359,9 @@ export default function AnalogClock({
               return (
                 <g
                   key={`am-${pos}`}
+                  className="seg-anim"
+                  style={{ cursor: active ? 'pointer' : 'default', animationDelay: `${(i * 35) + 150}ms` }}
                   onClick={() => active && handleHourSelect(h24)}
-                  style={{ cursor: active ? 'pointer' : 'default' }}
                 >
                   <path
                     d={arcSegmentPath(cx, cy, innerInnerR, innerR, startA, endA)}
@@ -350,6 +401,7 @@ export default function AnalogClock({
               const sunR = (innerInnerR + innerR) / 2; // center of inner ring
               const sunPos = polarToCartesian(cx, cy, sunR, sunAngle);
               return (
+                <g className="seg-anim" style={{ animationDelay: '450ms', transformOrigin: `${sunPos.x}px ${sunPos.y}px` }}>
                 <g transform={`translate(${sunPos.x}, ${sunPos.y})`}>
                   <circle r="7" fill="hsl(45, 95%, 60%)" opacity="0.3" />
                   <circle r="4" fill="hsl(45, 95%, 55%)" />
@@ -369,10 +421,12 @@ export default function AnalogClock({
                     );
                   })}
                 </g>
+                </g>
               );
             })()}
 
             {/* Center */}
+            <g className="center-anim" style={{ animationDelay: '500ms' }}>
             <circle cx={cx} cy={cy} r={innerInnerR - 4} fill="hsl(var(--background))" opacity={0.9} />
             {selectedHour === null ? (
               <text
@@ -505,6 +559,7 @@ export default function AnalogClock({
                 {periodLabel}
               </text>
             )}
+            </g>
           </svg>
 
           {isRangeMode ? (
