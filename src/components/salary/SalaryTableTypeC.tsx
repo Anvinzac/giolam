@@ -1584,7 +1584,11 @@ export default function SalaryTableTypeC({
       ) : (
         <>
           <EmployeeAllowanceEditor
-            allowances={allowances}
+            allowances={allowances.map(a =>
+              a.allowance_key === 'gui_xe' && a.is_enabled
+                ? { ...a, amount: guiXeSummary.amount }
+                : a
+            )}
             onToggle={onAllowanceToggle}
             onUpdate={onAllowanceUpdate}
             onAddAllowance={onAddAllowance}

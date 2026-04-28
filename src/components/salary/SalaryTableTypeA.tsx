@@ -51,6 +51,7 @@ export default function SalaryTableTypeA({
   const [editHours, setEditHours] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [expandedOff, setExpandedOff] = useState<string | null>(null);
+  const [expandedRate, setExpandedRate] = useState<string | null>(null);
   const [addingDate, setAddingDate] = useState(false);
   const lastTapRef = useRef<{ date: string; time: number } | null>(null);
 
@@ -80,10 +81,24 @@ export default function SalaryTableTypeA({
     }, 0);
   }, [visibleEntries, dailyBase, rates]);
 
-  const dailyTotals = useMemo(() =>
-    visibleEntries.map(e => computeRow(e).total),
-    [visibleEntries, dailyBase, rates]
-  );
+  const dailyTotals = useMemo(() => {
+    // Type A formula: base salary + each day's rate allowance - deductions
+    const parts: number[] = [baseSalary];
+    for (const e of visibleEntries) {
+      const { allowance, deduction } = computeRow(e);
+      if (e.is_day_off && deduction > 0) {
+        parts.push(-deduction);
+      } else if (allowance > 0) {
+        parts.push(allowance);
+      }
+    }
+    // Add extra wages if any
+    for (const e of visibleEntries) {
+      const { extraWage } = computeRow(e);
+      if (extraWage > 0) parts.push(extraWage);
+    }
+    return parts;
+  }, [visibleEntries, dailyBase, rates, baseSalary]);
 
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
 
@@ -178,7 +193,7 @@ export default function SalaryTableTypeA({
                 </button>
               </span>
               <span className="flex-1 text-center">Ghi chú</span>
-              <span className="w-[36px] text-right">%</span>
+              <span className="w-[46px] text-center">Tỷ lệ</span>
               <span className="w-[50px] text-right">Phụ cấp</span>
             </div>
 
@@ -267,10 +282,17 @@ export default function SalaryTableTypeA({
                   )}
 
                   {/* Rate % */}
-                  <span className={`w-[36px] text-right text-[13px] text-muted-foreground ${
-                    isOff ? 'text-destructive' : ''
-                  }`}>
-                    {isOff ? `-${e.off_percent}` : (rate > 0 ? `${rate}` : '—')}
+                  <span
+                    className={`w-[46px] text-center text-[13px] font-medium ${
+                      isOff ? 'text-destructive' : rate < 0 ? 'text-destructive' : 'text-muted-foreground'
+                    } ${!readOnly && mode === 'admin' && !isOff ? 'cursor-pointer hover:text-foreground transition-colors' : ''}`}
+                    onClick={(ev) => {
+                      if (readOnly || mode !== 'admin' || isOff) return;
+                      ev.stopPropagation();
+                      setExpandedRate(expandedRate === key ? null : key);
+                    }}
+                  >
+                    {isOff ? `-${e.off_percent}%` : (rate > 0 ? `${rate}%` : rate < 0 ? `${rate}%` : '—')}
                   </span>
 
                   {/* Allowance */}
@@ -360,6 +382,45 @@ export default function SalaryTableTypeA({
                     Nghỉ {e.off_percent}%
                   </div>
                 )}
+
+                {/* Rate snapper — admin can adjust allowance rate */}
+                {!isOff && expandedRate === key && !readOnly && mode === 'admin' && (() => {
+                  const RATE_SNAPS = [-50, -25, 0, 10, 15, 20, 25, 30];
+                  const currentRate = e.allowance_rate_override ?? (rates.find(r => r.special_date === e.entry_date)?.rate_percent ?? 0);
+                  return (
+                    <div className="px-3 pb-3 pt-1">
+                      <div className="flex items-center gap-1 py-1.5 overflow-x-auto no-scrollbar">
+                        {RATE_SNAPS.map(snap => {
+                          const isActive = currentRate === snap;
+                          const isNeg = snap < 0;
+                          return (
+                            <motion.button
+                              key={snap}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => {
+                                onEntryUpdate(e.entry_date, e.sort_order, {
+                                  allowance_rate_override: snap === 0 ? null : snap,
+                                });
+                                setExpandedRate(null);
+                              }}
+                              className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+                                isActive
+                                  ? isNeg
+                                    ? 'border-destructive bg-destructive text-white'
+                                    : 'border-primary bg-primary text-primary-foreground'
+                                  : isNeg
+                                    ? 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20'
+                                    : 'border-border/60 bg-muted/60 text-foreground hover:bg-muted'
+                              }`}
+                            >
+                              {snap > 0 ? `+${snap}%` : `${snap}%`}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -398,7 +459,11 @@ export default function SalaryTableTypeA({
         </div>
       ) : (
         <EmployeeAllowanceEditor
-          allowances={allowances}
+          allowances={allowances.map(a =>
+            a.allowance_key === 'gui_xe' && a.is_enabled
+              ? { ...a, amount: guiXeSummary.amount }
+              : a
+          )}
           onToggle={onAllowanceToggle}
           onUpdate={onAllowanceUpdate}
           onAddAllowance={onAddAllowance}

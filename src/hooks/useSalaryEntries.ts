@@ -102,7 +102,7 @@ export function useSalaryEntries(
       if (error) console.error('Failed to fetch salary entries:', error);
       let loaded = (data || []) as SalaryEntry[];
 
-      // Type A: keep only entries that match a special day in the rates table
+      // Type A: seed missing special days (don't delete or modify existing entries)
       if (seedAllDays && periodId) {
         const existingDates = new Set(loaded.map(e => e.entry_date));
 
@@ -117,28 +117,6 @@ export function useSalaryEntries(
             .filter((r: { special_date: string; rate_percent: number }) => r.rate_percent > 0)
             .map((r: { special_date: string }) => r.special_date)
         );
-
-        // Delete entries that are NOT in the special days list
-        const toDelete = loaded.filter(e => e.id && !specialDates.has(e.entry_date));
-        if (toDelete.length > 0) {
-          await supabase
-            .from('salary_entries')
-            .delete()
-            .in('id', toDelete.map(e => e.id!));
-          loaded = loaded.filter(e => specialDates.has(e.entry_date));
-        }
-
-        // Fix existing entries that are wrongly marked as day-off (e.g. seeded before fix)
-        const wronglyOff = loaded.filter(e => e.id && specialDates.has(e.entry_date) && e.is_day_off);
-        if (wronglyOff.length > 0) {
-          await supabase
-            .from('salary_entries')
-            .update({ is_day_off: false, off_percent: 0 })
-            .in('id', wronglyOff.map(e => e.id!));
-          loaded = loaded.map(e =>
-            wronglyOff.find(w => w.id === e.id) ? { ...e, is_day_off: false, off_percent: 0 } : e
-          );
-        }
 
         // Seed missing special days
         const toSeed = [...specialDates].filter(d => !existingDates.has(d));
@@ -267,6 +245,17 @@ export function useSalaryEntries(
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(flushUpdates, 1500);
   }, [userId, periodId, flushUpdates]);
+
+  // Flush pending updates on unmount or when userId/periodId changes
+  const flushRef = useRef(flushUpdates);
+  useEffect(() => { flushRef.current = flushUpdates; }, [flushUpdates]);
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      // Fire-and-forget flush of any pending writes
+      flushRef.current();
+    };
+  }, [userId, periodId]);
 
   const insertWithAudit = useCallback(async (base: Omit<SalaryEntry, 'id'>) => {
     const audit = buildAuditFields(base);
