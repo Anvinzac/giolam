@@ -6,6 +6,7 @@ import { motion, useMotionValue, animate, PanInfo } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AnalogClock from '../AnalogClock';
 
 export interface ImmersiveInputTypeBProps {
   entries: SalaryEntry[];
@@ -52,6 +53,17 @@ export default function ImmersiveInputTypeB({
 
   const prefersReducedMotion = useReducedMotion();
   const navigate = useNavigate();
+
+  // Start on the first non-off-day
+  useEffect(() => {
+    const firstWorking = workingDays.findIndex(e => !e.is_day_off);
+    if (firstWorking > 0) {
+      setState(prev => ({ ...prev, currentDayIndex: firstWorking }));
+    }
+  }, []);
+  
+  // Celestial clock state for "Khác" chip
+  const [clockForEntry, setClockForEntry] = useState<{ index: number; clockIn: string } | null>(null);
   
   // Debounce ref to prevent rapid double-taps (Task 15.3)
   const lastTapTime = useRef<number>(0);
@@ -148,11 +160,13 @@ export default function ImmersiveInputTypeB({
       if (Math.abs(delta) < 10) return; // Ignore tiny scrolls
 
       if (delta > 0 && state.currentDayIndex < workingDays.length - 1) {
-        // Scroll down = next day
-        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex + 1 }));
+        // Scroll down = next working day (skip off-days)
+        const next = findNextWorkingIndex(state.currentDayIndex, 1);
+        if (next !== state.currentDayIndex) setState(prev => ({ ...prev, currentDayIndex: next }));
       } else if (delta < 0 && state.currentDayIndex > 0) {
-        // Scroll up = previous day (can't go below 0 — intro card is purely visual)
-        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex - 1 }));
+        // Scroll up = previous working day (skip off-days)
+        const prev = findNextWorkingIndex(state.currentDayIndex, -1);
+        if (prev !== state.currentDayIndex) setState(p => ({ ...p, currentDayIndex: prev }));
       }
     };
 
@@ -162,6 +176,17 @@ export default function ImmersiveInputTypeB({
       return () => container.removeEventListener('wheel', handleWheel);
     }
   }, [state.currentDayIndex, state.isTransitioning, workingDays.length]);
+
+  // Find next non-off-day index in a given direction
+  const findNextWorkingIndex = useCallback((from: number, direction: 1 | -1): number => {
+    let idx = from + direction;
+    while (idx >= 0 && idx < workingDays.length) {
+      if (!workingDays[idx].is_day_off) return idx;
+      idx += direction;
+    }
+    // No working day found — clamp to bounds
+    return Math.max(0, Math.min(from, workingDays.length - 1));
+  }, [workingDays]);
 
   // Handle drag/swipe
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
@@ -174,11 +199,13 @@ export default function ImmersiveInputTypeB({
 
     if (Math.abs(offset) > threshold || Math.abs(velocity) > 500) {
       if (offset > 0 && state.currentDayIndex > 0) {
-        // Swipe down = previous day
-        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex - 1 }));
+        // Swipe down = previous working day (skip off-days)
+        const prev = findNextWorkingIndex(state.currentDayIndex, -1);
+        if (prev !== state.currentDayIndex) setState(p => ({ ...p, currentDayIndex: prev }));
       } else if (offset < 0 && state.currentDayIndex < workingDays.length - 1) {
-        // Swipe up = next day
-        setState(prev => ({ ...prev, currentDayIndex: prev.currentDayIndex + 1 }));
+        // Swipe up = next working day (skip off-days)
+        const next = findNextWorkingIndex(state.currentDayIndex, 1);
+        if (next !== state.currentDayIndex) setState(p => ({ ...p, currentDayIndex: next }));
       }
     }
     
@@ -188,8 +215,9 @@ export default function ImmersiveInputTypeB({
 
   // Advance to next day after successful clock-out selection
   const advanceToNextDay = useCallback(() => {
+    const next = findNextWorkingIndex(state.currentDayIndex, 1);
     setState(prev => ({
-      currentDayIndex: Math.min(prev.currentDayIndex + 1, workingDays.length - 1),
+      currentDayIndex: Math.min(next, workingDays.length),
       isTransitioning: false,
       editingPreviousDay: false,
       loadError: null,
@@ -423,6 +451,7 @@ export default function ImmersiveInputTypeB({
   };
 
   return (
+    <>
     <motion.div
       ref={containerRef}
       className="relative w-full overflow-hidden"
@@ -464,7 +493,7 @@ export default function ImmersiveInputTypeB({
           style={slotInlineStyle}
           aria-hidden
         >
-          <div className="h-full w-full overflow-hidden flex flex-col items-center justify-end gap-3 pb-4 text-center">
+          <div className="h-full w-full overflow-hidden flex flex-col items-center justify-center gap-3 text-center">
             <span className="text-4xl select-none">👋</span>
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2 justify-center">
@@ -562,6 +591,19 @@ export default function ImmersiveInputTypeB({
                   onDayOff={() => handleDayOff(i)}
                   onCardTap={isReview ? handlePreviousDayEdit : undefined}
                   isTransitioning={state.isTransitioning}
+                  anchorTime={(() => {
+                    for (let j = i - 1; j >= 0; j--) {
+                      const prev = workingDays[j];
+                      if (prev && !prev.is_day_off && prev.clock_out) return prev.clock_out;
+                    }
+                    return null;
+                  })()}
+                  onCustomClockOut={() => {
+                    setClockForEntry({
+                      index: i,
+                      clockIn: entry.clock_in || globalClockIn,
+                    });
+                  }}
                 />
               </div>
             </div>
@@ -569,5 +611,22 @@ export default function ImmersiveInputTypeB({
         );
       })}
     </motion.div>
+
+    {clockForEntry && (
+      <AnalogClock
+        mode="single"
+        label="Chọn giờ ra"
+        initialClockOut={workingDays[clockForEntry.index]?.clock_out}
+        onTimeSelect={(time) => {
+          const entry = workingDays[clockForEntry.index];
+          if (entry) {
+            onEntryUpdate(entry.entry_date, entry.sort_order, { clock_out: time });
+          }
+          setClockForEntry(null);
+        }}
+        onClose={() => setClockForEntry(null)}
+      />
+    )}
+    </>
   );
 }

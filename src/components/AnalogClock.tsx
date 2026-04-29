@@ -250,6 +250,11 @@ export default function AnalogClock({
       if (finalIn && finalOut) {
         onTimeRangeSelect?.({ clockIn: finalIn, clockOut: finalOut });
       }
+    } else {
+      // Single mode: save the selected time on backdrop tap
+      if (selectedHour !== null) {
+        onTimeSelect?.(timeToString(selectedHour, selectedMinute));
+      }
     }
     onClose();
   };

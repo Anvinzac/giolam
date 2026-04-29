@@ -48,9 +48,9 @@ function formatMinutesToTime(totalMins: number): string {
 // Offsets (minutes) from the row's clock-in time to suggest as clock-out chips.
 // The first 4 and last 4 are "extra" — hidden behind a fade mask so the user
 // must scroll to reveal them; the middle 6 are the defaults initially visible.
-const CHIP_OFFSETS_LEFT = [-120, -90, -60, -30];
+const CHIP_OFFSETS_LEFT: number[] = [];
 const CHIP_OFFSETS_CORE = [30, 60, 90, 120, 150, 180];
-const CHIP_OFFSETS_RIGHT = [210, 240, 270, 300];
+const CHIP_OFFSETS_RIGHT: number[] = [];
 const CHIP_OFFSETS_ALL = [
   ...CHIP_OFFSETS_LEFT,
   ...CHIP_OFFSETS_CORE,
@@ -58,9 +58,26 @@ const CHIP_OFFSETS_ALL = [
 ];
 const CHIP_CORE_START_INDEX = CHIP_OFFSETS_LEFT.length;
 
-function getClockOutChips(clockIn: string): string[] {
+/**
+ * Generate clock-out chip times. If `anchorTime` (previous row's clock_out)
+ * is beyond the default range, shift all chips so the last core chip
+ * matches the anchor, making the previously selected value visible.
+ */
+function getClockOutChips(clockIn: string, anchorTime?: string | null): string[] {
   const base = parseTimeToMinutes(clockIn);
-  return CHIP_OFFSETS_ALL.map(offset => formatMinutesToTime(base + offset));
+  const defaultChips = CHIP_OFFSETS_ALL.map(o => base + o);
+  const defaultMax = base + CHIP_OFFSETS_CORE[CHIP_OFFSETS_CORE.length - 1]; // last core chip
+
+  if (anchorTime) {
+    const anchorMin = parseTimeToMinutes(anchorTime);
+    if (anchorMin > defaultMax) {
+      // Shift so the last core chip = anchor value
+      const shift = anchorMin - defaultMax;
+      return CHIP_OFFSETS_ALL.map(o => formatMinutesToTime(base + o + shift));
+    }
+  }
+
+  return defaultChips.map(m => formatMinutesToTime(m));
 }
 
 const CHIP_FADE_MASK =
@@ -90,6 +107,8 @@ export default function SalaryTableTypeB({
 
   // Chip state for sequential clock-out entry
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
+  const [customTimeInput, setCustomTimeInput] = useState<string | null>(null);
+  const customTimeRef = useRef<HTMLInputElement>(null);
   const chipAutoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Scroller refs keyed by "{cellKey}-{variant}" so we can align each chip row
   // so the first *core* chip sits near the left edge (extras to the left live
@@ -303,8 +322,20 @@ export default function SalaryTableTypeB({
   // ── Chip row renderer ──────────────────────────────────────────────────────
   const renderChips = (entry: SalaryEntry, pageEntries: SalaryEntry[]) => {
     const baseTime = entry.clock_in || globalClockIn;
-    const chips = getClockOutChips(baseTime);
+    // Find previous row's clock_out as anchor for dynamic chip range
+    const entryIdx = pageEntries.findIndex(
+      e => e.entry_date === entry.entry_date && e.sort_order === entry.sort_order
+    );
+    let anchor: string | null = null;
+    for (let i = entryIdx - 1; i >= 0; i--) {
+      if (!pageEntries[i].is_day_off && pageEntries[i].clock_out) {
+        anchor = pageEntries[i].clock_out;
+        break;
+      }
+    }
+    const chips = getClockOutChips(baseTime, anchor);
     const cellKey = `${entry.entry_date}-${entry.sort_order}`;
+    const isCustomInput = customTimeInput === cellKey;
     return (
       <div
         className="relative flex-1 min-w-0"
@@ -314,6 +345,34 @@ export default function SalaryTableTypeB({
           ref={registerChipScroller(`${cellKey}-mobile`)}
           className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
         >
+          {/* "Khác" chip for custom input */}
+          <motion.button
+            initial={{ opacity: 0, scale: 0.82 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              setCustomTimeInput(isCustomInput ? null : cellKey);
+              setTimeout(() => customTimeRef.current?.focus(), 50);
+            }}
+            className="flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10 transition-colors"
+          >
+            Khác
+          </motion.button>
+          {isCustomInput && (
+            <input
+              ref={customTimeRef}
+              type="time"
+              className="flex-shrink-0 w-[80px] px-2 py-0.5 rounded-full border border-primary/40 bg-background text-[12px] font-semibold text-center outline-none"
+              onChange={(ev) => {
+                if (ev.target.value) {
+                  handleChipSelect(entry, pageEntries, ev.target.value);
+                  setCustomTimeInput(null);
+                }
+              }}
+              onBlur={() => setCustomTimeInput(null)}
+            />
+          )}
           {chips.map((time, i) => (
             <motion.button
               key={time}
@@ -641,7 +700,19 @@ export default function SalaryTableTypeB({
                       ref={registerChipScroller(`${cellKey}-desktop`)}
                       className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
                     >
-                      {getClockOutChips(e.clock_in || globalClockIn).map((time, i) => (
+                      {(() => {
+                        const eIdx = orderedEntries.findIndex(
+                          oe => oe.entry_date === e.entry_date && oe.sort_order === e.sort_order
+                        );
+                        let anch: string | null = null;
+                        for (let j = eIdx - 1; j >= 0; j--) {
+                          if (!orderedEntries[j].is_day_off && orderedEntries[j].clock_out) {
+                            anch = orderedEntries[j].clock_out;
+                            break;
+                          }
+                        }
+                        return getClockOutChips(e.clock_in || globalClockIn, anch);
+                      })().map((time, i) => (
                         <motion.button
                           key={time}
                           data-chip-core-start={i === CHIP_CORE_START_INDEX ? 'true' : undefined}

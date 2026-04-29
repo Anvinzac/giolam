@@ -16,6 +16,8 @@ export interface SquircleCardProps {
   onDayOff?: () => void;
   onCardTap?: () => void;
   isTransitioning: boolean;
+  anchorTime?: string | null;
+  onCustomClockOut?: () => void;
 }
 
 function SquircleCard({
@@ -30,6 +32,8 @@ function SquircleCard({
   onDayOff,
   onCardTap,
   isTransitioning,
+  anchorTime,
+  onCustomClockOut,
 }: SquircleCardProps) {
   const isFocus = state === 'focus';
   const isReview = state === 'review';
@@ -187,9 +191,11 @@ function SquircleCard({
               selectedTime={entry.clock_out}
               onSelect={onClockOutSelect}
               onDayOff={onDayOff}
+              onCustom={onCustomClockOut}
               disabled={isTransitioning}
               cardState={state}
               isOffDay={entry.is_day_off}
+              anchorTime={anchorTime}
             />
           </div>
         </div>
