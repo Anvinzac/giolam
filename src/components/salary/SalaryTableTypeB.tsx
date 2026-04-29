@@ -9,6 +9,7 @@ import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
 import FormulaTooltip from './FormulaTooltip';
+import AnalogClock from '../AnalogClock';
 
 interface SalaryTableTypeBProps {
   entries: SalaryEntry[];
@@ -107,8 +108,13 @@ export default function SalaryTableTypeB({
 
   // Chip state for sequential clock-out entry
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
-  const [customTimeInput, setCustomTimeInput] = useState<string | null>(null);
-  const customTimeRef = useRef<HTMLInputElement>(null);
+  const [pickingClock, setPickingClock] = useState<{
+    entryDate: string;
+    sortOrder: number;
+    clockIn: string;
+    clockOut: string | null;
+    pageEntries: SalaryEntry[];
+  } | null>(null);
   const chipAutoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Scroller refs keyed by "{cellKey}-{variant}" so we can align each chip row
   // so the first *core* chip sits near the left edge (extras to the left live
@@ -335,7 +341,6 @@ export default function SalaryTableTypeB({
     }
     const chips = getClockOutChips(baseTime, anchor);
     const cellKey = `${entry.entry_date}-${entry.sort_order}`;
-    const isCustomInput = customTimeInput === cellKey;
     return (
       <div
         className="relative flex-1 min-w-0"
@@ -345,34 +350,26 @@ export default function SalaryTableTypeB({
           ref={registerChipScroller(`${cellKey}-mobile`)}
           className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
         >
-          {/* "Khác" chip for custom input */}
+          {/* "Khác" chip — opens celestial clock */}
           <motion.button
             initial={{ opacity: 0, scale: 0.82 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 420, damping: 26 }}
             onClick={(ev) => {
               ev.stopPropagation();
-              setCustomTimeInput(isCustomInput ? null : cellKey);
-              setTimeout(() => customTimeRef.current?.focus(), 50);
+              setPickingClock({
+                entryDate: entry.entry_date,
+                sortOrder: entry.sort_order,
+                clockIn: entry.clock_in || globalClockIn,
+                clockOut: entry.clock_out,
+                pageEntries,
+              });
+              setChipRowKey(null);
             }}
             className="flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10 transition-colors"
           >
             Khác
           </motion.button>
-          {isCustomInput && (
-            <input
-              ref={customTimeRef}
-              type="time"
-              className="flex-shrink-0 w-[80px] px-2 py-0.5 rounded-full border border-primary/40 bg-background text-[12px] font-semibold text-center outline-none"
-              onChange={(ev) => {
-                if (ev.target.value) {
-                  handleChipSelect(entry, pageEntries, ev.target.value);
-                  setCustomTimeInput(null);
-                }
-              }}
-              onBlur={() => setCustomTimeInput(null)}
-            />
-          )}
           {chips.map((time, i) => (
             <motion.button
               key={time}
@@ -876,6 +873,25 @@ export default function SalaryTableTypeB({
         isPublished={mode === 'preview'}
         dailyTotals={dailyTotals}
       />
+
+      {pickingClock && (
+        <AnalogClock
+          mode="range"
+          initialActiveField="out"
+          initialClockIn={pickingClock.clockIn}
+          initialClockOut={pickingClock.clockOut}
+          label="Giờ vào / ra"
+          onTimeRangeSelect={({ clockIn, clockOut }) => {
+            onEntryUpdate(pickingClock.entryDate, pickingClock.sortOrder, {
+              clock_in: clockIn,
+              clock_out: clockOut,
+              total_hours: calcHoursFromTimes(clockIn, clockOut),
+            });
+            setPickingClock(null);
+          }}
+          onClose={() => setPickingClock(null)}
+        />
+      )}
     </div>
   );
 }

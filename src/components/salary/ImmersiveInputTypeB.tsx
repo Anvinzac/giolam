@@ -54,14 +54,10 @@ export default function ImmersiveInputTypeB({
   const prefersReducedMotion = useReducedMotion();
   const navigate = useNavigate();
 
-  // Start on the first non-off-day
-  useEffect(() => {
-    const firstWorking = workingDays.findIndex(e => !e.is_day_off);
-    if (firstWorking > 0) {
-      setState(prev => ({ ...prev, currentDayIndex: firstWorking }));
-    }
-  }, []);
-  
+  // Mirror currentDayIndex in a ref so setTimeout callbacks read the latest value
+  const currentDayIndexRef = useRef(0);
+  useEffect(() => { currentDayIndexRef.current = state.currentDayIndex; }, [state.currentDayIndex]);
+
   // Celestial clock state for "Khác" chip
   const [clockForEntry, setClockForEntry] = useState<{ index: number; clockIn: string } | null>(null);
   
@@ -80,6 +76,17 @@ export default function ImmersiveInputTypeB({
     return entries
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [entries]);
+
+  // Start on the first non-off-day (run once when entries load)
+  const initDone = useRef(false);
+  useEffect(() => {
+    if (initDone.current || workingDays.length === 0) return;
+    initDone.current = true;
+    const firstWorking = workingDays.findIndex(e => !e.is_day_off);
+    if (firstWorking > 0) {
+      setState(prev => ({ ...prev, currentDayIndex: firstWorking }));
+    }
+  }, [workingDays]);
 
   // Check if all working days have been completed (Task 11.1)
   const isCompleted = useMemo(() => {
@@ -160,13 +167,25 @@ export default function ImmersiveInputTypeB({
       if (Math.abs(delta) < 10) return; // Ignore tiny scrolls
 
       if (delta > 0 && state.currentDayIndex < workingDays.length - 1) {
-        // Scroll down = next working day (skip off-days)
-        const next = findNextWorkingIndex(state.currentDayIndex, 1);
-        if (next !== state.currentDayIndex) setState(prev => ({ ...prev, currentDayIndex: next }));
+        // Scroll down = next day, then auto-skip if off
+        const nextIdx = state.currentDayIndex + 1;
+        setState(prev => ({ ...prev, currentDayIndex: nextIdx }));
+        if (workingDays[nextIdx]?.is_day_off) {
+          setTimeout(() => {
+            const skipTo = findNextWorkingIndex(nextIdx, 1);
+            if (skipTo !== nextIdx) setState(p => ({ ...p, currentDayIndex: skipTo }));
+          }, 400);
+        }
       } else if (delta < 0 && state.currentDayIndex > 0) {
-        // Scroll up = previous working day (skip off-days)
-        const prev = findNextWorkingIndex(state.currentDayIndex, -1);
-        if (prev !== state.currentDayIndex) setState(p => ({ ...p, currentDayIndex: prev }));
+        // Scroll up = previous day, then auto-skip if off
+        const prevIdx = state.currentDayIndex - 1;
+        setState(prev => ({ ...prev, currentDayIndex: prevIdx }));
+        if (workingDays[prevIdx]?.is_day_off) {
+          setTimeout(() => {
+            const skipTo = findNextWorkingIndex(prevIdx, -1);
+            if (skipTo !== prevIdx) setState(p => ({ ...p, currentDayIndex: skipTo }));
+          }, 400);
+        }
       }
     };
 
@@ -199,13 +218,25 @@ export default function ImmersiveInputTypeB({
 
     if (Math.abs(offset) > threshold || Math.abs(velocity) > 500) {
       if (offset > 0 && state.currentDayIndex > 0) {
-        // Swipe down = previous working day (skip off-days)
-        const prev = findNextWorkingIndex(state.currentDayIndex, -1);
-        if (prev !== state.currentDayIndex) setState(p => ({ ...p, currentDayIndex: prev }));
+        // Swipe down = previous day, then auto-skip if off
+        const prevIdx = state.currentDayIndex - 1;
+        setState(prev => ({ ...prev, currentDayIndex: prevIdx }));
+        if (workingDays[prevIdx]?.is_day_off) {
+          setTimeout(() => {
+            const skipTo = findNextWorkingIndex(prevIdx, -1);
+            if (skipTo !== prevIdx) setState(p => ({ ...p, currentDayIndex: skipTo }));
+          }, 400);
+        }
       } else if (offset < 0 && state.currentDayIndex < workingDays.length - 1) {
-        // Swipe up = next working day (skip off-days)
-        const next = findNextWorkingIndex(state.currentDayIndex, 1);
-        if (next !== state.currentDayIndex) setState(p => ({ ...p, currentDayIndex: next }));
+        // Swipe up = next day, then auto-skip if off
+        const nextIdx = state.currentDayIndex + 1;
+        setState(prev => ({ ...prev, currentDayIndex: nextIdx }));
+        if (workingDays[nextIdx]?.is_day_off) {
+          setTimeout(() => {
+            const skipTo = findNextWorkingIndex(nextIdx, 1);
+            if (skipTo !== nextIdx) setState(p => ({ ...p, currentDayIndex: skipTo }));
+          }, 400);
+        }
       }
     }
     
@@ -213,16 +244,30 @@ export default function ImmersiveInputTypeB({
     animate(scrollY, 0, { type: 'spring', stiffness: 300, damping: 30 });
   }, [state.currentDayIndex, state.isTransitioning, workingDays.length, scrollY]);
 
-  // Advance to next day after successful clock-out selection
+  // Advance to next day after successful clock-out selection.
+  // If the next day is an off-day, pause briefly to show it, then skip ahead.
   const advanceToNextDay = useCallback(() => {
-    const next = findNextWorkingIndex(state.currentDayIndex, 1);
-    setState(prev => ({
-      currentDayIndex: Math.min(next, workingDays.length),
-      isTransitioning: false,
-      editingPreviousDay: false,
-      loadError: null,
-    }));
-  }, [workingDays.length]);
+    const currentIdx = currentDayIndexRef.current;
+    const nextIdx = currentIdx + 1;
+    if (nextIdx >= workingDays.length) {
+      // Already at the last day — just clear transition
+      setState(prev => ({ ...prev, isTransitioning: false, editingPreviousDay: false }));
+      return;
+    }
+
+    // Move to the immediate next day first
+    setState(prev => ({ ...prev, currentDayIndex: nextIdx, isTransitioning: false, editingPreviousDay: false }));
+
+    // If that day is off, auto-skip after a brief pause
+    if (workingDays[nextIdx]?.is_day_off) {
+      setTimeout(() => {
+        const skipTo = findNextWorkingIndex(nextIdx, 1);
+        if (skipTo !== nextIdx) {
+          setState(prev => ({ ...prev, currentDayIndex: skipTo }));
+        }
+      }, 400);
+    }
+  }, [workingDays, findNextWorkingIndex]);
 
   const handleChipSelect = useCallback((time: string) => {
     // Debounce rapid taps (Task 15.3)
@@ -402,40 +447,6 @@ export default function ImmersiveInputTypeB({
           className="px-4 py-2 rounded-xl bg-muted text-muted-foreground font-medium text-sm sm:text-base"
         >
           Quay lại
-        </button>
-      </div>
-    );
-  }
-
-  // Completion screen (Task 11.1)
-  if (isCompleted) {
-    return (
-      <div className="glass-card p-6 sm:p-8 text-center space-y-4 sm:space-y-6 max-w-md mx-auto">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', duration: 0.5 }}
-          className="flex justify-center"
-        >
-          <CheckCircle2 className="w-16 h-16 sm:w-20 sm:h-20 text-green-500" />
-        </motion.div>
-        <div className="space-y-2">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground">Hoàn thành!</h2>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Bạn đã nhập xong tất cả {workingDays.length} ngày làm việc
-          </p>
-        </div>
-        <div className="glass-card p-4 sm:p-6 space-y-2">
-          <p className="text-xs sm:text-sm text-muted-foreground">Tổng lương dự kiến</p>
-          <p className="text-2xl sm:text-3xl font-bold text-gradient-gold">
-            {formattedTotal} ₫
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/salary')}
-          className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium shadow-lg text-sm sm:text-base"
-        >
-          Xem chi tiết lương
         </button>
       </div>
     );
