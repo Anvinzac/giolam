@@ -132,11 +132,20 @@ export default function SalaryTableTypeA({
     }
     const parsedHours = parseFloat(editHours);
     updates.total_hours = (!editHours || isNaN(parsedHours) || parsedHours <= 0) ? null : parsedHours;
-    // When extra hours are entered, auto-set the allowance rate to the special day rate
-    if (parsedHours > 0 && !updates.allowance_rate_override) {
-      const specialRate = rates.find(r => r.special_date === e.entry_date);
-      if (specialRate && specialRate.rate_percent > 0) {
-        updates.allowance_rate_override = specialRate.rate_percent;
+    // Adding extra hours means the employee actually worked that day —
+    // flip it back from off-day if it was marked off, and bump the
+    // allowance rate to (special-day rate + 40%) so both the base day
+    // and the extra hours get the worked-on-an-off-day premium. This
+    // is admin-side only; an explicit `editRate` still wins.
+    if (parsedHours > 0) {
+      if (e.is_day_off) {
+        updates.is_day_off = false;
+        updates.off_percent = 0;
+      }
+      if (updates.allowance_rate_override === undefined) {
+        const specialRate =
+          rates.find(r => r.special_date === e.entry_date)?.rate_percent ?? 0;
+        updates.allowance_rate_override = specialRate + 40;
       }
     }
     onEntryUpdate(e.entry_date, e.sort_order, updates);
