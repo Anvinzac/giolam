@@ -397,10 +397,13 @@ export default function SalaryAdmin() {
     if (seedingRef.current === seedKey) return;
 
     if (selectedEmployee.shift_type === 'basic') {
-      // Type A: seed from special day rates, skip off-days (not applicable)
+      // Type A: seed only days with an actual allowance rate. Excluding
+      // both 0% rows and the legacy `public_holiday` day_type covers
+      // any leftover "Quán nghỉ" placeholders.
       if (rates.length === 0) return;
       seedingRef.current = seedKey;
       for (const r of rates) {
+        if (r.rate_percent <= 0) continue;
         if (r.day_type === 'public_holiday') continue;
         addRowAtDate(r.special_date);
       }

@@ -88,17 +88,12 @@ export function generateDefaultSpecialDays(
   let d = new Date(start);
   while (d <= end) {
     const dateStr = toISODateString(d);
+    // Skip global off-days entirely — they carry no allowance and used
+    // to be mirrored as 0% "Quán nghỉ" rate rows that polluted the Type A
+    // view. Off-days are surfaced via the dedicated offDays prop instead.
     if (offDaySet.has(dateStr)) {
-      seen.set(dateStr, {
-        period_id: periodId,
-        special_date: dateStr,
-        day_type: 'public_holiday',
-        description_vi: 'Quán nghỉ',
-        rate_percent: DEFAULT_RATES.public_holiday,
-        sort_order: sortIdx++,
-      });
       d.setDate(d.getDate() + 1);
-      d.setHours(12, 0, 0, 0); // Keep at mid-day
+      d.setHours(12, 0, 0, 0);
       continue;
     }
 

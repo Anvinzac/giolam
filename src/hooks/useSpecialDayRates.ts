@@ -25,35 +25,13 @@ export function useSpecialDayRates(
     if (error) { console.error('Failed to fetch rates:', error); setLoading(false); return; }
 
     if (data && data.length > 0) {
-      const existingRates = data as SpecialDayRate[];
-      const existingDates = new Set(existingRates.map(rate => rate.special_date));
-      const missingOffDays = offDays.filter(date => !existingDates.has(date));
-
-      if (missingOffDays.length > 0) {
-        const holidayRows = missingOffDays.map((date, idx) => ({
-          period_id: periodId,
-          special_date: date,
-          day_type: 'public_holiday' as const,
-          description_vi: 'Quán nghỉ',
-          rate_percent: 0,
-          sort_order: existingRates.length + idx,
-        }));
-
-        const { data: inserted, error: insertErr } = await supabase
-          .from('special_day_rates')
-          .insert(holidayRows)
-          .select();
-
-        if (!insertErr && inserted) {
-          setRates([...existingRates, ...(inserted as SpecialDayRate[])].sort(
-            (a, b) => a.special_date.localeCompare(b.special_date) || a.sort_order - b.sort_order
-          ));
-          setLoading(false);
-          return;
-        }
-      }
-
-      setRates(existingRates);
+      // Off-days from `working_periods.off_days` are deliberately NOT
+      // mirrored into special_day_rates anymore — they have no allowance
+      // attached and only polluted the Type A view (and the rates list)
+      // with empty 0% "Quán nghỉ" rows. Off-days continue to flow
+      // through the dedicated `offDays` prop wherever a renderer needs
+      // them (Type C scheduledOffDays, EmployeeAllowanceEditor).
+      setRates(data as SpecialDayRate[]);
       setLoading(false);
       return;
     }
