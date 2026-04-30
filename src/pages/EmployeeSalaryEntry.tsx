@@ -248,6 +248,7 @@ export default function EmployeeSalaryEntry() {
     if (!profile || employeeVisibleEntries.length === 0) return null;
     switch (profile.shift_type) {
       case 'basic':
+      case 'daily':
         return computeTotalSalaryTypeA(employeeVisibleEntries, allowances, profile.base_salary, profile.hourly_rate, rates);
       case 'overtime':
         return computeTotalSalaryTypeB(
@@ -436,7 +437,7 @@ export default function EmployeeSalaryEntry() {
       </header>
 
       <div className="px-4 space-y-4">
-        {selectedPeriod && profile.shift_type === 'basic' && (
+        {selectedPeriod && (profile.shift_type === 'basic' || profile.shift_type === 'daily') && (
           <SalaryTableTypeA
             entries={employeeVisibleEntries}
             rates={rates}

@@ -132,6 +132,13 @@ export default function SalaryTableTypeA({
     }
     const parsedHours = parseFloat(editHours);
     updates.total_hours = (!editHours || isNaN(parsedHours) || parsedHours <= 0) ? null : parsedHours;
+    // When extra hours are entered, auto-set the allowance rate to the special day rate
+    if (parsedHours > 0 && !updates.allowance_rate_override) {
+      const specialRate = rates.find(r => r.special_date === e.entry_date);
+      if (specialRate && specialRate.rate_percent > 0) {
+        updates.allowance_rate_override = specialRate.rate_percent;
+      }
+    }
     onEntryUpdate(e.entry_date, e.sort_order, updates);
     setEditingRow(null);
   };
@@ -385,14 +392,13 @@ export default function SalaryTableTypeA({
 
                 {/* Rate snapper — admin can adjust allowance rate */}
                 {!isOff && expandedRate === key && !readOnly && mode === 'admin' && (() => {
-                  const RATE_SNAPS = [-50, -25, 0, 10, 15, 20, 25, 30];
+                  const RATE_SNAPS = [0, 10, 15, 20, 25, 30];
                   const currentRate = e.allowance_rate_override ?? (rates.find(r => r.special_date === e.entry_date)?.rate_percent ?? 0);
                   return (
                     <div className="px-3 pb-3 pt-1">
                       <div className="flex items-center gap-1 py-1.5 overflow-x-auto no-scrollbar">
                         {RATE_SNAPS.map(snap => {
                           const isActive = currentRate === snap;
-                          const isNeg = snap < 0;
                           return (
                             <motion.button
                               key={snap}
@@ -405,12 +411,8 @@ export default function SalaryTableTypeA({
                               }}
                               className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
                                 isActive
-                                  ? isNeg
-                                    ? 'border-destructive bg-destructive text-white'
-                                    : 'border-primary bg-primary text-primary-foreground'
-                                  : isNeg
-                                    ? 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20'
-                                    : 'border-border/60 bg-muted/60 text-foreground hover:bg-muted'
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border/60 bg-muted/60 text-foreground hover:bg-muted'
                               }`}
                             >
                               {snap > 0 ? `+${snap}%` : `${snap}%`}

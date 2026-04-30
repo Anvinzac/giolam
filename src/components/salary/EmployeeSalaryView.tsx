@@ -141,6 +141,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     if (!profile || entries.length === 0) return record?.salary_breakdown as SalaryBreakdown | null;
     switch (profile.shift_type) {
       case 'basic':
+      case 'daily':
         return computeTotalSalaryTypeA(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
       case 'overtime':
         return computeTotalSalaryTypeB(entries, allowances, profile.base_salary, profile.hourly_rate, rates, globalClockIn);
@@ -191,7 +192,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
       </div>
 
       {/* Full salary table in preview mode */}
-      {profile.shift_type === 'basic' && (
+      {(profile.shift_type === 'basic' || profile.shift_type === 'daily') && (
         <SalaryTableTypeA
           entries={entries}
           rates={rates}

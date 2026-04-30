@@ -369,6 +369,7 @@ export default function SalaryAdmin() {
     if (!selectedEmployee || entries.length === 0) return null;
     switch (selectedEmployee.shift_type) {
       case 'basic':
+      case 'daily':
         return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates);
       case 'overtime':
         return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn);
@@ -403,8 +404,8 @@ export default function SalaryAdmin() {
         if (r.day_type === 'public_holiday') continue;
         addRowAtDate(r.special_date);
       }
-    } else if (selectedEmployee.shift_type === 'overtime') {
-      // Type B: seed all days in period
+    } else if (selectedEmployee.shift_type === 'overtime' || selectedEmployee.shift_type === 'daily') {
+      // Type B/E: seed all days in period
       seedingRef.current = seedKey;
       const allDates = generateDateRange(selectedPeriod.start_date, selectedPeriod.end_date);
       for (const dateStr of allDates) {
@@ -740,6 +741,8 @@ export default function SalaryAdmin() {
       case 'basic': return 'bg-amber-500/20 text-amber-400';
       case 'overtime': return 'bg-cyan-500/20 text-cyan-400';
       case 'notice_only': return 'bg-purple-500/20 text-purple-400';
+      case 'daily': return 'bg-emerald-500/20 text-emerald-400';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -961,7 +964,7 @@ export default function SalaryAdmin() {
         {/* Selected employee salary table */}
         {selectedEmployee && selectedPeriod && (
           <>
-            {selectedEmployee.shift_type === 'basic' && (
+            {(selectedEmployee.shift_type === 'basic' || selectedEmployee.shift_type === 'daily') && (
               <SalaryTableTypeA
                 entries={entries}
                 rates={rates}
@@ -976,7 +979,12 @@ export default function SalaryAdmin() {
                 onAddAllowance={addAllowance}
                 onHourlyRateChange={handleHourlyRateChange}
                 periodStart={selectedPeriod.start_date}
-                periodEnd={selectedPeriod.end_date}
+                periodEnd={(() => {
+                  // Allow adding rows up to 5 days beyond period end
+                  const d = new Date(selectedPeriod.end_date + 'T00:00:00');
+                  d.setDate(d.getDate() + 5);
+                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                })()}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
                 editMode={isPreviewMode ? 'preview' : 'admin'}
@@ -1109,7 +1117,7 @@ export default function SalaryAdmin() {
                 >
                   <h3 className="text-lg font-bold text-foreground mb-4">Chọn loại nhân viên</h3>
                   <div className="space-y-2">
-                    {(['basic', 'overtime', 'notice_only', 'lunar_rate'] as EmployeeShiftType[]).map(type => (
+                    {(['basic', 'overtime', 'notice_only', 'lunar_rate', 'daily'] as EmployeeShiftType[]).map(type => (
                       <button
                         key={type}
                         onClick={() => handleShiftTypeChange(type)}

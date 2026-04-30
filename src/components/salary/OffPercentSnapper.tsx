@@ -5,7 +5,7 @@ interface OffPercentSnapperProps {
   onChange: (value: number) => void;
 }
 
-const SNAPS = [0, 25, 50, 75];
+const SNAPS = [25, 50, 75, 100];
 
 export default function OffPercentSnapper({ value, onChange }: OffPercentSnapperProps) {
   const activeIdx = SNAPS.indexOf(value);
