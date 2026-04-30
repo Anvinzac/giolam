@@ -30,6 +30,8 @@ export interface UseSalaryEntriesOptions {
   enableRealtime?: boolean;
   /** For Type A: auto-seed working entries for each special day in the rates table */
   seedAllDays?: boolean;
+  /** Whether employee edits should wait for admin review or be auto-approved */
+  employeeReviewMode?: 'pending' | 'auto';
 }
 
 export function useSalaryEntries(
@@ -37,7 +39,12 @@ export function useSalaryEntries(
   periodId: string | null,
   options: UseSalaryEntriesOptions = {}
 ) {
-  const { editorMode = 'admin', enableRealtime = false, seedAllDays = false } = options;
+  const {
+    editorMode = 'admin',
+    enableRealtime = false,
+    seedAllDays = false,
+    employeeReviewMode = 'pending',
+  } = options;
   const [entries, setEntries] = useState<SalaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,11 +79,13 @@ export function useSalaryEntries(
         effectiveRow?.is_day_off === true &&
         !effectiveRow?.clock_in &&
         !effectiveRow?.clock_out;
+      const shouldAutoApprove =
+        employeeReviewMode === 'auto' || isOffDayNoTimes;
       return {
         submitted_by: uid,
-        // Auto-approve pure day-off rows — admins don't need to review
-        // an employee toggling "off" on a day with no claimed hours.
-        is_admin_reviewed: isOffDayNoTimes ? true : false,
+        // Type B employee edits are auto-approved, and pure day-off rows
+        // stay auto-approved across all employee modes.
+        is_admin_reviewed: shouldAutoApprove,
         last_employee_edit_at: new Date().toISOString(),
       };
     }
@@ -84,7 +93,7 @@ export function useSalaryEntries(
     return {
       is_admin_reviewed: true,
     };
-  }, [editorMode]);
+  }, [editorMode, employeeReviewMode]);
 
   useEffect(() => {
     if (!userId || !periodId) { setLoading(false); return; }

@@ -307,12 +307,14 @@ export default function SalaryAdmin() {
       .eq('period_id', selectedPeriodId)
       .eq('is_admin_reviewed', false);
     if (error) { console.error('Pending count fetch failed:', error); return; }
+    const employeeTypeById = new Map(employees.map(emp => [emp.user_id, emp.shift_type]));
     const map = new Map<string, number>();
     for (const row of (data || []) as { user_id: string }[]) {
+      if (employeeTypeById.get(row.user_id) === 'overtime') continue;
       map.set(row.user_id, (map.get(row.user_id) || 0) + 1);
     }
     setPendingCounts(map);
-  }, [selectedPeriodId]);
+  }, [selectedPeriodId, employees]);
 
   useEffect(() => { refreshPendingCounts(); }, [refreshPendingCounts]);
 

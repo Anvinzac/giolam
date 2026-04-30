@@ -152,6 +152,65 @@ export function getRateForDate(
   return found?.rate_percent ?? 0;
 }
 
+export function isTypeASupplementalEntry(entry: Pick<SalaryEntry, 'sort_order'>): boolean {
+  return entry.sort_order > 0;
+}
+
+export interface TypeARowAmounts {
+  rate: number;
+  allowance: number;
+  extraWage: number;
+  deduction: number;
+  total: number;
+  displayAmount: number;
+}
+
+export function computeTypeARowAmounts(
+  entry: SalaryEntry,
+  dailyBase: number,
+  hourlyRate: number,
+  rates: SpecialDayRate[]
+): TypeARowAmounts {
+  const rate = getRateForDate(entry.entry_date, rates, entry.allowance_rate_override);
+  const extraWage = entry.total_hours ? roundToThousand(entry.total_hours * hourlyRate) : 0;
+  const extraAllowance = extraWage > 0 ? roundToThousand(extraWage * rate / 100) : 0;
+  const baseAllowance = roundToThousand(dailyBase * rate / 100);
+  const cappedPercent = Math.min(entry.off_percent, 100);
+  const deduction = entry.is_day_off ? roundToThousand(dailyBase * cappedPercent / 100) : 0;
+
+  if (entry.is_day_off) {
+    return {
+      rate,
+      allowance: 0,
+      extraWage,
+      deduction,
+      total: -deduction,
+      displayAmount: -deduction,
+    };
+  }
+
+  if (isTypeASupplementalEntry(entry)) {
+    const total = extraWage + extraAllowance;
+    return {
+      rate,
+      allowance: extraAllowance,
+      extraWage,
+      deduction: 0,
+      total,
+      displayAmount: total,
+    };
+  }
+
+  return {
+    rate,
+    allowance: baseAllowance,
+    extraWage,
+    deduction: 0,
+    total: dailyBase + baseAllowance + extraWage,
+    displayAmount: baseAllowance,
+  };
+}
+
 export function computeTotalSalaryTypeA(
   entries: SalaryEntry[],
   allowances: EmployeeAllowance[],
@@ -167,21 +226,14 @@ export function computeTotalSalaryTypeA(
   let offDays = 0;
 
   for (const e of entries) {
-    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const allowanceAmt = roundToThousand((dailyBase * rate) / 100);
-    const extraWage = e.total_hours ? roundToThousand(e.total_hours * hourlyRate) : 0;
-    let deduction = 0;
-    if (e.is_day_off) {
-      if (e.off_percent > 0) {
-        deduction = calcDayOffDeduction(dailyBase, e.off_percent);
-      }
-      offDays++;
-    }
-
-    totalAllowancesFromRates += allowanceAmt;
+    const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
+    totalAllowancesFromRates += allowance;
     totalExtraWages += extraWage;
     if (e.is_day_off && e.off_percent > 0) {
       totalDeductions += deduction;
+    }
+    if (e.is_day_off && !isTypeASupplementalEntry(e)) {
+      offDays++;
     }
   }
 

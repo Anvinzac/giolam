@@ -97,8 +97,17 @@ export default function SalaryTableTypeB({
 }: SalaryTableTypeBProps) {
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
   const readOnly = mode === 'preview';
-  const canDeleteRow = (e: SalaryEntry) =>
-    mode === 'admin' || (mode === 'employee' && e.is_admin_reviewed === false);
+  const canDeleteRow = (e: SalaryEntry) => {
+    if (mode === 'admin') return true;
+    if (mode !== 'employee') return false;
+
+    const isOwnDuplicateRow =
+      !!currentUserId &&
+      e.sort_order > 0 &&
+      e.submitted_by === currentUserId;
+
+    return e.is_admin_reviewed === false || isOwnDuplicateRow;
+  };
   const tableGridClass = 'sm:grid-cols-[70px_minmax(120px,1fr)_50px_40px_55px_60px_75px]';
   const tableGapClass = 'sm:gap-1.5 sm:px-1';
   const [currentPage, setCurrentPage] = useState(0);
@@ -493,9 +502,8 @@ export default function SalaryTableTypeB({
           const rateDesc = matchedRate?.description_vi;
           const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
           const chipsActive = !readOnly && chipRowKey === cellKey && !e.is_day_off;
-          const isPending = mode === 'admin' && e.is_admin_reviewed === false;
-          const showAccept = isPending && !!e.id && !!onAcceptEntry &&
-            (!currentUserId || e.submitted_by !== currentUserId);
+          const isPending = false;
+          const showAccept = false;
           const canDelete = canDeleteRow(e);
 
           const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
@@ -852,7 +860,7 @@ export default function SalaryTableTypeB({
       {mode === 'employee' ? (
         <div className="glass-card p-4 sm:p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Tổng lương sẽ được hiển thị sau khi quản lý xác nhận
+            Tổng lương sẽ được hiển thị sau khi quản lý công bố bảng lương
           </p>
         </div>
       ) : (

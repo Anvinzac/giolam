@@ -36,7 +36,6 @@ export default function SalaryBreakdownPopup({
   }
   for (const a of visibleAllowances)
     if (a.amount !== 0) parts.push(toK(a.amount));
-  if (breakdown.total_deductions > 0) parts.push(-toK(breakdown.total_deductions));
 
   const expression = parts
     .map((v, i) => i === 0 ? `${v}` : v < 0 ? `${v}` : `+${v}`)

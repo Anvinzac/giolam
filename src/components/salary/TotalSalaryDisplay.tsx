@@ -57,10 +57,21 @@ export default function TotalSalaryDisplay({
       onClick={!editing ? onTap : undefined}
       className="w-full glass-card p-5 text-center cursor-pointer space-y-2"
     >
-      {/* Total salary */}
+      {/* Total salary
+       *
+       * `key={total}` forces React to remount the <p> when the amount
+       * changes. WebKit/Blink leaves ghost strokes from the previous
+       * glyphs when `background-clip: text` + `-webkit-text-fill-color:
+       * transparent` text is updated in place — the gradient repaints
+       * but the underlying glyph mask doesn't clear cleanly, producing
+       * the broken-digit artifacts seen on Tổng lương after a recompute.
+       * A fresh mount sidesteps the buggy in-place repaint path. */}
       <div>
         <p className="text-xs text-muted-foreground mb-1">Tổng lương</p>
-        <p className={`font-display font-bold text-2xl ${hasDeposit ? 'text-foreground' : 'text-gradient-gold'}`}>
+        <p
+          key={total}
+          className={`font-display font-bold text-2xl ${hasDeposit ? 'text-foreground' : 'text-gradient-gold'}`}
+        >
           {formatVND(total)}
         </p>
       </div>
@@ -121,7 +132,7 @@ export default function TotalSalaryDisplay({
             className="overflow-hidden"
           >
             <p className="text-[10px] text-muted-foreground mb-0.5">Sẽ chuyển khoản</p>
-            <p className="font-display font-extrabold text-2xl text-gradient-gold">
+            <p key={transferAmount} className="font-display font-extrabold text-2xl text-gradient-gold">
               {formatVND(transferAmount)}
             </p>
           </motion.div>

@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, getRateForDate, formatDateViet, VIET_DAYS, formatVND } from '@/lib/salaryCalculations';
+import { roundToThousand, calcDailyBase, computeTypeARowAmounts, formatDateViet, VIET_DAYS, formatVND, isTypeASupplementalEntry } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
 import OffPercentSnapper from './OffPercentSnapper';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -64,15 +64,7 @@ export default function SalaryTableTypeA({
     );
   }, [entries]);
 
-  const computeRow = (e: SalaryEntry) => {
-    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const allowance = roundToThousand(dailyBase * rate / 100);
-    const extraWage = e.total_hours ? roundToThousand(e.total_hours * hourlyRate) : 0;
-    const cappedPercent = Math.min(e.off_percent, 100);
-    const deduction = e.is_day_off ? roundToThousand(dailyBase * cappedPercent / 100) : 0;
-    const total = e.is_day_off ? -(deduction) : dailyBase + allowance + extraWage;
-    return { rate, allowance, extraWage, deduction, total };
-  };
+  const computeRow = (e: SalaryEntry) => computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
 
   const totalFromEntries = useMemo(() => {
     return visibleEntries.reduce((sum, e) => {
@@ -101,6 +93,14 @@ export default function SalaryTableTypeA({
   }, [visibleEntries, dailyBase, rates, baseSalary]);
 
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
+  const formatExtraHoursNote = (hours: number) => {
+    const normalized = Number.isInteger(hours) ? `${hours}` : `${hours}`.replace(/\.0$/, '');
+    return `Tăng ca ${normalized} giờ`;
+  };
+  const isAutoExtraHoursNote = (note: string | null | undefined) => {
+    if (!note) return false;
+    return /^Tăng ca\s+\d+(?:\.\d+)?\s+giờ$/.test(note.trim());
+  };
 
   const formatK = (n: number) => Math.round(n / 1000).toString();
   const formulaAllowance = (rate: number): string | null => {
@@ -110,7 +110,10 @@ export default function SalaryTableTypeA({
 
   const guiXeSummary = useMemo(() => {
     const fromBreakdown = breakdown?.allowances?.find(a => a.key === 'gui_xe');
-    const offDaysCount = visibleEntries.reduce((sum, e) => sum + (e.is_day_off ? 1 : 0), 0);
+    const offDaysCount = visibleEntries.reduce(
+      (sum, e) => sum + (e.is_day_off && !isTypeASupplementalEntry(e) ? 1 : 0),
+      0
+    );
     const computedAmount = (28 - offDaysCount) * 10000;
     return {
       amount: fromBreakdown?.amount ?? computedAmount,
@@ -126,27 +129,26 @@ export default function SalaryTableTypeA({
   };
 
   const saveEditRow = (e: SalaryEntry) => {
-    const updates: Partial<SalaryEntry> = { note: editNote || null };
+    const nextNote = editNote.trim();
+    const updates: Partial<SalaryEntry> = { note: nextNote || null };
     if (editRate !== '') {
       updates.allowance_rate_override = parseFloat(editRate);
     }
     const parsedHours = parseFloat(editHours);
     updates.total_hours = (!editHours || isNaN(parsedHours) || parsedHours <= 0) ? null : parsedHours;
-    // Adding extra hours means the employee actually worked that day —
-    // flip it back from off-day if it was marked off, and bump the
-    // allowance rate to (special-day rate + 40%) so both the base day
-    // and the extra hours get the worked-on-an-off-day premium. This
-    // is admin-side only; an explicit `editRate` still wins.
+    // Extra-work rows should behave like supplemental earnings, not a
+    // second full workday. Hours simply make the row active again if it
+    // had been marked off; the day's existing allowance rate still applies.
     if (parsedHours > 0) {
       if (e.is_day_off) {
         updates.is_day_off = false;
         updates.off_percent = 0;
       }
-      if (updates.allowance_rate_override === undefined) {
-        const specialRate =
-          rates.find(r => r.special_date === e.entry_date)?.rate_percent ?? 0;
-        updates.allowance_rate_override = specialRate + 40;
+      if (!nextNote || isAutoExtraHoursNote(e.note)) {
+        updates.note = formatExtraHoursNote(parsedHours);
       }
+    } else if (!nextNote && isAutoExtraHoursNote(e.note)) {
+      updates.note = null;
     }
     onEntryUpdate(e.entry_date, e.sort_order, updates);
     setEditingRow(null);
@@ -229,10 +231,11 @@ export default function SalaryTableTypeA({
 
         <div className="divide-y divide-border/30">
           {visibleEntries.map((e, idx) => {
-            const { rate, allowance, extraWage, deduction, total } = computeRow(e);
+            const { rate, allowance, extraWage, deduction, total, displayAmount } = computeRow(e);
             const key = rowKey(e);
             const isEditing = editingRow === key && !readOnly;
             const isOff = e.is_day_off;
+            const isSupplemental = isTypeASupplementalEntry(e);
             const matchedRate = rates.find(r => r.special_date === e.entry_date);
             const rateDesc = matchedRate?.description_vi;
             // Show delete for manually added rows: no matching rate OR a duplicate sort_order
@@ -248,8 +251,19 @@ export default function SalaryTableTypeA({
                 <div
                   className={`flex items-center gap-2 pl-3 pr-3 py-3.5 border-b border-border/20 ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
+                  } ${isSupplemental && !isOff ? 'relative overflow-hidden border-l-2 border-l-primary/45 shadow-[inset_0_1px_0_hsl(var(--primary)/0.10)]' : ''} ${
+                    isSupplemental && isOff ? 'border-l-2 border-l-primary/35' : ''
                   } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff && !isPending ? 'bg-muted/20' : ''}`}
                 >
+                  {isSupplemental && !isOff && (
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-0 left-0 w-28"
+                      style={{
+                        background: 'linear-gradient(90deg, hsl(var(--primary) / 0.26) 0%, hsl(var(--primary) / 0.12) 42%, transparent 100%)',
+                      }}
+                    />
+                  )}
                   {isPending && (
                     <Clock size={12} className="text-amber-400 shrink-0" aria-label="Chờ duyệt" />
                   )}
@@ -283,7 +297,7 @@ export default function SalaryTableTypeA({
                       onClick={() => !readOnly && startEditRow(e)}
                       className={`flex-1 text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!readOnly ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
-                      {isOff ? `Nghỉ -${e.off_percent}%` : (rateDesc || '—')}
+                      {isOff ? `Nghỉ -${e.off_percent}%` : (e.note || rateDesc || '—')}
                     </button>
                   )}
 
@@ -312,10 +326,17 @@ export default function SalaryTableTypeA({
                   </span>
 
                   {/* Allowance */}
-                  <FormulaTooltip formula={formulaAllowance(rate)} className={`w-[50px] text-right text-[14px] font-semibold ${
+                  <FormulaTooltip
+                    formula={isTypeASupplementalEntry(e)
+                      ? (extraWage > 0
+                          ? `${formatK(extraWage)} + ${formatK(allowance)}`
+                          : null)
+                      : formulaAllowance(rate)}
+                    className={`w-[50px] text-right text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
-                  }`}>
-                    {isOff ? formatCompact(-deduction) : (allowance > 0 ? formatCompact(allowance) : '—')}
+                  }`}
+                  >
+                    {isOff ? formatCompact(-deduction) : (displayAmount > 0 ? formatCompact(displayAmount) : '—')}
                   </FormulaTooltip>
                 </div>
 

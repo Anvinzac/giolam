@@ -93,6 +93,7 @@ export default function EmployeeSalaryEntry() {
     editorMode: 'employee',
     enableRealtime: true,
     seedAllDays: profile?.shift_type === 'basic',
+    employeeReviewMode: profile?.shift_type === 'overtime' ? 'auto' : 'pending',
   });
   
   // Calculate working days count for gui_xe
