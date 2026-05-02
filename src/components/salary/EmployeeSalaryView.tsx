@@ -18,6 +18,7 @@ import {
   computeTotalSalaryTypeB,
   computeTotalSalaryTypeC,
   computeTotalSalaryTypeD,
+  computeTotalSalaryTypeE,
   formatDateViet,
 } from '@/lib/salaryCalculations';
 
@@ -141,8 +142,9 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     if (!profile || entries.length === 0) return record?.salary_breakdown as SalaryBreakdown | null;
     switch (profile.shift_type) {
       case 'basic':
-      case 'daily':
         return computeTotalSalaryTypeA(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
+      case 'daily':
+        return computeTotalSalaryTypeE(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
       case 'overtime':
         return computeTotalSalaryTypeB(entries, allowances, profile.base_salary, profile.hourly_rate, rates, globalClockIn);
       case 'notice_only':
@@ -207,6 +209,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           periodEnd={period.end_date}
           breakdown={breakdown}
           editMode="preview"
+          shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
         />
       )}
 

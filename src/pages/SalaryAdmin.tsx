@@ -15,7 +15,7 @@ import { useSpecialDayRates } from '@/hooks/useSpecialDayRates';
 import { useEmployeeAllowances } from '@/hooks/useEmployeeAllowances';
 import { useSalaryEntries } from '@/hooks/useSalaryEntries';
 import { useSalaryRecord } from '@/hooks/useSalaryRecord';
-import { calcDailyBase, calcHoursFromTimes, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, computeTotalSalaryTypeD, formatVND, formatDateViet } from '@/lib/salaryCalculations';
+import { calcDailyBase, calcHoursFromTimes, computeTotalSalaryTypeA, computeTotalSalaryTypeB, computeTotalSalaryTypeC, computeTotalSalaryTypeD, computeTotalSalaryTypeE, formatVND, formatDateViet } from '@/lib/salaryCalculations';
 import { generateDateRange } from '@/lib/salaryPaging';
 import { EmployeeShiftType, EMPLOYEE_TYPE_LABELS, SalaryBreakdown } from '@/types/salary';
 import AppBootState from '@/components/AppBootState';
@@ -371,8 +371,9 @@ export default function SalaryAdmin() {
     if (!selectedEmployee || entries.length === 0) return null;
     switch (selectedEmployee.shift_type) {
       case 'basic':
-      case 'daily':
         return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates);
+      case 'daily':
+        return computeTotalSalaryTypeE(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates);
       case 'overtime':
         return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn);
       case 'notice_only':
@@ -997,6 +998,7 @@ export default function SalaryAdmin() {
                 currentUserId={adminUid}
                 deposit={deposit}
                 onDepositChange={setDeposit}
+                shiftType={selectedEmployee.shift_type === 'daily' ? 'daily' : 'basic'}
               />
             )}
 

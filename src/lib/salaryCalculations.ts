@@ -260,6 +260,82 @@ export function computeTotalSalaryTypeA(
   return { base_salary: baseSalary, daily_base: dailyBase, total_daily_wages: totalDailyWages, total_allowances_from_rates: totalAllowancesFromRates, total_deductions: totalDeductions, allowances: allowanceItems, total };
 }
 
+/**
+ * Type E (daily) — for employees who finished their Type A monthly stint
+ * and continue on day-by-day pay. Unlike Type A, the flat baseSalary is
+ * NOT added: every non-off, non-supplemental day instead contributes
+ * `dailyBase` to the total. This matches the contract of "every working
+ * day past the original coverage range earns the daily wage on top".
+ *
+ * Formula:
+ *   total = Σ (dailyBase + allowance + extraWage) for each primary
+ *           working day
+ *         - Σ deduction for off-days
+ *         + enabled allowances (gui_xe + ad-hoc)
+ *
+ * `baseSalary` is still passed in solely so we can derive the daily
+ * rate via `calcDailyBase(baseSalary)` — it is never added directly.
+ */
+export function computeTotalSalaryTypeE(
+  entries: SalaryEntry[],
+  allowances: EmployeeAllowance[],
+  baseSalary: number,
+  hourlyRate: number,
+  rates: SpecialDayRate[]
+): SalaryBreakdown {
+  const dailyBase = calcDailyBase(baseSalary);
+  let totalDailyWages = 0;
+  let totalAllowancesFromRates = 0;
+  let totalDeductions = 0;
+  let totalExtraWages = 0;
+  let workingDays = 0;
+  let offDays = 0;
+
+  for (const e of entries) {
+    const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
+    totalAllowancesFromRates += allowance;
+    totalExtraWages += extraWage;
+    if (e.is_day_off) {
+      if (e.off_percent > 0) totalDeductions += deduction;
+      if (!isTypeASupplementalEntry(e)) offDays++;
+    } else if (!isTypeASupplementalEntry(e)) {
+      // Primary (sort_order=0) working day → adds the daily wage.
+      // Supplemental rows are pure overtime; they don't double-count
+      // the dailyBase (computeTypeARowAmounts already excludes it).
+      workingDays++;
+    }
+  }
+
+  totalDailyWages = workingDays * dailyBase + totalAllowancesFromRates + totalExtraWages - totalDeductions;
+
+  // gui_xe still tracks attendance: workingDays * 10000 (no monthly cap).
+  const guiXeAmount = workingDays * 10000;
+
+  const allowanceItems = allowances.map(a => ({
+    key: a.allowance_key,
+    label: a.label,
+    amount: a.allowance_key === 'gui_xe' ? guiXeAmount : a.amount,
+    enabled: a.is_enabled,
+  }));
+
+  const enabledAllowancesSum = allowances.reduce((sum, a) => {
+    if (a.allowance_key === 'gui_xe') return sum + (a.is_enabled ? guiXeAmount : 0);
+    return a.is_enabled ? sum + a.amount : sum;
+  }, 0);
+
+  const total = totalDailyWages + enabledAllowancesSum;
+
+  return {
+    base_salary: 0,                                  // Type E has no flat monthly base
+    daily_base: dailyBase,
+    total_daily_wages: totalDailyWages,
+    total_allowances_from_rates: totalAllowancesFromRates,
+    total_deductions: totalDeductions,
+    allowances: allowanceItems,
+    total,
+  };
+}
+
 export function computeTotalSalaryTypeB(
   entries: SalaryEntry[],
   allowances: EmployeeAllowance[],

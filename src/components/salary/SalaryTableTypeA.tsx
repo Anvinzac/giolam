@@ -33,6 +33,14 @@ interface SalaryTableTypeAProps {
   currentUserId?: string | null;
   deposit?: number;
   onDepositChange?: (amount: number) => void;
+  /**
+   * 'basic' (default) renders the canonical Type A flow — flat monthly
+   * baseSalary plus per-day allowances. 'daily' switches the breakdown
+   * popup to count each working day's dailyBase explicitly, matching
+   * computeTotalSalaryTypeE's contract for Type E (post-Type-A
+   * day-by-day pay).
+   */
+  shiftType?: 'basic' | 'daily';
 }
 
 export default function SalaryTableTypeA({
@@ -42,7 +50,9 @@ export default function SalaryTableTypeA({
   periodStart, periodEnd, breakdown, isPreview = false,
   editMode, onAcceptEntry, currentUserId,
   deposit = 0, onDepositChange,
+  shiftType = 'basic',
 }: SalaryTableTypeAProps) {
+  const isDailyMode = shiftType === 'daily';
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
   const readOnly = mode === 'preview';
   const [editingRow, setEditingRow] = useState<string | null>(null);
@@ -74,12 +84,22 @@ export default function SalaryTableTypeA({
   }, [visibleEntries, dailyBase, rates]);
 
   const dailyTotals = useMemo(() => {
-    // Type A formula: base salary + each day's rate allowance - deductions
-    const parts: number[] = [baseSalary];
+    // Type A: monthly base + per-day allowances - deductions.
+    // Type E (daily): no flat monthly base — every primary working day
+    // contributes (dailyBase + allowance) instead. Off-days subtract
+    // their deductions in both modes.
+    const parts: number[] = isDailyMode ? [] : [baseSalary];
     for (const e of visibleEntries) {
       const { allowance, deduction } = computeRow(e);
-      if (e.is_day_off && deduction > 0) {
-        parts.push(-deduction);
+      const isPrimary = e.sort_order === 0;
+      if (e.is_day_off) {
+        if (deduction > 0) parts.push(-deduction);
+        continue;
+      }
+      if (isDailyMode && isPrimary) {
+        // Primary working day in Type E → dailyBase always, plus
+        // allowance folded in when present.
+        parts.push(dailyBase + (allowance > 0 ? allowance : 0));
       } else if (allowance > 0) {
         parts.push(allowance);
       }
@@ -90,7 +110,7 @@ export default function SalaryTableTypeA({
       if (extraWage > 0) parts.push(extraWage);
     }
     return parts;
-  }, [visibleEntries, dailyBase, rates, baseSalary]);
+  }, [visibleEntries, dailyBase, rates, baseSalary, isDailyMode]);
 
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
   const formatExtraHoursNote = (hours: number) => {
