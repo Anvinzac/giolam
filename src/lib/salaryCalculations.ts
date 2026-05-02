@@ -362,27 +362,36 @@ export function computeTotalSalaryTypeB(
   baseSalary: number,
   hourlyRate: number,
   rates: SpecialDayRate[],
-  globalClockIn: string
+  globalClockIn: string,
+  globalOffDays: string[] = []
 ): SalaryBreakdown {
   const dailyBase = calcDailyBase(baseSalary);
-  let totalDailyWages = 0;
+  let totalExtraWages = 0;
   let totalAllowancesFromRates = 0;
+  let totalDeductions = 0;
   let offDays = 0;
+  const globalOffDaySet = new Set(globalOffDays);
 
   for (const e of entries) {
+    if (e.is_day_off) {
+      offDays++;
+      // Personal off-day (not a global holiday): deduct dailyBase
+      if (!globalOffDaySet.has(e.entry_date)) {
+        totalDeductions += dailyBase;
+      }
+      continue;
+    }
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
     const allowance = roundToThousand((dailyBase + extraWage) * rate / 100);
-    const rowTotal = e.is_day_off ? -dailyBase : dailyBase + allowance + extraWage;
 
-    totalDailyWages += rowTotal;
+    totalExtraWages += extraWage;
     totalAllowancesFromRates += allowance;
-
-    if (e.is_day_off) {
-      offDays++;
-    }
   }
+
+  // Type B total: baseSalary + extra overtime wages + special day allowances - personal off-day deductions
+  const totalDailyWages = baseSalary + totalExtraWages + totalAllowancesFromRates - totalDeductions;
 
   // Calculate gui_xe automatically: (28 - off_days) * 10000
   const guiXeAmount = (28 - offDays) * 10000;
@@ -401,7 +410,7 @@ export function computeTotalSalaryTypeB(
 
   const total = totalDailyWages + enabledAllowancesSum;
 
-  return { base_salary: baseSalary, daily_base: dailyBase, total_daily_wages: totalDailyWages, total_allowances_from_rates: totalAllowancesFromRates, total_deductions: 0, allowances: allowanceItems, total };
+  return { base_salary: baseSalary, daily_base: dailyBase, total_daily_wages: totalDailyWages, total_allowances_from_rates: totalAllowancesFromRates, total_deductions: totalDeductions, allowances: allowanceItems, total };
 }
 
 export function computeTotalSalaryTypeC(

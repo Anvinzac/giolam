@@ -322,7 +322,7 @@ export function useSalaryEntries(
     if (!userId || !periodId) return;
     const existing = entries.filter(e => e.entry_date === entryDate);
     const maxSort = existing.reduce((max, e) => Math.max(max, e.sort_order), 0);
-    const newEntry = buildEmptyEntry(userId, periodId, entryDate, maxSort + 1, false); // inactive by default
+    const newEntry = buildEmptyEntry(userId, periodId, entryDate, maxSort + 1, true); // active by default for extra rows
 
     const { data, error } = await insertWithAudit(newEntry);
     if (error) { console.error('Failed to add duplicate row:', error); return; }

@@ -35,6 +35,7 @@ interface SalaryTableTypeBProps {
   currentUserId?: string | null;
   deposit?: number;
   onDepositChange?: (amount: number) => void;
+  offDays?: string[];
 }
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
@@ -94,9 +95,11 @@ export default function SalaryTableTypeB({
   isPreview = false,
   editMode, onAcceptEntry, currentUserId,
   deposit = 0, onDepositChange,
+  offDays = [],
 }: SalaryTableTypeBProps) {
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
   const readOnly = mode === 'preview';
+  const globalOffDaySet = useMemo(() => new Set(offDays), [offDays]);
   const canDeleteRow = (e: SalaryEntry) => {
     if (mode === 'admin') return true;
     if (mode !== 'employee') return false;
@@ -114,6 +117,11 @@ export default function SalaryTableTypeB({
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [cellValue, setCellValue] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
+
+  // Extra hours input state — inline input on the plus button
+  const [extraHoursKey, setExtraHoursKey] = useState<string | null>(null);
+  const [extraHoursValue, setExtraHoursValue] = useState('');
+  const extraHoursRef = useRef<HTMLInputElement>(null);
 
   // Chip state for sequential clock-out entry
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
@@ -173,18 +181,35 @@ export default function SalaryTableTypeB({
   // temporal-dead-zone ReferenceError ("Cannot access X before initialization")
   // and the whole page blanks. Same hazard already bit Type C; mirror that fix.
   const computeRow = (e: SalaryEntry) => {
+    if (e.is_day_off) {
+      // Global off-day: no deduction. Personal off-day: deduct dailyBase.
+      const deduction = globalOffDaySet.has(e.entry_date) ? 0 : dailyBase;
+      return { rate: 0, allowance: 0, hours: 0, extraWage: 0, total: -deduction };
+    }
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
     const allowance = roundToThousand((dailyBase + extraWage) * rate / 100);
-    const total = e.is_day_off ? -dailyBase : dailyBase + allowance + extraWage;
+    const total = extraWage + allowance;
     return { rate, allowance, hours, extraWage, total };
   };
 
-  const dailyTotals = useMemo(() =>
-    entries.map(e => computeRow(e).total),
-    [entries, dailyBase, rates, hourlyRate, globalClockIn]
-  );
+  const dailyTotals = useMemo(() => {
+    // Type B formula: baseSalary + one number per working day (extraWage+allowance combined)
+    // minus one number per personal off-day deduction
+    const parts: number[] = [baseSalary];
+    for (const e of entries) {
+      if (e.is_day_off) {
+        const { total } = computeRow(e);
+        if (total !== 0) parts.push(total); // negative deduction for personal off-day
+        continue;
+      }
+      const { extraWage, allowance } = computeRow(e);
+      const dayExtra = extraWage + allowance;
+      if (dayExtra > 0) parts.push(dayExtra);
+    }
+    return parts;
+  }, [entries, dailyBase, rates, hourlyRate, globalClockIn, baseSalary, globalOffDaySet]);
 
   const formatK = (n: number) => Math.round(n / 1000).toString();
   const formulaHours = (e: SalaryEntry): string | null => {
@@ -557,7 +582,12 @@ export default function SalaryTableTypeB({
                                 </button>
                               ) : null
                             ) : (
-                              <button onClick={() => onAddDuplicateRow(e.entry_date)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
+                              <button onClick={async () => {
+                                const existing = entries.filter(x => x.entry_date === e.entry_date);
+                                const nextSort = existing.reduce((max, x) => Math.max(max, x.sort_order), 0) + 1;
+                                await onAddDuplicateRow(e.entry_date);
+                                showRowChips(`${e.entry_date}-${nextSort}`);
+                              }} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
                                 <Plus size={10} />
                               </button>
                             )
@@ -647,7 +677,12 @@ export default function SalaryTableTypeB({
                           </button>
                         ) : null
                       ) : (
-                        <button onClick={() => onAddDuplicateRow(e.entry_date)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
+                        <button onClick={async () => {
+                          const existing = entries.filter(x => x.entry_date === e.entry_date);
+                          const nextSort = existing.reduce((max, x) => Math.max(max, x.sort_order), 0) + 1;
+                          await onAddDuplicateRow(e.entry_date);
+                          showRowChips(`${e.entry_date}-${nextSort}`);
+                        }} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
                           <Plus size={10} />
                         </button>
                       )

@@ -258,7 +258,7 @@ export default function EmployeeSalaryEntry() {
       case 'overtime':
         return computeTotalSalaryTypeB(
           employeeVisibleEntries, allowances, profile.base_salary,
-          profile.hourly_rate, rates, globalClockIn
+          profile.hourly_rate, rates, globalClockIn, selectedPeriod?.off_days || []
         );
       case 'notice_only':
         return computeTotalSalaryTypeC(employeeVisibleEntries, allowances, profile.hourly_rate, rates);
@@ -487,6 +487,7 @@ export default function EmployeeSalaryEntry() {
                 breakdown={breakdown}
                 editMode={isPublished ? 'preview' : 'employee'}
                 currentUserId={userId}
+                offDays={selectedPeriod.off_days || []}
               />
             ) : (
               <ImmersiveInputTypeB

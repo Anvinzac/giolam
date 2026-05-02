@@ -375,7 +375,7 @@ export default function SalaryAdmin() {
       case 'daily':
         return computeTotalSalaryTypeE(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, selectedPeriod?.end_date);
       case 'overtime':
-        return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn);
+        return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn, selectedPeriod?.off_days || []);
       case 'notice_only':
         return computeTotalSalaryTypeC(entries, allowances, selectedEmployee.hourly_rate, rates);
       case 'lunar_rate':
@@ -411,10 +411,12 @@ export default function SalaryAdmin() {
         addRowAtDate(r.special_date);
       }
     } else if (selectedEmployee.shift_type === 'overtime') {
-      // Type B: seed all days in period
+      // Type B: seed all days in period, skip global off-days
       seedingRef.current = seedKey;
+      const offDaySet = new Set(selectedPeriod.off_days || []);
       const allDates = generateDateRange(selectedPeriod.start_date, selectedPeriod.end_date);
       for (const dateStr of allDates) {
+        if (offDaySet.has(dateStr)) continue;
         addRowAtDate(dateStr);
       }
     } else if (selectedEmployee.shift_type === 'daily') {
@@ -1100,6 +1102,7 @@ export default function SalaryAdmin() {
                 currentUserId={adminUid}
                 deposit={deposit}
                 onDepositChange={setDeposit}
+                offDays={selectedPeriod.off_days || []}
               />
             )}
 
@@ -1134,6 +1137,7 @@ export default function SalaryAdmin() {
                 shiftType={selectedEmployee.shift_type}
                 deposit={deposit}
                 onDepositChange={setDeposit}
+                offDays={selectedPeriod.off_days || []}
               />
             )}
 
