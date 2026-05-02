@@ -196,11 +196,26 @@ export default function SalaryTableTypeC({
   // runs synchronously during render, and `.map(e => computeRow(e))`
   // iterates immediately, accessing `computeRow` before its declaration
   // line executes.
+  // Per-row computation. Type C (notice_only) and Type D (lunar_rate)
+  // share this table component but use different pay models:
+  //
+  //   - Type C: profile hourly_rate × hours, plus a percentage allowance
+  //     pulled from special_day_rates (Sat 15%, Sun 20%, …).
+  //   - Type D: two flat hourly rates — 27k on normal days, 35k on
+  //     new_moon / full_moon days. No percentage allowance applies, and
+  //     special_day_rates' Sat/Sun entries shouldn't surface as visible
+  //     allowance amounts on Type D rows. (This was chitran's bug after
+  //     switching from C to D — the table kept showing 15/20% allowance
+  //     columns from her Type C period.)
   const computeRow = (e: SalaryEntry) => {
-    const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
+    const matchedRate = rates.find(r => r.special_date === e.entry_date);
+    const isLunarDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    const isTypeD = shiftType === 'lunar_rate';
+    const effectiveHourly = isTypeD ? (isLunarDay ? 35000 : 27000) : hourlyRate;
+    const rate = isTypeD ? 0 : getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in, e.clock_out) ?? 0;
-    const baseWage = roundToThousand(hours * hourlyRate);
-    const allowanceAmt = roundToThousand(baseWage * rate / 100);
+    const baseWage = roundToThousand(hours * effectiveHourly);
+    const allowanceAmt = isTypeD ? 0 : roundToThousand(baseWage * rate / 100);
     const total = e.is_day_off ? 0 : baseWage + allowanceAmt;
     return { rate, hours, baseWage, allowanceAmt, total };
   };
