@@ -161,7 +161,9 @@ export default function EmployeeSalaryEntry() {
           full_name: (prof as any).full_name || 'Nhân viên',
           shift_type: ((prof as any).shift_type || 'basic') as EmployeeShiftType,
           base_salary: (prof as any).base_salary || 0,
-          hourly_rate: (prof as any).hourly_rate || 25000,
+          // See SalaryAdmin: keep the stored rate; only fall back when
+          // the column is literally absent.
+          hourly_rate: (prof as any).hourly_rate ?? 25000,
           default_clock_in: (prof as any).default_clock_in || null,
           default_clock_out: (prof as any).default_clock_out || null,
         });

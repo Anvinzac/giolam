@@ -374,7 +374,18 @@ export default function SalaryTableTypeC({
   }, [chipRowKey]);
 
   const saveHourlyRate = () => {
-    onHourlyRateChange(parseInt(hourlyInput) || 25000);
+    // Only commit a valid positive number. An empty / non-numeric input
+    // used to silently overwrite the employee's rate with 25k, which
+    // wiped custom rates (e.g. chithoa at 28k) any time the admin tabbed
+    // through the field with it blank. Bail out on bad input and revert
+    // the displayed input to whatever's currently in props.
+    const parsed = parseInt(hourlyInput, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setHourlyInput(hourlyRate.toString());
+      setEditingHourly(false);
+      return;
+    }
+    onHourlyRateChange(parsed);
     setEditingHourly(false);
   };
 

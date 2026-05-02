@@ -526,7 +526,15 @@ export default function SalaryAdmin() {
             full_name: p.full_name || 'Nhân viên',
             shift_type: (p.shift_type || 'basic') as EmployeeShiftType,
             base_salary: (p as any).base_salary || 0,
-            hourly_rate: (p as any).hourly_rate || 25000,
+            // Preserve the stored rate as-is. Falling back to a default
+            // (`|| 25000`) when the value is null/undefined silently
+            // discards a real rate of 0 and — worse — propagates that
+            // default into any later UPDATE the admin triggers, quietly
+            // resetting employees with custom rates back to 25k.
+            // `?? 25000` only kicks in when the column is genuinely
+            // missing from the row (legacy schema) and a non-zero value
+            // is treated as canonical.
+            hourly_rate: (p as any).hourly_rate ?? 25000,
             default_clock_in: (p as any).default_clock_in || null,
             default_clock_out: (p as any).default_clock_out || null,
             department_id: p.department_id || null,
@@ -588,6 +596,20 @@ export default function SalaryAdmin() {
     if (!selectedEmployee) return;
     if (!salaryColumnsAvailable) {
       toast.error("DB chưa có cột hourly_rate. Hãy chạy migration/SQL để thêm cột trước.");
+      return;
+    }
+    // Defensive: refuse to write non-positive or non-finite rates. This
+    // catches every callsite at once — accidental NaN from a blank
+    // input, a 0 from `parseInt('')`, or any caller-side fallback that
+    // collapses to "no rate" — without each callsite needing to repeat
+    // the same guard. Custom rates (e.g. chithoa's 28k) shouldn't be
+    // possible to overwrite with a default value through this path.
+    if (!Number.isFinite(rate) || rate <= 0) {
+      console.warn('Refusing to save non-positive hourly_rate:', rate);
+      return;
+    }
+    if (rate === selectedEmployee.hourly_rate) {
+      // No-op — skip the round trip when nothing actually changed.
       return;
     }
     const { error } = await supabase
