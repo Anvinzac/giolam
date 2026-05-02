@@ -84,31 +84,49 @@ export default function SalaryTableTypeA({
   }, [visibleEntries, dailyBase, rates]);
 
   const dailyTotals = useMemo(() => {
-    // Type A: monthly base + per-day allowances - deductions.
-    // Type E (daily): no flat monthly base — every primary working day
-    // contributes (dailyBase + allowance) instead. Off-days subtract
-    // their deductions in both modes.
+    // Build the breakdown popup's monospace formula. Each entry contributes
+    // ONE slot equal to its displayAmount so supplemental extra-hour rows
+    // (sort_order > 0) show up as a single visible `+X` instead of being
+    // split across the per-allowance and per-extra-wage passes — that
+    // split made user-added rows blend in with primary-day allowances and
+    // looked like they weren't being summed at all.
+    //
+    //   Off-day                  → -deduction
+    //   Type A primary working   → baseAllowance (dailyBase is folded
+    //                              into the flat baseSalary slot)
+    //   Type E primary working   → dailyBase + allowance
+    //   Supplemental (any type)  → extraWage + extraAllowance (the row
+    //                              total, exactly what the row card shows)
+    //   Primary with extra hours → baseAllowance plus a separate
+    //                              extraWage slot, so the special-day
+    //                              premium and the worked-hours wage
+    //                              stay distinguishable.
     const parts: number[] = isDailyMode ? [] : [baseSalary];
+
     for (const e of visibleEntries) {
-      const { allowance, deduction } = computeRow(e);
-      const isPrimary = e.sort_order === 0;
+      const { allowance, deduction, extraWage, displayAmount } = computeRow(e);
+      const supplemental = isTypeASupplementalEntry(e);
+
       if (e.is_day_off) {
         if (deduction > 0) parts.push(-deduction);
         continue;
       }
-      if (isDailyMode && isPrimary) {
-        // Primary working day in Type E → dailyBase always, plus
-        // allowance folded in when present.
+
+      if (supplemental) {
+        // displayAmount = extraWage + extraAllowance — push as one slot.
+        if (displayAmount > 0) parts.push(displayAmount);
+        continue;
+      }
+
+      // Primary working day
+      if (isDailyMode) {
         parts.push(dailyBase + (allowance > 0 ? allowance : 0));
       } else if (allowance > 0) {
         parts.push(allowance);
       }
-    }
-    // Add extra wages if any
-    for (const e of visibleEntries) {
-      const { extraWage } = computeRow(e);
       if (extraWage > 0) parts.push(extraWage);
     }
+
     return parts;
   }, [visibleEntries, dailyBase, rates, baseSalary, isDailyMode]);
 
