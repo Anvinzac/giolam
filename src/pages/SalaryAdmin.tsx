@@ -373,7 +373,7 @@ export default function SalaryAdmin() {
       case 'basic':
         return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates);
       case 'daily':
-        return computeTotalSalaryTypeE(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates);
+        return computeTotalSalaryTypeE(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, selectedPeriod?.end_date);
       case 'overtime':
         return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn);
       case 'notice_only':
@@ -410,12 +410,52 @@ export default function SalaryAdmin() {
         if (r.day_type === 'public_holiday') continue;
         addRowAtDate(r.special_date);
       }
-    } else if (selectedEmployee.shift_type === 'overtime' || selectedEmployee.shift_type === 'daily') {
-      // Type B/E: seed all days in period
+    } else if (selectedEmployee.shift_type === 'overtime') {
+      // Type B: seed all days in period
       seedingRef.current = seedKey;
       const allDates = generateDateRange(selectedPeriod.start_date, selectedPeriod.end_date);
       for (const dateStr of allDates) {
         addRowAtDate(dateStr);
+      }
+    } else if (selectedEmployee.shift_type === 'daily') {
+      // Type E (daily): hybrid seeding to match the contract.
+      //
+      // Within the period — the days the employee's previous Type A
+      // monthly base already covered — we only seed dates that carry a
+      // special_day_rates entry, exactly like Type A. Plain weekdays
+      // contribute nothing extra and shouldn't materialise as rows.
+      //
+      // Past the period end — the "additional days" the employee is
+      // now being paid day-by-day for — we seed every date through
+      // today, since each one earns the dailyBase.
+      if (rates.length === 0 && new Date(selectedPeriod.end_date) >= new Date()) {
+        // No rates fetched yet AND we're still inside the period;
+        // wait for the rates round-trip rather than seeding nothing.
+        return;
+      }
+      seedingRef.current = seedKey;
+      // 1. Special-rate days inside the period.
+      for (const r of rates) {
+        if (r.rate_percent <= 0) continue;
+        if (r.day_type === 'public_holiday') continue;
+        if (r.special_date < selectedPeriod.start_date) continue;
+        if (r.special_date > selectedPeriod.end_date) continue;
+        addRowAtDate(r.special_date);
+      }
+      // 2. Every day from period_end + 1 through today.
+      const todayStr = (() => {
+        const t = new Date();
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+      })();
+      if (todayStr > selectedPeriod.end_date) {
+        const dayAfterEnd = (() => {
+          const d = new Date(selectedPeriod.end_date + 'T00:00:00');
+          d.setDate(d.getDate() + 1);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })();
+        for (const dateStr of generateDateRange(dayAfterEnd, todayStr)) {
+          addRowAtDate(dateStr);
+        }
       }
     }
   }, [selectedEmployee, selectedPeriodId, selectedPeriod, entries.length, rates]);
@@ -1008,10 +1048,20 @@ export default function SalaryAdmin() {
                 onHourlyRateChange={handleHourlyRateChange}
                 periodStart={selectedPeriod.start_date}
                 periodEnd={(() => {
-                  // Allow adding rows up to 5 days beyond period end
-                  const d = new Date(selectedPeriod.end_date + 'T00:00:00');
-                  d.setDate(d.getDate() + 5);
-                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  // Type A: 5-day grace beyond the period end so admins
+                  //         can patch a stray late-month row.
+                  // Type E: extend to today + 5 instead — every day past
+                  //         the period end is a real day-by-day pay day,
+                  //         not a grace patch, so the date picker needs
+                  //         to reach today.
+                  const fmt = (d: Date) =>
+                    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  const periodPlus5 = new Date(selectedPeriod.end_date + 'T00:00:00');
+                  periodPlus5.setDate(periodPlus5.getDate() + 5);
+                  if (selectedEmployee.shift_type !== 'daily') return fmt(periodPlus5);
+                  const todayPlus5 = new Date();
+                  todayPlus5.setDate(todayPlus5.getDate() + 5);
+                  return fmt(todayPlus5 > periodPlus5 ? todayPlus5 : periodPlus5);
                 })()}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
@@ -1021,6 +1071,7 @@ export default function SalaryAdmin() {
                 deposit={deposit}
                 onDepositChange={setDeposit}
                 shiftType={selectedEmployee.shift_type === 'daily' ? 'daily' : 'basic'}
+                coveragePeriodEnd={selectedPeriod.end_date}
               />
             )}
 

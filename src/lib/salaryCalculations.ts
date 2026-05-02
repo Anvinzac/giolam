@@ -261,54 +261,74 @@ export function computeTotalSalaryTypeA(
 }
 
 /**
- * Type E (daily) — for employees who finished their Type A monthly stint
- * and continue on day-by-day pay. Unlike Type A, the flat baseSalary is
- * NOT added: every non-off, non-supplemental day instead contributes
- * `dailyBase` to the total. This matches the contract of "every working
- * day past the original coverage range earns the daily wage on top".
+ * Type E (daily) — hybrid pay for an employee who finished their Type A
+ * monthly stint and continues on day-by-day pay past the period end.
+ *
+ * The monthly baseSalary still covers every IN-period working day —
+ * those days only contribute their special-rate allowance on top, just
+ * like Type A. Days AFTER `periodEnd` are uncovered, so each one adds
+ * its own `dailyBase` plus any allowance.
  *
  * Formula:
- *   total = Σ (dailyBase + allowance + extraWage) for each primary
- *           working day
- *         - Σ deduction for off-days
+ *   total = baseSalary                                       (in-period)
+ *         + Σ allowance for in-period primary days           (in-period)
+ *         + Σ (dailyBase + allowance) for past-period primary days
+ *         + Σ extraWage for every day                        (in & out)
+ *         - Σ deduction for off-days                         (in & out)
  *         + enabled allowances (gui_xe + ad-hoc)
  *
- * `baseSalary` is still passed in solely so we can derive the daily
- * rate via `calcDailyBase(baseSalary)` — it is never added directly.
+ * `periodEnd` is the inclusive last date covered by the monthly base.
+ * Entries with `entry_date <= periodEnd` are treated as Type-A-style;
+ * entries beyond it pull dailyBase per day. If `periodEnd` is null /
+ * empty the function degrades to "everything is past the period",
+ * matching the prior implementation.
  */
 export function computeTotalSalaryTypeE(
   entries: SalaryEntry[],
   allowances: EmployeeAllowance[],
   baseSalary: number,
   hourlyRate: number,
-  rates: SpecialDayRate[]
+  rates: SpecialDayRate[],
+  periodEnd?: string | null
 ): SalaryBreakdown {
   const dailyBase = calcDailyBase(baseSalary);
-  let totalDailyWages = 0;
   let totalAllowancesFromRates = 0;
   let totalDeductions = 0;
   let totalExtraWages = 0;
-  let workingDays = 0;
+  let pastPeriodWorkingDays = 0;   // days that earn an extra dailyBase
+  let workingDays = 0;             // for gui_xe (every primary working day)
   let offDays = 0;
+
+  const inPeriod = (date: string) =>
+    !periodEnd || date <= periodEnd;
 
   for (const e of entries) {
     const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
     totalAllowancesFromRates += allowance;
     totalExtraWages += extraWage;
+
     if (e.is_day_off) {
       if (e.off_percent > 0) totalDeductions += deduction;
       if (!isTypeASupplementalEntry(e)) offDays++;
-    } else if (!isTypeASupplementalEntry(e)) {
-      // Primary (sort_order=0) working day → adds the daily wage.
-      // Supplemental rows are pure overtime; they don't double-count
-      // the dailyBase (computeTypeARowAmounts already excludes it).
+      continue;
+    }
+
+    if (!isTypeASupplementalEntry(e)) {
       workingDays++;
+      if (!inPeriod(e.entry_date)) pastPeriodWorkingDays++;
     }
   }
 
-  totalDailyWages = workingDays * dailyBase + totalAllowancesFromRates + totalExtraWages - totalDeductions;
+  // baseSalary covers in-period work; pastPeriodWorkingDays each add an
+  // extra dailyBase for the day-by-day stretch.
+  const totalDailyWages =
+    baseSalary
+    + pastPeriodWorkingDays * dailyBase
+    + totalAllowancesFromRates
+    + totalExtraWages
+    - totalDeductions;
 
-  // gui_xe still tracks attendance: workingDays * 10000 (no monthly cap).
+  // gui_xe still tracks every primary working day, in or out of period.
   const guiXeAmount = workingDays * 10000;
 
   const allowanceItems = allowances.map(a => ({
@@ -326,7 +346,7 @@ export function computeTotalSalaryTypeE(
   const total = totalDailyWages + enabledAllowancesSum;
 
   return {
-    base_salary: 0,                                  // Type E has no flat monthly base
+    base_salary: baseSalary,
     daily_base: dailyBase,
     total_daily_wages: totalDailyWages,
     total_allowances_from_rates: totalAllowancesFromRates,

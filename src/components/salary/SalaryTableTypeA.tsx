@@ -41,6 +41,14 @@ interface SalaryTableTypeAProps {
    * day-by-day pay).
    */
   shiftType?: 'basic' | 'daily';
+  /**
+   * Inclusive last date covered by the monthly base — i.e. the actual
+   * working period's end_date. Only used when `shiftType === 'daily'`:
+   * primary working entries on or before this date stay covered by
+   * baseSalary, entries past it each contribute an extra dailyBase to
+   * the breakdown popup formula.
+   */
+  coveragePeriodEnd?: string;
 }
 
 export default function SalaryTableTypeA({
@@ -51,6 +59,7 @@ export default function SalaryTableTypeA({
   editMode, onAcceptEntry, currentUserId,
   deposit = 0, onDepositChange,
   shiftType = 'basic',
+  coveragePeriodEnd,
 }: SalaryTableTypeAProps) {
   const isDailyMode = shiftType === 'daily';
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
@@ -91,17 +100,27 @@ export default function SalaryTableTypeA({
     // split made user-added rows blend in with primary-day allowances and
     // looked like they weren't being summed at all.
     //
-    //   Off-day                  → -deduction
-    //   Type A primary working   → baseAllowance (dailyBase is folded
-    //                              into the flat baseSalary slot)
-    //   Type E primary working   → dailyBase + allowance
-    //   Supplemental (any type)  → extraWage + extraAllowance (the row
-    //                              total, exactly what the row card shows)
-    //   Primary with extra hours → baseAllowance plus a separate
-    //                              extraWage slot, so the special-day
-    //                              premium and the worked-hours wage
-    //                              stay distinguishable.
-    const parts: number[] = isDailyMode ? [] : [baseSalary];
+    //   Off-day                       → -deduction
+    //   Type A primary working        → baseAllowance (dailyBase is
+    //                                   folded into the flat baseSalary
+    //                                   slot)
+    //   Type E in-period primary      → baseAllowance only (covered by
+    //                                   monthly base, just like Type A)
+    //   Type E past-period primary    → dailyBase + allowance
+    //   Supplemental (any type)       → extraWage + extraAllowance (the
+    //                                   row total, exactly what the row
+    //                                   card shows)
+    //   Primary with extra hours      → baseAllowance plus a separate
+    //                                   extraWage slot, so the
+    //                                   special-day premium and the
+    //                                   worked-hours wage stay distinct.
+    //
+    // The flat baseSalary slot is always pushed in non-daily mode; in
+    // daily mode it's still the in-period coverage so we push it too.
+    const parts: number[] = [baseSalary];
+
+    const isPastPeriod = (date: string) =>
+      isDailyMode && coveragePeriodEnd ? date > coveragePeriodEnd : false;
 
     for (const e of visibleEntries) {
       const { allowance, deduction, extraWage, displayAmount } = computeRow(e);
@@ -119,7 +138,7 @@ export default function SalaryTableTypeA({
       }
 
       // Primary working day
-      if (isDailyMode) {
+      if (isPastPeriod(e.entry_date)) {
         parts.push(dailyBase + (allowance > 0 ? allowance : 0));
       } else if (allowance > 0) {
         parts.push(allowance);
@@ -128,7 +147,7 @@ export default function SalaryTableTypeA({
     }
 
     return parts;
-  }, [visibleEntries, dailyBase, rates, baseSalary, isDailyMode]);
+  }, [visibleEntries, dailyBase, rates, baseSalary, isDailyMode, coveragePeriodEnd]);
 
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
   const formatExtraHoursNote = (hours: number) => {

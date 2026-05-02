@@ -254,7 +254,7 @@ export default function EmployeeSalaryEntry() {
       case 'basic':
         return computeTotalSalaryTypeA(employeeVisibleEntries, allowances, profile.base_salary, profile.hourly_rate, rates);
       case 'daily':
-        return computeTotalSalaryTypeE(employeeVisibleEntries, allowances, profile.base_salary, profile.hourly_rate, rates);
+        return computeTotalSalaryTypeE(employeeVisibleEntries, allowances, profile.base_salary, profile.hourly_rate, rates, selectedPeriod?.end_date);
       case 'overtime':
         return computeTotalSalaryTypeB(
           employeeVisibleEntries, allowances, profile.base_salary,
@@ -460,6 +460,7 @@ export default function EmployeeSalaryEntry() {
             editMode={isPublished ? 'preview' : 'employee'}
             currentUserId={userId}
             shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
+            coveragePeriodEnd={selectedPeriod.end_date}
           />
         )}
 

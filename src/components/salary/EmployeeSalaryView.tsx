@@ -144,7 +144,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
       case 'basic':
         return computeTotalSalaryTypeA(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
       case 'daily':
-        return computeTotalSalaryTypeE(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
+        return computeTotalSalaryTypeE(entries, allowances, profile.base_salary, profile.hourly_rate, rates, period?.end_date);
       case 'overtime':
         return computeTotalSalaryTypeB(entries, allowances, profile.base_salary, profile.hourly_rate, rates, globalClockIn);
       case 'notice_only':
@@ -210,6 +210,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           breakdown={breakdown}
           editMode="preview"
           shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
+          coveragePeriodEnd={period.end_date}
         />
       )}
 
