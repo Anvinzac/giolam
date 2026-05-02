@@ -406,11 +406,38 @@ export default function SalaryTableTypeA({
                         className="w-[64px] px-2 py-1 rounded bg-background border border-border text-[13px] text-right"
                       />
                       <span className="text-[11px] text-muted-foreground">giờ</span>
-                      {editHours && parseFloat(editHours) > 0 && (
-                        <span className="text-[11px] text-accent ml-1">
-                          = {formatCompact(roundToThousand(parseFloat(editHours) * hourlyRate))}k
-                        </span>
-                      )}
+                      {editHours && parseFloat(editHours) > 0 && (() => {
+                        // Show the actual contribution this row will add to
+                        // the total: base extra wage plus the special-day
+                        // allowance (if the date carries a rate). Without
+                        // the bonus piece the hint understated the amount —
+                        // e.g. 3 hrs on a Sunday at 20% reads `= 75k` from
+                        // hours alone but actually contributes 90k once
+                        // the rate kicks in. Use the same canonical helper
+                        // the row card and breakdown popup use, so the
+                        // three numbers always agree.
+                        const previewEntry: SalaryEntry = {
+                          ...e,
+                          total_hours: parseFloat(editHours),
+                          allowance_rate_override:
+                            editRate !== '' && !Number.isNaN(parseFloat(editRate))
+                              ? parseFloat(editRate)
+                              : e.allowance_rate_override ?? null,
+                          is_day_off: false,
+                          off_percent: 0,
+                        };
+                        const preview = computeTypeARowAmounts(previewEntry, dailyBase, hourlyRate, rates);
+                        const extraK = formatK(preview.extraWage);
+                        const allowanceK = formatK(preview.allowance);
+                        const totalK = formatK(preview.displayAmount);
+                        return (
+                          <span className="text-[11px] text-accent ml-1">
+                            {preview.allowance > 0
+                              ? `= ${extraK} + ${allowanceK} = ${totalK}k`
+                              : `= ${totalK}k`}
+                          </span>
+                        );
+                      })()}
                     </div>
                     {/* Action buttons */}
                     <div className="flex gap-2">
