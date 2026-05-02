@@ -173,7 +173,25 @@ export function useSalaryEntries(
               return prev.filter(e => e.id !== (payload.old as SalaryEntry).id);
             }
             const incoming = payload.new as SalaryEntry;
-            const idx = prev.findIndex(e => e.id === incoming.id);
+            // First match by id — handles UPDATE events and INSERT
+            // echoes for rows we already have locally.
+            let idx = prev.findIndex(e => e.id === incoming.id);
+            // Fallback for the optimistic path: `updateEntry` appends an
+            // id-less row to local state when the user starts editing a
+            // brand-new (entry_date, sort_order). Once the upsert lands
+            // server-side and broadcasts back, the row carries its
+            // generated id — we have to MERGE it onto the optimistic
+            // placeholder, not append a second copy. Without this every
+            // optimistic-then-saved row ended up duplicated in state,
+            // which doubled chixuan's saved total when computeTotal
+            // iterated `entries`.
+            if (idx < 0) {
+              idx = prev.findIndex(e =>
+                !e.id &&
+                e.entry_date === incoming.entry_date &&
+                e.sort_order === incoming.sort_order,
+              );
+            }
             if (idx < 0) return sortEntries([...prev, incoming]);
             // Preserve any locally pending (dirty) fields for this row.
             const dirtyKey = `${incoming.entry_date}|${incoming.sort_order}`;
@@ -208,7 +226,7 @@ export function useSalaryEntries(
       const effectiveRow = { ...(existingRow || {}), ...upd };
       const audit = buildAuditFields(effectiveRow);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('salary_entries')
         .upsert(
           {
@@ -220,8 +238,33 @@ export function useSalaryEntries(
             ...audit,
           },
           { onConflict: 'user_id,period_id,entry_date,sort_order' }
-        );
-      if (error) console.error('Failed to save entry:', error);
+        )
+        .select()
+        .single();
+      if (error) {
+        console.error('Failed to save entry:', error);
+        continue;
+      }
+      // Belt-and-braces against the duplicate-row bug: if our local
+      // state still has an id-less optimistic placeholder for this
+      // (entry_date, sort_order) — i.e. the realtime echo hasn't
+      // landed yet — stamp the server-generated id onto it now so a
+      // late realtime INSERT can find it by id and merge instead of
+      // appending a duplicate.
+      if (data) {
+        const saved = data as SalaryEntry;
+        setEntries(prev => {
+          const idx = prev.findIndex(e =>
+            !e.id &&
+            e.entry_date === entryDate &&
+            e.sort_order === sortOrder,
+          );
+          if (idx < 0) return prev;
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], ...saved };
+          return copy;
+        });
+      }
     }
     setIsSaving(false);
   }, [userId, periodId, buildAuditFields]);
