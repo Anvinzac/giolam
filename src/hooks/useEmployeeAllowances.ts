@@ -209,10 +209,15 @@ export function useEmployeeAllowances(
       amount,
       is_enabled: true,
     };
-    const { data: inserted } = await supabase
+    const { data: inserted, error } = await supabase
       .from('employee_allowances')
       .insert([newAllowance])
       .select();
+    if (error) {
+      console.error('Failed to add allowance:', error);
+      return;
+    }
+    // Also save to defaults so it carries over to future periods
     await supabase
       .from('employee_allowance_defaults')
       .upsert({

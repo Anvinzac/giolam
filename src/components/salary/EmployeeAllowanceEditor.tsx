@@ -110,16 +110,13 @@ export default function EmployeeAllowanceEditor({
               >✕</button>
             )}
           </div>
-          <div className="flex items-center px-2 py-1 rounded-lg bg-background border border-border relative">
-            <input
+          <input
               value={newAmount}
               onChange={e => setNewAmount(e.target.value.replace(/\D/g, ''))}
-              className="absolute inset-0 opacity-0 text-[16px]"
+              placeholder="Số tiền"
               inputMode="numeric"
+              className="w-[90px] px-2 py-1 rounded-lg bg-background border border-border text-[16px] text-foreground text-right"
             />
-            <span className="text-[16px] text-foreground pointer-events-none">{fmtInput(newAmount).typed}</span>
-            <span className="text-[16px] text-muted-foreground/40 pointer-events-none">{fmtInput(newAmount).ghost}</span>
-          </div>
           <button
             onClick={handleAddNew}
             className="px-2 py-1 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"
