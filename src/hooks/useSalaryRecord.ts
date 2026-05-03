@@ -90,16 +90,50 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     // Freeze a snapshot of every input the employee view needs, so admin
     // edits after publish do not retroactively change what the employee
     // sees. Re-publishing overwrites the snapshot via UNIQUE(user_id,period_id).
-    const [entriesRes, allowancesRes, ratesRes, periodRes, profileRes] = await Promise.all([
+    const profileLookup = await supabase.from('profiles')
+      .select('shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
+      .eq('user_id', userId).single();
+
+    // Type A (basic): seed placeholder rows for any special day in the period
+    // that doesn't yet have an entry. Mirrors useSalaryEntries(seedAllDays:true)
+    // — without this, employees whose admin page wasn't opened recently miss
+    // the special-day rows in their snapshot.
+    if ((profileLookup.data as { shift_type?: string } | null)?.shift_type === 'basic') {
+      const [{ data: existingEntries }, { data: specialRates }] = await Promise.all([
+        supabase.from('salary_entries').select('entry_date').eq('user_id', userId).eq('period_id', periodId),
+        supabase.from('special_day_rates').select('special_date, rate_percent').eq('period_id', periodId),
+      ]);
+      const existingDates = new Set((existingEntries || []).map((e: { entry_date: string }) => e.entry_date));
+      const missing = (specialRates || [])
+        .filter((r: { rate_percent: number }) => r.rate_percent > 0)
+        .map((r: { special_date: string }) => r.special_date)
+        .filter((d: string) => !existingDates.has(d));
+      if (missing.length > 0) {
+        await supabase.from('salary_entries').insert(
+          missing.map(d => ({
+            user_id: userId,
+            period_id: periodId,
+            entry_date: d,
+            sort_order: 0,
+            is_day_off: true,
+            off_percent: 0,
+            base_daily_wage: 0,
+            allowance_amount: 0,
+            extra_wage: 0,
+            total_daily_wage: 0,
+          }))
+        );
+      }
+    }
+
+    const [entriesRes, allowancesRes, ratesRes, periodRes] = await Promise.all([
       supabase.from('salary_entries').select('*').eq('user_id', userId).eq('period_id', periodId)
         .order('entry_date').order('sort_order'),
       supabase.from('employee_allowances').select('*').eq('user_id', userId).eq('period_id', periodId),
       supabase.from('special_day_rates').select('*').eq('period_id', periodId),
       supabase.from('working_periods').select('id, start_date, end_date, off_days').eq('id', periodId).single(),
-      supabase.from('profiles')
-        .select('shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
-        .eq('user_id', userId).single(),
     ]);
+    const profileRes = profileLookup;
 
     await supabase.from('salary_published_snapshots').upsert(
       {
