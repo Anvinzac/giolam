@@ -20,6 +20,7 @@ import {
   computeTotalSalaryTypeD,
   computeTotalSalaryTypeE,
   formatDateViet,
+  calcDailyBase,
 } from '@/lib/salaryCalculations';
 
 interface EmployeeSalaryViewProps {
@@ -179,6 +180,30 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
             Công bố: {new Date(record.published_at).toLocaleDateString('vi-VN')}
           </p>
         )}
+
+        {(() => {
+          const showBase = profile.shift_type === 'basic' || profile.shift_type === 'daily' || profile.shift_type === 'overtime';
+          const showHourly = profile.shift_type !== 'daily';
+          const cells: { label: string; value: string; color: string }[] = [];
+          if (showBase) {
+            cells.push({ label: 'Lương cơ bản', value: `${formatVND(profile.base_salary).replace(' đ', '')}đ`, color: 'text-primary' });
+            cells.push({ label: 'Lương ngày', value: `${formatVND(calcDailyBase(profile.base_salary)).replace(' đ', '')}đ`, color: 'text-lunar-gold-glow' });
+          }
+          if (showHourly && profile.hourly_rate > 0) {
+            cells.push({ label: 'Lương giờ', value: `${formatVND(profile.hourly_rate).replace(' đ', '')}đ/giờ`, color: 'text-accent' });
+          }
+          if (cells.length === 0) return null;
+          return (
+            <div className={`mt-3 grid gap-x-3 ${cells.length === 3 ? 'grid-cols-3' : cells.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {cells.map((c, i) => (
+                <div key={i} className="flex flex-col">
+                  <span className="text-[11px] text-muted-foreground">{c.label}</span>
+                  <span className={`text-[15px] font-bold ${c.color}`}>{c.value}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Full salary table in preview mode */}
