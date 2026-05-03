@@ -349,6 +349,7 @@ export default function SalaryAdmin() {
 
   // Compute breakdown
   const [deposit, setDeposit] = useState(0);
+  const depositLoadedRef = useRef(false);
 
   // Reset deposit immediately when switching employees
   const prevEmployeeRef = useRef<string | null>(null);
@@ -356,16 +357,20 @@ export default function SalaryAdmin() {
     const uid = selectedEmployee?.user_id || null;
     if (uid !== prevEmployeeRef.current) {
       setDeposit(0);
+      depositLoadedRef.current = false; // block auto-save until record loads
       prevEmployeeRef.current = uid;
     }
   }, [selectedEmployee?.user_id]);
 
-  // Load deposit from saved breakdown once record loads
+  // Load deposit from saved breakdown once record loads for the correct employee
   useEffect(() => {
-    if (!record?.salary_breakdown || !selectedEmployee) return;
+    if (!selectedEmployee) return;
+    if (!record) return; // wait for record
     if (record.user_id !== selectedEmployee.user_id) return;
-    setDeposit((record.salary_breakdown as SalaryBreakdown).deposit || 0);
-  }, [record, selectedEmployee?.user_id]);
+    const saved = (record.salary_breakdown as SalaryBreakdown | null)?.deposit || 0;
+    setDeposit(saved);
+    depositLoadedRef.current = true; // now safe to auto-save
+  }, [record?.id, selectedEmployee?.user_id]);
 
   const rawBreakdown = useMemo<SalaryBreakdown | null>(() => {
     if (!selectedEmployee || entries.length === 0) return null;
@@ -473,6 +478,10 @@ export default function SalaryAdmin() {
   useEffect(() => {
     if (!breakdown || !selectedEmployee || isPublished) return;
     if (allowancesLoading) return;
+    if (!depositLoadedRef.current) return; // don't save until deposit is loaded from record
+    // Don't overwrite a saved non-zero deposit with 0 during a stale recalculation
+    const savedDeposit = (record?.salary_breakdown as SalaryBreakdown | null)?.deposit || 0;
+    if (deposit === 0 && savedDeposit > 0) return;
     saveDraft(breakdown.total, breakdown);
   }, [breakdown, selectedEmployee, isPublished, allowancesLoading]);
 
