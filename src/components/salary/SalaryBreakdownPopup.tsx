@@ -78,10 +78,10 @@ export default function SalaryBreakdownPopup({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 80 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-0 left-0 right-0 z-40 p-4 pointer-events-none"
+          className="fixed bottom-0 left-0 right-0 z-40 p-4 pointer-events-none flex justify-center"
         >
           <div
-            className="glass-card p-5 max-w-sm mx-auto space-y-4 pointer-events-auto shadow-2xl"
+            className="glass-card p-5 space-y-4 pointer-events-auto shadow-2xl w-fit min-w-[240px] max-w-[90vw]"
             style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.25)' }}
           >
             <div className="flex items-center justify-between">
@@ -95,7 +95,7 @@ export default function SalaryBreakdownPopup({
               </div>
               <button
                 onClick={handleClose}
-                className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1.5 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors"
                 aria-label="Đóng"
               >
                 <X size={16} />
@@ -105,7 +105,7 @@ export default function SalaryBreakdownPopup({
             {/* Expression split into rows of max 7 numbers, no mid-number breaks */}
             <div
               onClick={handleCopy}
-              className="rounded-xl bg-muted/60 border border-border/40 px-4 py-3 font-mono text-[13px] leading-relaxed text-foreground active:bg-muted transition-colors cursor-pointer max-h-[30vh] overflow-y-auto space-y-0.5"
+              className="rounded-xl bg-muted/60 border border-border/40 px-4 py-3 font-mono text-[13px] leading-relaxed text-foreground active:bg-muted transition-colors cursor-pointer max-h-[30vh] overflow-y-auto space-y-0.5 w-fit"
             >
               {(() => {
                 // Parse expression into tokens: each number with its leading sign
@@ -124,11 +124,12 @@ export default function SalaryBreakdownPopup({
                 }
 
                 return rows.map((row, ri) => (
-                  <div key={ri} className="whitespace-nowrap">
+                  <div key={ri} className="whitespace-nowrap w-fit">
                     {row.map((tok, ti) => {
-                      const isDeposit = depositK > 0 && ri === rows.length - 1 && ti === row.length - 1 && tok.startsWith('-');
+                      const isNegative = tok.startsWith('-');
+                      const isDeposit = depositK > 0 && ri === rows.length - 1 && ti === row.length - 1 && isNegative;
                       return (
-                        <span key={ti} className={isDeposit ? 'text-destructive font-bold' : ''}>
+                        <span key={ti} className={isNegative ? 'text-destructive font-bold' : isDeposit ? 'text-destructive font-bold' : ''}>
                           {tok}
                         </span>
                       );
