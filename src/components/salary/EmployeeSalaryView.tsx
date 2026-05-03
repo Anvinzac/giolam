@@ -54,69 +54,49 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     const fetchAll = async () => {
       setLoading(true);
 
-      // 1. Most recent published salary record
-      const { data: recData } = await supabase
-        .from('salary_records')
+      // Read frozen snapshot only — admin edits after publish do not leak through.
+      const { data: snapData } = await supabase
+        .from('salary_published_snapshots')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
+        .order('published_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (!recData) { setLoading(false); return; }
-      const rec = recData as unknown as SalaryRecord;
-      setRecord(rec);
+      if (!snapData) { setLoading(false); return; }
+      const snap = snapData as unknown as {
+        salary_record_id: string;
+        user_id: string;
+        period_id: string;
+        published_at: string;
+        total_salary: number;
+        breakdown: SalaryBreakdown | null;
+        entries: SalaryEntry[];
+        allowances: EmployeeAllowance[];
+        rates: SpecialDayRate[];
+        period_info: PeriodInfo | null;
+        profile_info: ProfileInfo | null;
+      };
 
-      // 2. Period
-      const { data: pData } = await supabase
-        .from('working_periods')
-        .select('*')
-        .eq('id', rec.period_id)
-        .single();
-      const per = pData as PeriodInfo | null;
-      setPeriod(per);
+      setRecord({
+        id: snap.salary_record_id,
+        user_id: snap.user_id,
+        period_id: snap.period_id,
+        total_salary: snap.total_salary,
+        salary_breakdown: snap.breakdown,
+        status: 'published',
+        published_at: snap.published_at,
+      } as unknown as SalaryRecord);
+      setPeriod(snap.period_info);
+      setProfile(snap.profile_info);
+      setEntries(snap.entries || []);
+      setRates(snap.rates || []);
 
-      // 3. Profile
-      const { data: profData } = await supabase
-        .from('profiles')
-        .select('shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
-        .eq('user_id', userId)
-        .single();
-      const prof = profData as ProfileInfo | null;
-      setProfile(prof);
-
-      // 4. Entries for this period
-      const { data: entData } = await supabase
-        .from('salary_entries')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('period_id', rec.period_id)
-        .order('entry_date')
-        .order('sort_order');
-      setEntries((entData || []) as SalaryEntry[]);
-
-      // 5. Special day rates
-      if (per) {
-        const { data: rData } = await supabase
-          .from('special_day_rates')
-          .select('*')
-          .eq('period_id', rec.period_id);
-        setRates((rData || []) as SpecialDayRate[]);
-      }
-
-      // 6. Allowances — fix gui_xe amount from actual working days
-      const { data: aData } = await supabase
-        .from('employee_allowances')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('period_id', rec.period_id);
-      const loadedAllowances = (aData || []) as EmployeeAllowance[];
-      const loadedEntries = (entData || []) as SalaryEntry[];
-      const workingDays = loadedEntries.filter(
+      const frozenAllowances = snap.allowances || [];
+      const workingDays = (snap.entries || []).filter(
         e => !e.is_day_off && (e.clock_in || e.clock_out)
       ).length;
-      setAllowances(loadedAllowances.map(a =>
+      setAllowances(frozenAllowances.map(a =>
         a.allowance_key === 'gui_xe' && a.is_enabled
           ? { ...a, amount: workingDays * 10000 }
           : a

@@ -67,7 +67,9 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     breakdown: SalaryBreakdown
   ) => {
     if (!userId || !periodId) return;
-    const { data } = await supabase
+    const publishedAt = new Date().toISOString();
+
+    const { data: rec } = await supabase
       .from('salary_records')
       .upsert(
         {
@@ -76,13 +78,45 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
           total_salary: totalSalary,
           salary_breakdown: breakdown as unknown as Record<string, unknown>,
           status: 'published',
-          published_at: new Date().toISOString(),
+          published_at: publishedAt,
         },
         { onConflict: 'user_id,period_id' }
       )
       .select()
       .single();
-    if (data) setRecord(data as unknown as SalaryRecord);
+    if (!rec) return;
+    setRecord(rec as unknown as SalaryRecord);
+
+    // Freeze a snapshot of every input the employee view needs, so admin
+    // edits after publish do not retroactively change what the employee
+    // sees. Re-publishing overwrites the snapshot via UNIQUE(user_id,period_id).
+    const [entriesRes, allowancesRes, ratesRes, periodRes, profileRes] = await Promise.all([
+      supabase.from('salary_entries').select('*').eq('user_id', userId).eq('period_id', periodId)
+        .order('entry_date').order('sort_order'),
+      supabase.from('employee_allowances').select('*').eq('user_id', userId).eq('period_id', periodId),
+      supabase.from('special_day_rates').select('*').eq('period_id', periodId),
+      supabase.from('working_periods').select('id, start_date, end_date, off_days').eq('id', periodId).single(),
+      supabase.from('profiles')
+        .select('shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
+        .eq('user_id', userId).single(),
+    ]);
+
+    await supabase.from('salary_published_snapshots').upsert(
+      {
+        salary_record_id: (rec as { id: string }).id,
+        user_id: userId,
+        period_id: periodId,
+        published_at: publishedAt,
+        total_salary: totalSalary,
+        breakdown: breakdown as unknown as Record<string, unknown>,
+        entries: entriesRes.data || [],
+        allowances: allowancesRes.data || [],
+        rates: ratesRes.data || [],
+        period_info: periodRes.data || null,
+        profile_info: profileRes.data || null,
+      } as Record<string, unknown>,
+      { onConflict: 'user_id,period_id' }
+    );
   }, [userId, periodId]);
 
   const isPublished = record?.status === 'published';
