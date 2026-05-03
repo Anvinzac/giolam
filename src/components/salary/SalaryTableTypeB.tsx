@@ -189,7 +189,10 @@ export default function SalaryTableTypeB({
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
-    const allowance = roundToThousand((dailyBase + extraWage) * rate / 100);
+    // Added rows (sort_order > 0) are pure delta adjustments — no daily base involved.
+    // Allowance is applied only on the extra wage itself, not on (dailyBase + extraWage).
+    const allowanceBase = e.sort_order > 0 ? extraWage : (dailyBase + extraWage);
+    const allowance = roundToThousand(allowanceBase * rate / 100);
     const total = extraWage + allowance;
     return { rate, allowance, hours, extraWage, total };
   };
@@ -206,7 +209,7 @@ export default function SalaryTableTypeB({
       }
       const { extraWage, allowance } = computeRow(e);
       const dayExtra = extraWage + allowance;
-      if (dayExtra > 0) parts.push(dayExtra);
+      if (dayExtra !== 0) parts.push(dayExtra); // include negative deltas from added rows
     }
     return parts;
   }, [entries, dailyBase, rates, hourlyRate, globalClockIn, baseSalary, globalOffDaySet]);
@@ -228,11 +231,24 @@ export default function SalaryTableTypeB({
     const r = Number.isInteger(rK) ? `${rK}` : rK.toFixed(1);
     return `${h} × ${r}`;
   };
-  const formulaAllowance = (rate: number, extraWage: number): string | null => {
-    if ((dailyBase + extraWage) <= 0 || rate <= 0) return null;
+  const formulaAllowance = (e: SalaryEntry, rate: number, extraWage: number): string | null => {
+    if (rate <= 0) return null;
+    if (e.sort_order > 0) {
+      // Added row: allowance is only on the extra wage delta
+      if (extraWage === 0) return null;
+      return `${rate}% × ${formatK(extraWage)}`;
+    }
+    if ((dailyBase + extraWage) <= 0) return null;
     return `${rate}% × (${formatK(dailyBase)}+${formatK(extraWage)})`;
   };
-  const formulaTotal = (extraWage: number, allowance: number, hours: number): string | null => {
+  const formulaTotal = (e: SalaryEntry, extraWage: number, allowance: number, hours: number): string | null => {
+    if (e.sort_order > 0) {
+      // Added row: just show extraWage + allowance delta, no dailyBase
+      const parts: string[] = [];
+      if (extraWage !== 0) parts.push(formatK(extraWage));
+      if (allowance !== 0) parts.push((allowance < 0 ? '' : '+') + formatK(allowance));
+      return parts.length > 0 ? parts.join('') : null;
+    }
     if (dailyBase <= 0) return null;
     const parts = [formatK(dailyBase)];
     if (allowance > 0) parts.push(formatK(allowance));
@@ -532,6 +548,7 @@ export default function SalaryTableTypeB({
           const canDelete = canDeleteRow(e);
 
           const isSunday = new Date(e.entry_date + 'T00:00:00').getDay() === 0;
+          const isNegativeRow = !e.is_day_off && hours < 0;
           const nextRow = pageRows[idx + 1];
           const isLastSundayRow = isSunday && (!nextRow || nextRow.dateStr !== e.entry_date);
           const showWeekSep = isLastSundayRow && nextRow !== undefined;
@@ -548,7 +565,9 @@ export default function SalaryTableTypeB({
                   e.is_day_off ? 'opacity-40' : ''
                 } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
                   isMoonDay ? 'moon-accent-row' : ''
-                } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''}`}
+                } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${
+                  isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''
+                }`}
               >
                 <AnimatePresence initial={false} mode="popLayout">
                   {chipsActive ? (
@@ -644,10 +663,10 @@ export default function SalaryTableTypeB({
                         <FormulaTooltip formula={formulaWage(hours)} className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
                           {extraWage > 0 ? formatCompact(extraWage) : '—'}
                         </FormulaTooltip>
-                        <FormulaTooltip formula={formulaAllowance(rate, extraWage)} className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
-                          {allowance > 0 ? formatCompact(allowance) : ''}
+                        <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
+                          {allowance !== 0 ? formatCompact(allowance) : ''}
                         </FormulaTooltip>
-                        <FormulaTooltip formula={formulaTotal(extraWage, allowance, hours)} className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+                        <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
                           {formatCompact(total)}
                         </FormulaTooltip>
                       </div>
@@ -665,7 +684,9 @@ export default function SalaryTableTypeB({
                 e.is_day_off ? 'opacity-40' : ''
               } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
                 isMoonDay ? 'moon-accent-row' : ''
-              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${showWeekSep ? 'relative' : ''}`}>
+              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${
+                isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''
+              } ${showWeekSep ? 'relative' : ''}`}>
                 {/* Date */}
                 <div className="pr-4 sm:pr-2">
                   <div className="flex items-start gap-1">
@@ -794,12 +815,12 @@ export default function SalaryTableTypeB({
                     </FormulaTooltip>
 
                     {/* Allowance */}
-                    <FormulaTooltip formula={formulaAllowance(rate, extraWage)} className="justify-self-end text-right allowance-amt font-semibold text-[13px]">
-                      {allowance > 0 ? formatCompact(allowance) : ''}
+                    <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="justify-self-end text-right allowance-amt font-semibold text-[13px]">
+                      {allowance !== 0 ? formatCompact(allowance) : ''}
                     </FormulaTooltip>
 
                     {/* Total */}
-                    <FormulaTooltip formula={formulaTotal(extraWage, allowance, hours)} className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : ''}`}>
+                    <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
                       {formatCompact(total)}
                     </FormulaTooltip>
                   </>

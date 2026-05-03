@@ -384,7 +384,10 @@ export function computeTotalSalaryTypeB(
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
-    const allowance = roundToThousand((dailyBase + extraWage) * rate / 100);
+    // Added rows (sort_order > 0) are pure delta adjustments — allowance
+    // applies only on the extra wage itself, not on (dailyBase + extraWage).
+    const allowanceBase = e.sort_order > 0 ? extraWage : (dailyBase + extraWage);
+    const allowance = roundToThousand(allowanceBase * rate / 100);
 
     totalExtraWages += extraWage;
     totalAllowancesFromRates += allowance;
