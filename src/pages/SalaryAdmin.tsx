@@ -45,15 +45,18 @@ interface Period {
 
 const TEMP_HIDDEN_TEST_USERNAMES = new Set(['test_loaia', 'test_loaib', 'test_loaic']);
 
+// Employees rolled into a separate "phụ" total instead of the main payroll sum.
+const SECONDARY_TOTAL_USERNAMES = new Set(['ptuan', 'chinuong', 'chioanh', 'ghan']);
+
 // Department-based employee pages component
 interface DepartmentEmployeePagesProps {
   employees: Employee[];
   onSelectEmployee: (emp: Employee) => void;
-  typeBadgeColor: (t: EmployeeShiftType) => string;
   pendingCounts?: Map<string, number>;
+  publishedTotals: Map<string, number>;
 }
 
-function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor, pendingCounts }: DepartmentEmployeePagesProps) {
+function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, publishedTotals }: DepartmentEmployeePagesProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [dragStartX, setDragStartX] = useState(0);
 
@@ -140,9 +143,17 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor, 
                   <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
                 )}
               </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeBadgeColor(emp.shift_type)}`}>
-                {EMPLOYEE_TYPE_LABELS[emp.shift_type]}
-              </span>
+              {(() => {
+                const total = publishedTotals.get(emp.user_id);
+                if (!total || total <= 0) {
+                  return <span className="text-[11px] text-muted-foreground">Chưa công bố</span>;
+                }
+                return (
+                  <span className="text-[13px] font-bold text-emerald-400 tabular-nums">
+                    {formatVND(total).replace(' đ', '')}đ
+                  </span>
+                );
+              })()}
             </motion.button>
           ))}
         </motion.div>
@@ -162,6 +173,44 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, typeBadgeColor, 
           ))}
         </div>
       )}
+
+      {/* Payroll totals: main sum (excluded users in a separate "phụ" sum) */}
+      {(() => {
+        let mainTotal = 0;
+        let secondaryTotal = 0;
+        let secondaryCount = 0;
+        for (const emp of employees) {
+          const t = publishedTotals.get(emp.user_id) || 0;
+          if (t <= 0) continue;
+          if (SECONDARY_TOTAL_USERNAMES.has((emp.username || '').toLowerCase())) {
+            secondaryTotal += t;
+            secondaryCount += 1;
+          } else {
+            mainTotal += t;
+          }
+        }
+        if (mainTotal === 0 && secondaryTotal === 0) return null;
+        return (
+          <div className="glass-card p-3 mt-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-muted-foreground">Tổng lương đã công bố</span>
+              <span className="text-[15px] font-bold text-primary tabular-nums">
+                {formatVND(mainTotal).replace(' đ', '')}đ
+              </span>
+            </div>
+            {secondaryCount > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">
+                  Phụ ({Array.from(SECONDARY_TOTAL_USERNAMES).join(', ')})
+                </span>
+                <span className="text-[13px] font-semibold text-accent tabular-nums">
+                  {formatVND(secondaryTotal).replace(' đ', '')}đ
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -262,6 +311,7 @@ export default function SalaryAdmin() {
   const [salaryColumnsAvailable, setSalaryColumnsAvailable] = useState(true);
   const [adminUid, setAdminUid] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map());
+  const [publishedTotals, setPublishedTotals] = useState<Map<string, number>>(new Map());
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -336,6 +386,43 @@ export default function SalaryAdmin() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedPeriodId, refreshPendingCounts]);
+
+  // Published salary totals per employee for the selected period.
+  const refreshPublishedTotals = useCallback(async () => {
+    if (!selectedPeriodId) { setPublishedTotals(new Map()); return; }
+    const { data, error } = await supabase
+      .from('salary_records')
+      .select('user_id, total_salary, status')
+      .eq('period_id', selectedPeriodId)
+      .eq('status', 'published');
+    if (error) { console.error('Published totals fetch failed:', error); return; }
+    const map = new Map<string, number>();
+    for (const row of (data || []) as { user_id: string; total_salary: number }[]) {
+      map.set(row.user_id, row.total_salary);
+    }
+    setPublishedTotals(map);
+  }, [selectedPeriodId]);
+
+  useEffect(() => { refreshPublishedTotals(); }, [refreshPublishedTotals]);
+
+  // Realtime: refresh totals on any salary_records change in this period.
+  useEffect(() => {
+    if (!selectedPeriodId) return;
+    const channel = supabase
+      .channel(`published-totals:${selectedPeriodId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'salary_records',
+          filter: `period_id=eq.${selectedPeriodId}`,
+        },
+        () => { refreshPublishedTotals(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedPeriodId, refreshPublishedTotals]);
 
   // Sync global clock-in
   useEffect(() => {
@@ -609,8 +696,13 @@ export default function SalaryAdmin() {
 
   const handlePublish = useCallback(async () => {
     if (!breakdown || !selectedEmployee) return;
-    await publish(breakdown.total, breakdown);
-    toast.success(`Đã công bố lương cho ${selectedEmployee.full_name}`);
+    try {
+      await publish(breakdown.total, breakdown);
+      toast.success(`Đã công bố lương cho ${selectedEmployee.full_name}`);
+    } catch (err) {
+      console.error('Publish failed:', err);
+      toast.error(`Lỗi công bố lương: ${err instanceof Error ? err.message : 'Lỗi không xác định'}`);
+    }
   }, [breakdown, selectedEmployee, publish]);
 
   const handleNameChange = useCallback(async (name: string) => {
@@ -1035,8 +1127,8 @@ export default function SalaryAdmin() {
           <DepartmentEmployeePages
             employees={employees}
             onSelectEmployee={setSelectedEmployee}
-            typeBadgeColor={typeBadgeColor}
             pendingCounts={pendingCounts}
+            publishedTotals={publishedTotals}
           />
         )}
 
