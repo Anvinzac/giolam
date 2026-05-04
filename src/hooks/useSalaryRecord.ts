@@ -69,27 +69,37 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     if (!userId || !periodId) return;
     const publishedAt = new Date().toISOString();
 
-    const { data: rec } = await supabase
-      .from('salary_records')
-      .upsert(
-        {
-          user_id: userId,
-          period_id: periodId,
-          total_salary: totalSalary,
-          salary_breakdown: breakdown as unknown as Record<string, unknown>,
-          status: 'published',
-          published_at: publishedAt,
-        },
-        { onConflict: 'user_id,period_id' }
-      )
-      .select()
-      .single();
-    if (!rec) return;
-    setRecord(rec as unknown as SalaryRecord);
+    // Step 1: make sure a salary_records row exists so the snapshot's FK has
+    // a target — but DO NOT touch its total_salary, salary_breakdown, or
+    // status yet. On a republish, the admin dashboard reads salary_records;
+    // overwriting those fields here would surface the new total before the
+    // snapshot lands, and on snapshot failure leave admin ahead of employee.
+    let recordId = record?.id;
+    if (!recordId) {
+      const { data: existing } = await supabase
+        .from('salary_records')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('period_id', periodId)
+        .maybeSingle();
+      if (existing) {
+        recordId = (existing as { id: string }).id;
+      } else {
+        const { data: created, error: insertErr } = await supabase
+          .from('salary_records')
+          .insert({ user_id: userId, period_id: periodId, total_salary: 0, status: 'draft' })
+          .select('id')
+          .single();
+        if (insertErr || !created) {
+          throw new Error(`Failed to create salary record: ${insertErr?.message || 'unknown error'}`);
+        }
+        recordId = (created as { id: string }).id;
+      }
+    }
 
-    // Freeze a snapshot of every input the employee view needs, so admin
-    // edits after publish do not retroactively change what the employee
-    // sees. Re-publishing overwrites the snapshot via UNIQUE(user_id,period_id).
+    // Step 2: freeze the snapshot. If anything below fails, salary_records
+    // is still draft (or whatever its prior status was) — the admin dashboard
+    // will not surface a published total the employee can't actually see.
     const profileLookup = await supabase.from('profiles')
       .select('shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
       .eq('user_id', userId).single();
@@ -109,7 +119,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
         .map((r: { special_date: string }) => r.special_date)
         .filter((d: string) => !existingDates.has(d));
       if (missing.length > 0) {
-        await supabase.from('salary_entries').insert(
+        const { error: seedErr } = await supabase.from('salary_entries').insert(
           missing.map(d => ({
             user_id: userId,
             period_id: periodId,
@@ -123,6 +133,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
             total_daily_wage: 0,
           }))
         );
+        if (seedErr) throw new Error(`Failed to seed special-day rows: ${seedErr.message}`);
       }
     }
 
@@ -135,9 +146,9 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
     ]);
     const profileRes = profileLookup;
 
-    await supabase.from('salary_published_snapshots').upsert(
+    const { error: snapErr } = await supabase.from('salary_published_snapshots').upsert(
       {
-        salary_record_id: (rec as { id: string }).id,
+        salary_record_id: recordId,
         user_id: userId,
         period_id: periodId,
         published_at: publishedAt,
@@ -151,7 +162,32 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
       } as Record<string, unknown>,
       { onConflict: 'user_id,period_id' }
     );
-  }, [userId, periodId]);
+    if (snapErr) {
+      throw new Error(`Failed to write snapshot: ${snapErr.message}`);
+    }
+
+    // Step 3: snapshot is committed — flip salary_records to the new total
+    // and published status atomically. Both surfaces (admin dashboard +
+    // employee snapshot) now show the same number. If this UPDATE fails,
+    // the employee already sees the new snapshot but admin dashboard shows
+    // the prior total — strictly safer than the reverse.
+    const { data: pubRec, error: pubErr } = await supabase
+      .from('salary_records')
+      .update({
+        total_salary: totalSalary,
+        salary_breakdown: breakdown,
+        status: 'published',
+        published_at: publishedAt,
+      } as never)
+      .eq('user_id', userId)
+      .eq('period_id', periodId)
+      .select()
+      .single();
+    if (pubErr) {
+      throw new Error(`Snapshot saved but failed to mark published: ${pubErr.message}`);
+    }
+    setRecord(pubRec as unknown as SalaryRecord);
+  }, [userId, periodId, record?.id]);
 
   const isPublished = record?.status === 'published';
 

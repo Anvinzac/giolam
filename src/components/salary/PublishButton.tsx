@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Send, CheckCircle } from 'lucide-react';
+import { Send, RefreshCw } from 'lucide-react';
 
 interface PublishButtonProps {
   isPublished: boolean;
@@ -10,10 +10,15 @@ interface PublishButtonProps {
 export default function PublishButton({ isPublished, isSaving, onPublish }: PublishButtonProps) {
   if (isPublished) {
     return (
-      <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-display font-semibold text-sm">
-        <CheckCircle size={16} />
-        Đã công bố
-      </div>
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={onPublish}
+        disabled={isSaving}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-colors font-display font-semibold text-sm disabled:opacity-50"
+      >
+        <RefreshCw size={16} />
+        {isSaving ? 'Đang lưu...' : 'Công bố lại'}
+      </motion.button>
     );
   }
 
