@@ -226,22 +226,14 @@ export default function SalaryTableTypeC({
   );
 
   useEffect(() => {
+    // Only initialize entries that don't yet exist. Don't override an admin's
+    // actual edits — if a row on a scheduled off-day already exists (whether
+    // marked off, or carrying clock-in/out/hours the admin just typed), leave
+    // it alone. The previous version reset every existing entry to off-day on
+    // each render, which wiped admin input as soon as it was typed.
     scheduledOffDays.forEach((dateStr) => {
-      const existingEntry = filteredEntries.find(e => e.entry_date === dateStr && e.sort_order === 0)
-        || filteredEntries.find(e => e.entry_date === dateStr);
-      if (existingEntry) {
-        if (!existingEntry.is_day_off || existingEntry.note !== OFF_DAY_NOTE || existingEntry.clock_in || existingEntry.clock_out || existingEntry.total_hours !== null) {
-          onEntryUpdate(dateStr, existingEntry.sort_order, {
-            is_day_off: true,
-            note: OFF_DAY_NOTE,
-            clock_in: null,
-            clock_out: null,
-            total_hours: null,
-          });
-        }
-        return;
-      }
-
+      const exists = filteredEntries.some(e => e.entry_date === dateStr);
+      if (exists) return;
       onEntryUpdate(dateStr, 0, {
         is_day_off: true,
         note: OFF_DAY_NOTE,
