@@ -56,7 +56,7 @@ export default function Index() {
       // Get current period
       const today = new Date().toISOString().split('T')[0];
       const { data: periods } = await withTimeout(
-        supabase.from('working_periods').select('*').lte('start_date', today).gte('end_date', today),
+        supabase.from('working_periods').select('*').eq('is_archived', false).lte('start_date', today).gte('end_date', today),
         10000,
         'Working period lookup timed out.',
       );
@@ -64,7 +64,7 @@ export default function Index() {
       let currentPeriod = periods?.[0];
       if (!currentPeriod) {
         const { data: upcoming } = await withTimeout(
-          supabase.from('working_periods').select('*').gte('start_date', today).order('start_date', { ascending: true }).limit(1),
+          supabase.from('working_periods').select('*').eq('is_archived', false).gte('start_date', today).order('start_date', { ascending: true }).limit(1),
           10000,
           'Upcoming period lookup timed out.',
         );
@@ -74,7 +74,7 @@ export default function Index() {
       // Fallback: most recent period (employees can still edit after end_date)
       if (!currentPeriod) {
         const { data: recent } = await withTimeout(
-          supabase.from('working_periods').select('*').order('end_date', { ascending: false }).limit(1),
+          supabase.from('working_periods').select('*').eq('is_archived', false).order('end_date', { ascending: false }).limit(1),
           10000,
           'Recent period lookup timed out.',
         );

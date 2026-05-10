@@ -175,13 +175,14 @@ export default function EmployeeSalaryEntry() {
         const { data: pAll } = await withTimeout(
           supabase.from('working_periods')
             .select('*')
+            .eq('is_archived', false)
             .lte('start_date', today)
             .gte('end_date', today)
             .limit(1),
           10000,
           'Working period lookup timed out.'
         );
-        if (!mounted) return;
+
         let activePeriod = ((pAll || []) as Period[])[0];
 
         // Fallback: if no period covers today, grab the most recent one
@@ -189,6 +190,7 @@ export default function EmployeeSalaryEntry() {
           const { data: fallback } = await withTimeout(
             supabase.from('working_periods')
               .select('*')
+              .eq('is_archived', false)
               .order('end_date', { ascending: false })
               .limit(1),
             10000,

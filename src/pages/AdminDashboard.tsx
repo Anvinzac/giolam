@@ -78,7 +78,7 @@ export default function AdminDashboard() {
         setIsAdmin(true);
 
         const { data: p } = await withTimeout(
-          supabase.from('working_periods').select('*').order('start_date', { ascending: false }),
+          supabase.from('working_periods').select('*').eq('is_archived', false).order('start_date', { ascending: false }),
           10000,
           'Working period lookup timed out.',
         );
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
     if (error) { toast.error(error.message); return; }
     toast.success("Period created!");
     
-    const { data: p } = await supabase.from('working_periods').select('*').order('start_date', { ascending: false });
+    const { data: p } = await supabase.from('working_periods').select('*').eq('is_archived', false).order('start_date', { ascending: false });
     setPeriods(p || []);
     setStartDate("");
     setEndDate("");

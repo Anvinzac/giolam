@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
-import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload } from 'lucide-react';
+import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Archive, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -22,6 +22,7 @@ import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import AnalogClock from '@/components/AnalogClock';
 import CSVImportModal, { ParsedRow } from '@/components/salary/CSVImportModal';
+import { archiveAndCreateNextPeriod } from '@/lib/archivePeriod';
 
 interface Employee {
   user_id: string;
@@ -312,6 +313,9 @@ export default function SalaryAdmin() {
   const [adminUid, setAdminUid] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map());
   const [publishedTotals, setPublishedTotals] = useState<Map<string, number>>(new Map());
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
+  const [isArchiving, setIsArchiving] = useState(false);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
 
@@ -607,7 +611,7 @@ export default function SalaryAdmin() {
         setAdminUid(user.id);
 
         const { data: p } = await withTimeout(
-          supabase.from('working_periods').select('*').order('start_date', { ascending: false }),
+          supabase.from('working_periods').select('*').eq('is_archived', false).order('start_date', { ascending: false }),
           10000,
           'Working period lookup timed out.',
         );
@@ -874,6 +878,53 @@ export default function SalaryAdmin() {
     setShowShiftTypePicker(false);
   }, [selectedEmployee, selectedPeriodId]);
 
+  const handleArchivePeriod = useCallback(async () => {
+    if (!selectedPeriod) return;
+    if (!newPeriodEndDate) {
+      toast.error('Vui lòng chọn ngày kết thúc kỳ mới');
+      return;
+    }
+    if (newPeriodEndDate <= selectedPeriod.end_date) {
+      toast.error('Ngày kết thúc kỳ mới phải sau ngày kết thúc kỳ hiện tại');
+      return;
+    }
+
+    setIsArchiving(true);
+    try {
+      const result = await archiveAndCreateNextPeriod(
+        selectedPeriod.id,
+        selectedPeriod.end_date,
+        selectedPeriod.off_days || [],
+        newPeriodEndDate,
+      );
+
+      if (!result.success) {
+        toast.error(result.error || 'Lưu trữ kỳ thất bại');
+        return;
+      }
+
+      toast.success('Đã lưu trữ kỳ cũ và tạo kỳ mới thành công');
+      setShowArchiveDialog(false);
+      setNewPeriodEndDate('');
+      // Reload periods and select the new one
+      const { data: p } = await supabase
+        .from('working_periods')
+        .select('*')
+        .eq('is_archived', false)
+        .order('start_date', { ascending: false });
+      if (p && p.length > 0) {
+        setPeriods(p as Period[]);
+        setSelectedPeriodId(p[0].id);
+      }
+      setSelectedEmployee(null);
+    } catch (err) {
+      console.error('Archive failed:', err);
+      toast.error(err instanceof Error ? err.message : 'Lỗi không xác định');
+    } finally {
+      setIsArchiving(false);
+    }
+  }, [selectedPeriod, newPeriodEndDate]);
+
   const handleWorkShiftChange = useCallback(async (newShift: 'morning' | 'evening') => {
     if (!selectedEmployee) return;
     
@@ -1079,17 +1130,36 @@ export default function SalaryAdmin() {
 
         {/* Period selector */}
         {!selectedEmployee && (
-          <select
-            value={selectedPeriodId || ''}
-            onChange={e => setSelectedPeriodId(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-muted border border-border text-sm text-foreground mb-3"
-          >
-            {periods.map(p => (
-              <option key={p.id} value={p.id}>
-                {formatDateViet(p.start_date)} – {formatDateViet(p.end_date)}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2 items-center mb-3">
+            <select
+              value={selectedPeriodId || ''}
+              onChange={e => setSelectedPeriodId(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-xl bg-muted border border-border text-sm text-foreground"
+            >
+              {periods.map(p => (
+                <option key={p.id} value={p.id}>
+                  {formatDateViet(p.start_date)} – {formatDateViet(p.end_date)}
+                </option>
+              ))}
+            </select>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                if (!selectedPeriod) return;
+                // Default new end date to 30 days after current period ends
+                const endDate = new Date(selectedPeriod.end_date + 'T00:00:00');
+                endDate.setDate(endDate.getDate() + 30);
+                const defaultDate = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+                setNewPeriodEndDate(defaultDate);
+                setShowArchiveDialog(true);
+              }}
+              disabled={periods.length === 0}
+              className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Lưu trữ kỳ này và tạo kỳ mới"
+            >
+              <Archive size={18} />
+            </motion.button>
+          </div>
         )}
 
         {/* Tabs */}
@@ -1330,6 +1400,64 @@ export default function SalaryAdmin() {
                   <p className="text-xs text-muted-foreground mt-3 text-center">
                     ⚠️ Đổi loại sẽ xóa toàn bộ dữ liệu lương hiện tại
                   </p>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Archive Period Dialog */}
+            {showArchiveDialog && selectedPeriod && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowArchiveDialog(false)}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="glass-card p-6 max-w-sm w-full"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                    <Archive size={20} />
+                    Lưu trữ kỳ và tạo kỳ mới
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="p-3 rounded-xl bg-muted/50">
+                      <p className="text-xs text-muted-foreground">Kỳ hiện tại</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {formatDateViet(selectedPeriod.start_date)} – {formatDateViet(selectedPeriod.end_date)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Ngày kết thúc kỳ mới</label>
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-muted-foreground" />
+                        <input
+                          type="date"
+                          value={newPeriodEndDate}
+                          onChange={e => setNewPeriodEndDate(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>• Kỳ hiện tại sẽ được đánh dấu đã lưu trữ</p>
+                      <p>• Bảng lương và phụ cấp sẽ được sao chép sang kỳ mới</p>
+                      <p>• Nhân viên sẽ tự động chuyển sang kỳ mới</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => setShowArchiveDialog(false)}
+                      className="flex-1 py-2 rounded-xl bg-muted text-muted-foreground hover:bg-muted/80 text-sm font-medium"
+                    >
+                      Hủy
+                    </button>
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleArchivePeriod}
+                      disabled={isArchiving || !newPeriodEndDate}
+                      className="flex-1 py-2 rounded-xl gradient-gold text-primary-foreground font-semibold text-sm disabled:opacity-50"
+                    >
+                      {isArchiving ? 'Đang xử lý...' : 'Lưu trữ & Tạo kỳ mới'}
+                    </motion.button>
+                  </div>
                 </motion.div>
               </div>
             )}
