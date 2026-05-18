@@ -495,18 +495,7 @@ export default function SalaryAdmin() {
     const seedKey = `${selectedEmployee.user_id}|${selectedPeriodId}`;
     if (seedingRef.current === seedKey) return;
 
-    if (selectedEmployee.shift_type === 'basic') {
-      // Type A: seed only days with an actual allowance rate. Excluding
-      // both 0% rows and the legacy `public_holiday` day_type covers
-      // any leftover "Quán nghỉ" placeholders.
-      if (rates.length === 0) return;
-      seedingRef.current = seedKey;
-      for (const r of rates) {
-        if (r.rate_percent <= 0) continue;
-        if (r.day_type === 'public_holiday') continue;
-        addRowAtDate(r.special_date);
-      }
-    } else if (selectedEmployee.shift_type === 'overtime') {
+    if (selectedEmployee.shift_type === 'overtime') {
       // Type B: seed all days in period, skip global off-days
       seedingRef.current = seedKey;
       const offDaySet = new Set(selectedPeriod.off_days || []);
