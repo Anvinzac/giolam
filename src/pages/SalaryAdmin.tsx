@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
 import SalaryTableTypeB from '@/components/salary/SalaryTableTypeB';
+import ImmersiveInputTypeB from '@/components/salary/ImmersiveInputTypeB';
 import SalaryTableTypeC from '@/components/salary/SalaryTableTypeC';
 import PublishButton from '@/components/salary/PublishButton';
 import PendingReviewBadge from '@/components/salary/PendingReviewBadge';
@@ -316,8 +317,14 @@ export default function SalaryAdmin() {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
   const [isArchiving, setIsArchiving] = useState(false);
+  const [typeBViewMode, setTypeBViewMode] = useState<'table' | 'card'>('table');
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
+
+  // Reset Type B view mode when switching employees
+  useEffect(() => {
+    setTypeBViewMode('table');
+  }, [selectedEmployee?.user_id]);
 
   // Hooks for selected employee
   const { rates, updateRate, addRate, removeRate } = useSpecialDayRates(
@@ -334,6 +341,12 @@ export default function SalaryAdmin() {
       editorMode: 'admin',
       enableRealtime: true,
       seedAllDays: selectedEmployee?.shift_type === 'basic',
+      seedAllPeriodDays: selectedEmployee?.shift_type === 'overtime' && selectedPeriod ? {
+        periodStart: selectedPeriod.start_date,
+        periodEnd: selectedPeriod.end_date,
+        defaultClockIn: selectedEmployee.default_clock_in || '08:00',
+        offDays: selectedPeriod.off_days || [],
+      } : undefined,
     }
   );
   
@@ -1238,6 +1251,26 @@ export default function SalaryAdmin() {
             )}
 
             {selectedEmployee.shift_type === 'overtime' && (
+              <>
+              <div className="flex gap-2 items-center mb-2">
+                <button
+                  onClick={() => setTypeBViewMode('table')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                    typeBViewMode === 'table' ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <Table2 size={12} /> Bảng
+                </button>
+                <button
+                  onClick={() => setTypeBViewMode('card')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                    typeBViewMode === 'card' ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <DollarSign size={12} /> Thẻ ngày
+                </button>
+              </div>
+              {typeBViewMode === 'table' ? (
               <SalaryTableTypeB
                 entries={entries}
                 rates={rates}
@@ -1264,6 +1297,23 @@ export default function SalaryAdmin() {
                 onDepositChange={setDeposit}
                 offDays={selectedPeriod.off_days || []}
               />
+              ) : (
+                <ImmersiveInputTypeB
+                  entries={entries}
+                  rates={rates}
+                  allowances={allowances}
+                  baseSalary={selectedEmployee.base_salary}
+                  hourlyRate={selectedEmployee.hourly_rate}
+                  globalClockIn={globalClockIn}
+                  periodStart={selectedPeriod.start_date}
+                  periodEnd={selectedPeriod.end_date}
+                  offDays={selectedPeriod.off_days || []}
+                  onEntryUpdate={updateEntry}
+                  breakdown={breakdown}
+                  currentUserId={adminUid || ''}
+                />
+              )}
+              </>
             )}
 
             {(selectedEmployee.shift_type === 'notice_only' || selectedEmployee.shift_type === 'lunar_rate') && (

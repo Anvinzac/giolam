@@ -2,15 +2,45 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign, Database, Terminal, Wand2 } from "lucide-react";
+import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign, Database, Terminal, Wand2, Package } from "lucide-react";
 import { toast } from "sonner";
 import AdminEmployeeList from "@/components/AdminEmployeeList";
 import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
 import AdminRegistrations from "@/components/AdminRegistrations";
 import AdminEmployeeManager from "@/components/AdminEmployeeManager";
+import AdminIngredientManager from "@/components/AdminIngredientManager";
+import AdminIngredientEditor from "@/components/AdminIngredientEditor";
+import AdminStockReports from "@/components/AdminStockReports";
 import AppBootState from "@/components/AppBootState";
 import { withTimeout } from "@/lib/withTimeout";
 import { formatDateViet } from "@/lib/salaryCalculations";
+
+function IngredientsTab() {
+  const [subTab, setSubTab] = useState<'editor' | 'assign'>('editor');
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <button
+          onClick={() => setSubTab('editor')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            subTab === 'editor' ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          Chỉnh sửa nguyên liệu
+        </button>
+        <button
+          onClick={() => setSubTab('assign')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            subTab === 'assign' ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          Phân công nhân viên
+        </button>
+      </div>
+      {subTab === 'editor' ? <AdminIngredientEditor /> : <AdminIngredientManager />}
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -18,7 +48,7 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [periods, setPeriods] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations'>('shifts');
+  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations' | 'ingredients' | 'stock-reports'>('shifts');
   const [changesBadge, setChangesBadge] = useState(0);
   const [isSeeding, setIsSeeding] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -187,6 +217,8 @@ export default function AdminDashboard() {
             { key: 'changes' as const, label: 'Thay đổi', icon: Bell, badge: changesBadge },
             { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar, badge: 0 },
             { key: 'employees' as const, label: 'Nhân viên', icon: Users, badge: 0 },
+            { key: 'ingredients' as const, label: 'Kho', icon: Package, badge: 0 },
+            { key: 'stock-reports' as const, label: 'Báo cáo kho', icon: Package, badge: 0 },
           ].map(({ key, label, icon: Icon, badge }) => (
             <button
               key={key}
@@ -330,6 +362,14 @@ export default function AdminDashboard() {
 
         {tab === 'employees' && (
           <AdminEmployeeManager />
+        )}
+
+        {tab === 'ingredients' && (
+          <IngredientsTab />
+        )}
+
+        {tab === 'stock-reports' && (
+          <AdminStockReports />
         )}
       </div>
     </div>

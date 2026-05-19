@@ -475,6 +475,7 @@ export default function SalaryTableTypeC({
   };
 
   const toggleDayOff = (e: SalaryEntry) => {
+    if (scheduledOffDays.has(e.entry_date)) return;
     const rowKey = `${e.entry_date}-${e.sort_order}`;
     if (chipRowKey === rowKey) {
       setChipRowKey(null);
@@ -698,7 +699,7 @@ export default function SalaryTableTypeC({
       <div key={cellKey}>
       <div
         className={`relative overflow-hidden py-2.5 px-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
-          e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
+          e.is_day_off && !isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
         } ${idx && idx % 2 !== 0 ? 'bg-muted/40' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
         } ${showWeekSep ? 'relative' : ''}`}
@@ -747,7 +748,7 @@ export default function SalaryTableTypeC({
           >
         <div className="min-w-0 flex-1 pr-1 flex flex-col justify-between min-h-[38px]">
           <div className="flex items-start gap-1.5">
-            {!readOnly && (
+            {!readOnly && !isScheduledOffDay && (
               <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
                 {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
@@ -770,8 +771,8 @@ export default function SalaryTableTypeC({
               />
             ) : (
               <button
-                onClick={() => toggleDayOff(e)}
-                className={`block -mt-0.5 leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
+                onClick={() => { if (!isScheduledOffDay) toggleDayOff(e); }}
+                className={`block -mt-0.5 leading-none whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly && !isScheduledOffDay ? 'hover:underline' : 'cursor-default'}`}
               >
                 <span className="font-light text-[11px] opacity-50 mr-1.5">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
                 <span className="font-semibold text-[17px] inline-block w-[20px] text-right">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>
@@ -880,7 +881,7 @@ export default function SalaryTableTypeC({
       </div>
       <div 
         className={`relative hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
-          e.is_day_off || isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
+          e.is_day_off && !isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
         } ${idx && idx % 2 !== 0 ? 'bg-muted/40' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
         }`}
@@ -909,7 +910,7 @@ export default function SalaryTableTypeC({
         {/* Date + note */}
         <div className="pr-4 sm:pr-2">
           <div className="flex items-start gap-1.5">
-            {!readOnly && (
+            {!readOnly && !isScheduledOffDay && (
               <button data-toggle-button onClick={() => toggleDayOff(e)} className={`mt-0.5 flex-shrink-0 transition-colors ${e.is_day_off ? 'text-destructive/60 hover:text-destructive' : 'text-emerald-400/60 hover:text-emerald-400'}`}>
                 {e.is_day_off ? <X size={11} /> : <Check size={11} />}
               </button>
@@ -933,8 +934,8 @@ export default function SalaryTableTypeC({
                 />
               ) : (
                 <button
-                  onClick={() => toggleDayOff(e)}
-                  className={`block -mt-0.5 leading-none sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
+                  onClick={() => { if (!isScheduledOffDay) toggleDayOff(e); }}
+                  className={`block -mt-0.5 leading-none sm:leading-normal whitespace-nowrap ${getDayColor(e.entry_date)} ${!readOnly && !isScheduledOffDay ? 'hover:underline' : 'cursor-default'}`}
                 >
                   <span className="font-light text-[10px] sm:text-[9px] opacity-50 mr-1.5">{formatVietnameseDay(e.entry_date).split(' ')[0]}</span>
                   <span className="font-semibold text-[15px] sm:text-[14px] inline-block w-[18px] sm:w-[16px] text-right">{formatVietnameseDay(e.entry_date).split(' ')[1]}</span>

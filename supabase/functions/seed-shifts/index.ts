@@ -42,49 +42,26 @@ serve(async (req) => {
       const isOff = offDays.includes(dateStr);
       const dayOfWeek = current.getDay(); // 0=Sun, 6=Sat
 
-      // ~80% active on working days
-      const isActive = !isOff && Math.random() > 0.2;
+      // Activate ALL working days (off-days remain inactive)
+      const isActive = !isOff;
 
       if (isActive) {
-        // Add some randomness to clock times
+        // Set clock_in to default, leave clock_out null so only clock-out needs entry
         const baseIn = emp.default_clock_in || "08:00";
-        const baseOut = emp.default_clock_out || "17:00";
-
-        // Randomly vary by -15 to +15 mins
-        const varyMinutes = () => Math.floor(Math.random() * 31) - 15;
-        const parseTime = (t: string) => {
-          const [h, m] = t.split(":").map(Number);
-          return h * 60 + m;
-        };
-        const formatTime = (mins: number) => {
-          const h = Math.floor(mins / 60);
-          const m = mins % 60;
-          return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-        };
-
-        const clockInMins = parseTime(baseIn) + varyMinutes();
-        const clockOutMins = parseTime(baseOut) + varyMinutes();
 
         const shift: any = {
           user_id: emp.user_id,
           period_id: periodId,
           shift_date: dateStr,
           is_active: true,
-          clock_in: formatTime(clockInMins),
-          clock_out: formatTime(clockOutMins),
+          clock_in: baseIn,
+          clock_out: null,
         };
 
-        // For overtime employees, also set main + overtime fields
+        // For overtime employees, also set main clock fields
         if (emp.shift_type === "overtime") {
-          shift.main_clock_in = formatTime(clockInMins);
-          shift.main_clock_out = formatTime(clockOutMins);
-          // 50% chance of overtime on active days
-          if (Math.random() > 0.5) {
-            const otStart = clockOutMins + 30; // 30 min break
-            const otEnd = otStart + 60 + Math.floor(Math.random() * 120); // 1-3 hours OT
-            shift.overtime_clock_in = formatTime(otStart);
-            shift.overtime_clock_out = formatTime(otEnd);
-          }
+          shift.main_clock_in = baseIn;
+          shift.main_clock_out = null;
         }
 
         // Weekend notice

@@ -11,7 +11,6 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
-  const [noPeriod, setNoPeriod] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,61 +52,13 @@ export default function Index() {
         return;
       }
 
-      // Get current period
-      const today = new Date().toISOString().split('T')[0];
-      const { data: periods } = await withTimeout(
-        supabase.from('working_periods').select('*').eq('is_archived', false).lte('start_date', today).gte('end_date', today),
-        10000,
-        'Working period lookup timed out.',
-      );
-
-      let currentPeriod = periods?.[0];
-      if (!currentPeriod) {
-        const { data: upcoming } = await withTimeout(
-          supabase.from('working_periods').select('*').eq('is_archived', false).gte('start_date', today).order('start_date', { ascending: true }).limit(1),
-          10000,
-          'Upcoming period lookup timed out.',
-        );
-        currentPeriod = upcoming?.[0];
-      }
-
-      // Fallback: most recent period (employees can still edit after end_date)
-      if (!currentPeriod) {
-        const { data: recent } = await withTimeout(
-          supabase.from('working_periods').select('*').eq('is_archived', false).order('end_date', { ascending: false }).limit(1),
-          10000,
-          'Recent period lookup timed out.',
-        );
-        currentPeriod = recent?.[0];
-      }
-
-      if (currentPeriod) {
-        // Employees should use the same 10-day paged salary tables as admin.
-        // The old weekly shift view writes to a different table and is no
-        // longer the employee input surface.
-        const { data: salaryRec } = await withTimeout(
-          supabase.from('salary_records')
-            .select('status')
-            .eq('user_id', session.user.id)
-            .eq('period_id', currentPeriod.id)
-            .maybeSingle(),
-          10000,
-          'Salary record lookup timed out.',
-        );
-        if (!isMounted) return;
-        setLoading(false);
-        navigate((salaryRec as any)?.status === 'published' ? "/salary" : "/salary/edit", { replace: true });
-      } else {
-        setNoPeriod(true);
-        setLoading(false);
-      }
+      navigate("/dashboard", { replace: true });
     };
 
     const bootstrap = async () => {
       try {
         setLoading(true);
         setBootError(null);
-        setNoPeriod(false);
         const { data } = await withTimeout(
           supabase.auth.getSession(),
           10000,

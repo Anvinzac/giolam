@@ -177,9 +177,12 @@ export default function AnalogClock({
 
     const nextField = activeRangeField || 'out';
 
-    // Clock-out cannot precede clock-in.
-    if (nextField === 'out' && wouldPrecedeClockIn(hour, selectedMinute)) {
-      return;
+    // Clock-out hour cannot be before clock-in hour (minute check is deferred to minute selection)
+    if (nextField === 'out' && rangeClockIn) {
+      const parsed = parseTime(rangeClockIn);
+      if (parsed && hour < parsed.hour) {
+        return;
+      }
     }
 
     setSelectedHour(hour);

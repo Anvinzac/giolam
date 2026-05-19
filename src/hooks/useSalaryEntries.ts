@@ -30,6 +30,13 @@ export interface UseSalaryEntriesOptions {
   enableRealtime?: boolean;
   /** For Type A: auto-seed working entries for each special day in the rates table */
   seedAllDays?: boolean;
+  /** For Type B: auto-seed entries for ALL dates in the period with clock_in set */
+  seedAllPeriodDays?: {
+    periodStart: string;
+    periodEnd: string;
+    defaultClockIn: string;
+    offDays: string[];
+  };
   /** Whether employee edits should wait for admin review or be auto-approved */
   employeeReviewMode?: 'pending' | 'auto';
 }
@@ -43,6 +50,7 @@ export function useSalaryEntries(
     editorMode = 'admin',
     enableRealtime = false,
     seedAllDays = false,
+    seedAllPeriodDays,
     employeeReviewMode = 'pending',
   } = options;
   const [entries, setEntries] = useState<SalaryEntry[]>([]);
@@ -143,12 +151,53 @@ export function useSalaryEntries(
         }
       }
 
+      // Type B: seed ALL dates in the period with clock_in set
+      if (seedAllPeriodDays && periodId) {
+        const existingDates = new Set(loaded.map(e => e.entry_date));
+        const { periodStart, periodEnd, defaultClockIn, offDays } = seedAllPeriodDays;
+        const offDaySet = new Set(offDays);
+        const rows: Omit<SalaryEntry, 'id'>[] = [];
+        const start = new Date(periodStart + 'T00:00:00');
+        const end = new Date(periodEnd + 'T00:00:00');
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split('T')[0];
+          if (existingDates.has(dateStr)) continue;
+          const isOff = offDaySet.has(dateStr);
+          rows.push({
+            user_id: userId,
+            period_id: periodId,
+            entry_date: dateStr,
+            sort_order: 0,
+            is_day_off: isOff,
+            off_percent: isOff ? 100 : 0,
+            note: isOff ? 'Nghỉ' : null,
+            clock_in: isOff ? null : defaultClockIn,
+            clock_out: null,
+            total_hours: null,
+            allowance_rate_override: null,
+            base_daily_wage: 0,
+            allowance_amount: 0,
+            extra_wage: 0,
+            total_daily_wage: 0,
+          });
+        }
+        if (rows.length > 0) {
+          const { data: inserted, error: insertErr } = await supabase
+            .from('salary_entries')
+            .insert(rows)
+            .select();
+          if (!insertErr && inserted) {
+            loaded = sortEntries([...loaded, ...(inserted as SalaryEntry[])]);
+          }
+        }
+      }
+
       setEntries(sortEntries(loaded));
       setLoading(false);
     };
 
     fetch();
-  }, [userId, periodId, seedAllDays]);
+  }, [userId, periodId, seedAllDays, seedAllPeriodDays]);
 
   // Optional realtime subscription — merges remote changes into local state.
   useEffect(() => {
