@@ -157,18 +157,19 @@ export function useSalaryEntries(
       // Type B: seed ALL dates in the period with clock_in set
       if (seedAllPeriodDays && periodId) {
         const existingDates = new Set(loaded.map(e => e.entry_date));
-        const { periodStart, periodEnd, defaultClockIn, offDays } = seedAllPeriodDays;
+        const { periodStart, periodEnd, defaultClockIn, defaultClockOut, offDays } = seedAllPeriodDays;
         const offDaySet = new Set(offDays);
         const rows: Omit<SalaryEntry, 'id'>[] = [];
+        const toActivate: { entryDate: string; sortOrder: number }[] = [];
+
+        // Use local date iteration to match how the rest of the app generates dates
         const start = new Date(periodStart + 'T00:00:00');
         const end = new Date(periodEnd + 'T00:00:00');
-        // Also collect existing entries that need activation
-        const toActivate: { entryDate: string; sortOrder: number }[] = [];
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dateStr = d.toISOString().split('T')[0];
+          // Format as local date (YYYY-MM-DD), NOT UTC
+          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
           const isOff = offDaySet.has(dateStr);
           if (existingDates.has(dateStr)) {
-            // Check if existing entry is an inactive off-day that should be activated
             const existing = loaded.find(e => e.entry_date === dateStr && e.sort_order === 0);
             if (existing && existing.is_day_off && !isOff && !existing.clock_in && !existing.clock_out) {
               toActivate.push({ entryDate: dateStr, sortOrder: 0 });
@@ -184,8 +185,8 @@ export function useSalaryEntries(
             off_percent: isOff ? 100 : 0,
             note: isOff ? 'Nghỉ' : null,
             clock_in: isOff ? null : defaultClockIn,
-            clock_out: null,
-            total_hours: null,
+            clock_out: isOff ? null : (defaultClockOut || null),
+            total_hours: isOff ? null : (defaultClockIn && defaultClockOut ? calcHoursFromTimes(defaultClockIn, defaultClockOut) : null),
             allowance_rate_override: null,
             base_daily_wage: 0,
             allowance_amount: 0,
@@ -197,7 +198,7 @@ export function useSalaryEntries(
         for (const { entryDate, sortOrder } of toActivate) {
           const { data: updated } = await supabase
             .from('salary_entries')
-            .update({ is_day_off: false, off_percent: 0, note: null, clock_in: defaultClockIn })
+            .update({ is_day_off: false, off_percent: 0, note: null, clock_in: defaultClockIn, clock_out: defaultClockOut || null })
             .match({ user_id: userId, period_id: periodId, entry_date: entryDate, sort_order: sortOrder })
             .select()
             .maybeSingle();
