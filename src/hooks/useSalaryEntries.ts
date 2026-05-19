@@ -159,10 +159,19 @@ export function useSalaryEntries(
         const rows: Omit<SalaryEntry, 'id'>[] = [];
         const start = new Date(periodStart + 'T00:00:00');
         const end = new Date(periodEnd + 'T00:00:00');
+        // Also collect existing entries that need activation
+        const toActivate: { entryDate: string; sortOrder: number }[] = [];
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const dateStr = d.toISOString().split('T')[0];
-          if (existingDates.has(dateStr)) continue;
           const isOff = offDaySet.has(dateStr);
+          if (existingDates.has(dateStr)) {
+            // Check if existing entry is an inactive off-day that should be activated
+            const existing = loaded.find(e => e.entry_date === dateStr && e.sort_order === 0);
+            if (existing && existing.is_day_off && !isOff && !existing.clock_in && !existing.clock_out) {
+              toActivate.push({ entryDate: dateStr, sortOrder: 0 });
+            }
+            continue;
+          }
           rows.push({
             user_id: userId,
             period_id: periodId,
@@ -180,6 +189,19 @@ export function useSalaryEntries(
             extra_wage: 0,
             total_daily_wage: 0,
           });
+        }
+        // Activate existing off-day entries (no clock times)
+        for (const { entryDate, sortOrder } of toActivate) {
+          const { data: updated } = await supabase
+            .from('salary_entries')
+            .update({ is_day_off: false, off_percent: 0, note: null, clock_in: defaultClockIn })
+            .match({ user_id: userId, period_id: periodId, entry_date: entryDate, sort_order: sortOrder })
+            .select()
+            .maybeSingle();
+          if (updated) {
+            const idx = loaded.findIndex(e => e.entry_date === entryDate && e.sort_order === sortOrder);
+            if (idx >= 0) loaded[idx] = updated as SalaryEntry;
+          }
         }
         if (rows.length > 0) {
           const { data: inserted, error: insertErr } = await supabase
