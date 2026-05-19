@@ -104,7 +104,10 @@ export function useSalaryEntries(
   }, [editorMode, employeeReviewMode]);
 
   useEffect(() => {
-    if (!userId || !periodId) { setLoading(false); return; }
+    if (!userId || !periodId) { setEntries([]); setLoading(false); return; }
+
+    // Clear stale entries immediately when switching employee/period
+    setEntries([]);
 
     const fetch = async () => {
       setLoading(true);

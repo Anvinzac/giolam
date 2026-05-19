@@ -29,6 +29,15 @@ export default function SwipeablePages({ pages, labels, currentPage, onPageChang
     exit: (dir: number) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0 }),
   };
 
+  const handlePageChange = (idx: number) => {
+    const scrollY = window.scrollY;
+    setDirection(idx > currentPage ? 1 : -1);
+    onPageChange(idx);
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollY);
+    });
+  };
+
   return (
     <div className="space-y-2">
       <div ref={containerRef} className="overflow-hidden relative">
@@ -57,10 +66,8 @@ export default function SwipeablePages({ pages, labels, currentPage, onPageChang
           {pages.map((_, idx) => (
             <button
               key={idx}
-              onClick={() => {
-                setDirection(idx > currentPage ? 1 : -1);
-                onPageChange(idx);
-              }}
+              type="button"
+              onClick={() => handlePageChange(idx)}
               className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
                 idx === currentPage
                   ? 'gradient-gold text-primary-foreground'
