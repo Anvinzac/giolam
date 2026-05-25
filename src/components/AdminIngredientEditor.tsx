@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Ingredient {
@@ -25,6 +25,13 @@ const CATEGORIES = [
   { id: 'gas', name: 'Gas', emoji: '⛽' },
   { id: 'equipment', name: 'Dụng Cụ', emoji: '🔧' },
   { id: 'tissue', name: 'Vệ Sinh', emoji: '🧻' },
+];
+
+const VEGETABLE_SUBCATEGORIES = [
+  { id: 'leafy-greens', name: 'Rau Lá', emoji: '🥬' },
+  { id: 'allium-vegetables', name: 'Rau Gia Vị', emoji: '🧄' },
+  { id: 'root-vegetables', name: 'Củ / Rễ', emoji: '🥕' },
+  { id: 'stem-vegetables', name: 'Thân / Quả', emoji: '🌿' },
 ];
 
 const UNITS = ['kg', 'g', 'lít', 'ml', 'cái', 'gói', 'chai', 'hộp', 'bịch', 'lon', 'cuộn', 'tá', 'bình', 'đôi'];
@@ -137,37 +144,200 @@ export default function AdminIngredientEditor() {
         </div>
       )}
 
-      <div className="space-y-2">
-        {filtered.map(ing => (
-          <div key={ing.id} className="glass-card p-4">
-            {editingId === ing.id ? (
-              <div className="space-y-3">
-                <IngredientForm form={form} setForm={setForm} onSubmit={() => handleUpdate(ing.id)} onCancel={resetForm} submitLabel="Lưu" />
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{ing.emoji}</span>
-                  <div>
-                    <h4 className="font-medium">{ing.name}</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {CATEGORIES.find(c => c.id === ing.category)?.emoji} {CATEGORIES.find(c => c.id === ing.category)?.name} · {ing.unit}
-                      {ing.reference_price && ` · ${ing.reference_price}k`}
-                      {ing.supplier && ` · ${ing.supplier}`}
-                    </p>
+      {categoryFilter === 'vegetables' ? (
+        <VegetableCarousel
+          vegetables={filtered}
+          editingId={editingId}
+          form={form}
+          setForm={setForm}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+          onStartEdit={startEdit}
+          onResetForm={resetForm}
+        />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(ing => (
+            <div key={ing.id} className="glass-card p-4">
+              {editingId === ing.id ? (
+                <div className="space-y-3">
+                  <IngredientForm form={form} setForm={setForm} onSubmit={() => handleUpdate(ing.id)} onCancel={resetForm} submitLabel="Lưu" />
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{ing.emoji}</span>
+                    <div>
+                      <h4 className="font-medium">{ing.name}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {CATEGORIES.find(c => c.id === ing.category)?.emoji} {CATEGORIES.find(c => c.id === ing.category)?.name} · {ing.unit}
+                        {ing.reference_price && ` · ${ing.reference_price}k`}
+                        {ing.supplier && ` · ${ing.supplier}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => startEdit(ing)} className="p-2 rounded-lg hover:bg-muted transition-colors"><Pencil size={14} /></button>
+                    <button onClick={() => handleDelete(ing.id, ing.name)} className="p-2 rounded-lg hover:bg-destructive/20 text-destructive transition-colors"><Trash2 size={14} /></button>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => startEdit(ing)} className="p-2 rounded-lg hover:bg-muted transition-colors"><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(ing.id, ing.name)} className="p-2 rounded-lg hover:bg-destructive/20 text-destructive transition-colors"><Trash2 size={14} /></button>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="glass-card p-8 text-center text-muted-foreground">Không tìm thấy nguyên liệu nào</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VegetableCarousel({
+  vegetables,
+  editingId,
+  form,
+  setForm,
+  onUpdate,
+  onDelete,
+  onStartEdit,
+  onResetForm,
+}: {
+  vegetables: Ingredient[];
+  editingId: string | null;
+  form: Omit<Ingredient, 'id'>;
+  setForm: (f: Omit<Ingredient, 'id'>) => void;
+  onUpdate: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
+  onStartEdit: (ing: Ingredient) => void;
+  onResetForm: () => void;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const subcategoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [activeSubcategory, setActiveSubcategory] = useState(VEGETABLE_SUBCATEGORIES[0].id);
+  const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
+
+  const grouped = VEGETABLE_SUBCATEGORIES.map(sub => ({
+    ...sub,
+    items: vegetables.filter(v => v.subcategory === sub.id || (v.subcategory === null && sub.id === VEGETABLE_SUBCATEGORIES[0].id)),
+  }));
+
+  const scrollIntoView = useCallback((subId: string) => {
+    const el = subcategoryRefs.current[subId];
+    if (el && scrollContainerRef.current) {
+      const containerLeft = scrollContainerRef.current.scrollLeft;
+      const containerWidth = scrollContainerRef.current.offsetWidth;
+      const elLeft = el.offsetLeft;
+      const elWidth = el.offsetWidth;
+      scrollContainerRef.current.scrollTo({
+        left: elLeft - (containerWidth - elWidth) / 2,
+        behavior: 'smooth',
+      });
+    }
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current) return;
+    const scrollLeft = scrollContainerRef.current.scrollLeft;
+    const containerCenter = scrollLeft + scrollContainerRef.current.offsetWidth / 2;
+
+    let closest = VEGETABLE_SUBCATEGORIES[0].id;
+    let closestDist = Infinity;
+
+    for (const sub of VEGETABLE_SUBCATEGORIES) {
+      const el = subcategoryRefs.current[sub.id];
+      if (el) {
+        const elCenter = el.offsetLeft + el.offsetWidth / 2;
+        const dist = Math.abs(elCenter - containerCenter);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = sub.id;
+        }
+      }
+    }
+    setActiveSubcategory(closest);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {grouped.map(sub => (
+          <button
+            key={sub.id}
+            onClick={() => scrollIntoView(sub.id)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 ${
+              activeSubcategory === sub.id
+                ? 'gradient-gold text-primary-foreground'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <span>{sub.emoji}</span>
+            <span>{sub.name}</span>
+            <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${
+              activeSubcategory === sub.id ? 'bg-white/20' : 'bg-muted-foreground/20'
+            }`}>
+              {sub.items.length}
+            </span>
+          </button>
         ))}
-        {filtered.length === 0 && (
-          <div className="glass-card p-8 text-center text-muted-foreground">Không tìm thấy nguyên liệu nào</div>
-        )}
+      </div>
+
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory"
+      >
+        <div className="flex gap-4 min-w-max">
+          {grouped.map(sub => (
+            <div
+              key={sub.id}
+              ref={el => { subcategoryRefs.current[sub.id] = el; }}
+              className="snap-center shrink-0 w-[85vw] max-w-[420px]"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">{sub.emoji}</span>
+                <h3 className="font-display font-semibold text-sm">{sub.name}</h3>
+                <span className="text-xs text-muted-foreground">({sub.items.length} món)</span>
+              </div>
+
+              {sub.items.length === 0 ? (
+                <div className="glass-card p-6 text-center text-muted-foreground text-sm">
+                  Chưa có nguyên liệu nào
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sub.items.map(ing => (
+                    <div key={ing.id} className="glass-card p-4">
+                      {editingId === ing.id ? (
+                        <div className="space-y-3">
+                          <IngredientForm form={form} setForm={setForm} onSubmit={() => onUpdate(ing.id)} onCancel={onResetForm} submitLabel="Lưu" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{ing.emoji}</span>
+                            <div>
+                              <h4 className="font-medium">{ing.name}</h4>
+                              <p className="text-xs text-muted-foreground">
+                                {ing.unit}
+                                {ing.reference_price && ` · ${ing.reference_price}k`}
+                                {ing.supplier && ` · ${ing.supplier}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => onStartEdit(ing)} className="p-2 rounded-lg hover:bg-muted transition-colors"><Pencil size={14} /></button>
+                            <button onClick={() => onDelete(ing.id, ing.name)} className="p-2 rounded-lg hover:bg-destructive/20 text-destructive transition-colors"><Trash2 size={14} /></button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

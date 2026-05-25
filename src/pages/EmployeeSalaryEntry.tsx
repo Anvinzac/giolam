@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings, Package } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -120,8 +120,14 @@ export default function EmployeeSalaryEntry() {
   }, [profile?.default_clock_out]);
 
   const employeeVisibleEntries = useMemo(
-    () => entries.filter(entry => !isBlankEmployeeEntry(entry)),
-    [entries]
+    () => {
+      // Type A (basic/daily) entries don't need clock_in/clock_out — show all of them
+      if (profile?.shift_type === 'basic' || profile?.shift_type === 'daily') {
+        return entries;
+      }
+      return entries.filter(entry => !isBlankEmployeeEntry(entry));
+    },
+    [entries, profile?.shift_type]
   );
 
   // Init: auth, profile, periods
@@ -415,6 +421,14 @@ export default function EmployeeSalaryEntry() {
               </div>
             )}
           </div>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/stock-alert')}
+            aria-label="Tồn kho"
+            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Package size={18} />
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}

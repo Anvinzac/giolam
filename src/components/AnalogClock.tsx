@@ -6,8 +6,8 @@ import { timeToString } from "@/lib/lunarUtils";
 interface AnalogClockProps {
   onTimeSelect?: (time: string) => void;
   onTimeRangeSelect?: (times: { clockIn: string; clockOut: string }) => void;
-  onClose: () => void;
-  label: string;
+  onClose?: () => void;
+  label?: string;
   mode?: 'single' | 'range';
   initialClockIn?: string | null;
   initialClockOut?: string | null;
@@ -64,6 +64,59 @@ function parseTime(time: string | null | undefined): { hour: number; minute: num
   return { hour, minute };
 }
 
+function DecorativeClock() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const size = 128;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 56;
+
+  const seconds = now.getSeconds();
+  const minutes = now.getMinutes();
+  const hours = now.getHours() % 12;
+
+  const secondAngle = (seconds * 6) - 90;
+  const minuteAngle = (minutes * 6 + seconds * 0.1) - 90;
+  const hourAngle = (hours * 30 + minutes * 0.5) - 90;
+
+  const secRad = (secondAngle * Math.PI) / 180;
+  const minRad = (minuteAngle * Math.PI) / 180;
+  const hourRad = (hourAngle * Math.PI) / 180;
+
+  const secondHand = { x: cx + (r - 8) * Math.cos(secRad), y: cy + (r - 8) * Math.sin(secRad) };
+  const minuteHand = { x: cx + (r - 14) * Math.cos(minRad), y: cy + (r - 14) * Math.sin(minRad) };
+  const hourHand = { x: cx + (r - 28) * Math.cos(hourRad), y: cy + (r - 28) * Math.sin(hourRad) };
+
+  const hourMarkers = Array.from({ length: 12 }, (_, i) => {
+    const angle = (i * 30 - 90) * Math.PI / 180;
+    return {
+      x1: cx + (r - 6) * Math.cos(angle),
+      y1: cy + (r - 6) * Math.sin(angle),
+      x2: cx + r * Math.cos(angle),
+      y2: cy + r * Math.sin(angle),
+    };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
+      <circle cx={cx} cy={cy} r={r} fill="hsl(var(--background))" stroke="hsl(var(--border))" strokeWidth="2" />
+      {hourMarkers.map((m, i) => (
+        <line key={i} x1={m.x1} y1={m.y1} x2={m.x2} y2={m.y2} stroke="hsl(var(--muted-foreground))" strokeWidth={i % 3 === 0 ? 2 : 1} strokeLinecap="round" />
+      ))}
+      <line x1={cx} y1={cy} x2={hourHand.x} y2={hourHand.y} stroke="hsl(var(--foreground))" strokeWidth="3" strokeLinecap="round" />
+      <line x1={cx} y1={cy} x2={minuteHand.x} y2={minuteHand.y} stroke="hsl(var(--foreground))" strokeWidth="2" strokeLinecap="round" />
+      <line x1={cx} y1={cy} x2={secondHand.x} y2={secondHand.y} stroke="hsl(var(--primary))" strokeWidth="1" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="3" fill="hsl(var(--primary))" />
+    </svg>
+  );
+}
+
 export default function AnalogClock({
   onTimeSelect,
   onTimeRangeSelect,
@@ -74,6 +127,10 @@ export default function AnalogClock({
   initialClockOut,
   initialActiveField = 'in',
 }: AnalogClockProps) {
+  if (!onClose) {
+    return <DecorativeClock />;
+  }
+
   const isRangeMode = mode === 'range';
   const initialActiveTime = initialActiveField === 'in' ? initialClockIn : initialClockOut;
   const parsedInitialActiveTime = parseTime(initialActiveTime);

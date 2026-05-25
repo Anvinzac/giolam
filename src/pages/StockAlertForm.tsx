@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ChevronRight } from 'lucide-react';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import { buildEmployeeTitle } from '@/lib/employeeGreeting';
@@ -28,16 +28,23 @@ interface StockReport {
 export default function StockAlertForm() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [fullName, setFullName] = useState('');
   const [ingredients, setIngredients] = useState<AssignedIngredient[]>([]);
   const [reports, setReports] = useState<StockReport[]>([]);
-  const [quantities, setQuantities] = useState<Record<string, string>>({});
-  const [warnings, setWarnings] = useState<Record<string, string>>({});
-  const [lowStock, setLowStock] = useState<Record<string, boolean>>({});
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Reporting state
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [quantities, setQuantities] = useState<Record<string, string>>({});
+  type StockStatus = 'quantity' | 'het' | 'ganHet' | 'nhieu';
+  const [statusMap, setStatusMap] = useState<Record<string, StockStatus>>({});
+  const [submitted, setSubmitted] = useState<Set<string>>(new Set());
+
+  const listRef = useRef<HTMLDivElement>(null);
+  const activeRowRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -70,9 +77,6 @@ export default function StockAlertForm() {
           .map((a: any) => a.ingredients)
           .filter(Boolean);
         setIngredients(ings);
-        const initLowStock: Record<string, boolean> = {};
-        ings.forEach((i: any) => { initLowStock[i.id] = false; });
-        setLowStock(initLowStock);
       }
 
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
@@ -96,46 +100,144 @@ export default function StockAlertForm() {
     loadData();
   }, [loadData, retryKey]);
 
-  const handleSubmit = async (ingredientId: string) => {
-    if (!userId) return;
-    setSubmitting(ingredientId);
-    const remaining = quantities[ingredientId] ? parseFloat(quantities[ingredientId]) : null;
-    const { error } = await supabase.from('stock_reports').insert({
-      ingredient_id: ingredientId,
-      reported_by: userId,
-      remaining_quantity: remaining,
-      warning_message: warnings[ingredientId] || null,
-      is_low_stock: lowStock[ingredientId] || false,
-    });
-    setSubmitting(null);
-    if (!error) {
-      setQuantities(prev => ({ ...prev, [ingredientId]: '' }));
-      setWarnings(prev => ({ ...prev, [ingredientId]: '' }));
-      setLowStock(prev => ({ ...prev, [ingredientId]: false }));
-      loadData();
+  // Scroll active row into view — keep it above the numpad
+  useEffect(() => {
+    const container = listRef.current;
+    if (!container) return;
+
+    const timer = setTimeout(() => {
+      const row = container.querySelector(`[data-row-index="${activeIndex}"]`);
+      if (!row) return;
+
+      const rowEl = row as HTMLElement;
+      const rowBottom = rowEl.offsetTop + rowEl.offsetHeight;
+
+      // Account for numpad height
+      const numpadH = 300;
+      const visibleH = container.clientHeight - numpadH;
+      const targetScroll = rowBottom - visibleH + 8;
+
+      if (targetScroll > container.scrollTop) {
+        container.scrollTop = Math.max(container.scrollTop, targetScroll);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [activeIndex]);
+
+  const activeIngredient = ingredients[activeIndex];
+  const activeQty = quantities[activeIngredient?.id] || '';
+  const activeStatus = statusMap[activeIngredient?.id] || 'quantity';
+
+  const setQty = (val: string) => {
+    if (!activeIngredient) return;
+    setQuantities(prev => ({ ...prev, [activeIngredient.id]: val }));
+    setStatusMap(prev => ({ ...prev, [activeIngredient.id]: 'quantity' }));
+  };
+
+  const setStatus = (status: StockStatus) => {
+    if (!activeIngredient) return;
+    setSubmitted(prev => new Set(prev).add(activeIngredient.id));
+    setStatusMap(prev => ({ ...prev, [activeIngredient.id]: status }));
+    if (status === 'het') {
+      setQuantities(prev => ({ ...prev, [activeIngredient.id]: '0' }));
+    }
+    advanceToNext();
+  };
+
+  const advanceToNext = () => {
+    if (activeIndex < ingredients.length - 1) {
+      setActiveIndex(activeIndex + 1);
     }
   };
 
-  const getCategoryEmoji = (category: string) => {
-    const map: Record<string, string> = {
-      vegetables: '🥬', sauces: '🫙', spices: '🧂', grains: '🌾',
-      oils: '🫒', proteins: '🥩', dairy: '🧀', gas: '⛽',
-      equipment: '🔧', tissue: '🧻',
-    };
-    return map[category] || '📦';
+  const handleNumpadPress = (key: string) => {
+    if (!activeIngredient) return;
+    if (key === '.') {
+      if (activeQty.includes('.')) return;
+      setQty(activeQty === '' ? '0.' : activeQty + '.');
+    } else if (key === 'DEL') {
+      setQty(activeQty.slice(0, -1));
+    } else {
+      setQty(activeQty + key);
+    }
   };
 
-  const getIngredientReport = (ingredientId: string) => {
-    return reports.find(r => r.ingredient_id === ingredientId);
+  const handleNext = () => {
+    if (activeIngredient) {
+      setSubmitted(prev => new Set(prev).add(activeIngredient.id));
+    }
+    advanceToNext();
   };
+
+  const handleEditSubmitted = (ingId: string) => {
+    const idx = ingredients.findIndex(i => i.id === ingId);
+    if (idx >= 0) {
+      setSubmitted(prev => {
+        const next = new Set(prev);
+        next.delete(ingId);
+        return next;
+      });
+      setActiveIndex(idx);
+    }
+  };
+
+  const handleSubmitAll = async () => {
+    if (!userId || ingredients.length === 0) return;
+    setSubmitting(true);
+
+    const reportsToInsert = ingredients
+      .filter(ing => submitted.has(ing.id) || quantities[ing.id] !== undefined || statusMap[ing.id])
+      .map(ing => {
+        const st = statusMap[ing.id] || 'quantity';
+        let remaining: number | null = null;
+        let warning = '';
+        let isLow = false;
+
+        if (st === 'het') {
+          remaining = 0;
+          warning = 'Hết';
+          isLow = true;
+        } else if (st === 'ganHet') {
+          remaining = 0;
+          warning = 'Gần hết';
+          isLow = true;
+        } else if (st === 'nhieu') {
+          remaining = null;
+          warning = 'Nhiều';
+          isLow = false;
+        } else {
+          remaining = quantities[ing.id] ? parseFloat(quantities[ing.id]) : null;
+          isLow = remaining !== null && remaining <= 1;
+        }
+
+        return {
+          ingredient_id: ing.id,
+          reported_by: userId,
+          remaining_quantity: remaining,
+          warning_message: warning || null,
+          is_low_stock: isLow,
+        };
+      });
+
+    if (reportsToInsert.length > 0) {
+      await supabase.from('stock_reports').insert(reportsToInsert);
+    }
+
+    setSubmitting(false);
+    navigate('/dashboard');
+  };
+
+  const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'DEL'];
 
   if (loading || bootError) {
     return <AppBootState error={bootError} onRetry={() => setRetryKey(key => key + 1)} />;
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8">
-      <header className="px-6 pt-12 pb-6">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="px-6 pt-12 pb-3 flex-shrink-0">
         <div className="flex items-center gap-3">
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -145,95 +247,204 @@ export default function StockAlertForm() {
             <ArrowLeft size={18} />
           </motion.button>
           <h1 className="font-display text-xl font-bold text-gradient-gold flex-1">
-            {fullName ? buildEmployeeTitle(fullName, 'Cảnh báo tồn kho') : 'Cảnh báo tồn kho'}
+            {fullName ? buildEmployeeTitle(fullName, 'Kiểm kho') : 'Kiểm kho'}
           </h1>
+          <span className="text-xs text-muted-foreground">
+            {submitted.size}/{ingredients.length}
+          </span>
         </div>
       </header>
 
-      <div className="px-4 space-y-4">
+       {/* Ingredient list - scrollable */}
+       <div
+         ref={listRef}
+         className="flex-1 h-0 overflow-y-auto px-4 pb-4 space-y-2"
+       >
         {ingredients.length === 0 ? (
           <div className="glass-card p-8 text-center">
             <p className="text-muted-foreground">Bạn chưa được phân công nguyên liệu nào.</p>
           </div>
         ) : (
-          ingredients.map((ing) => {
-            const report = getIngredientReport(ing.id);
+          ingredients.map((ing, idx) => {
+            const isActive = idx === activeIndex;
+            const isSubmitted = submitted.has(ing.id);
+            const report = reports.find(r => r.ingredient_id === ing.id);
+
             return (
               <motion.div
                 key={ing.id}
+                ref={isActive ? activeRowRef : null}
+                data-row-index={idx}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass-card p-4 space-y-3"
+                transition={{ delay: idx * 0.02 }}
+                onClick={() => !isSubmitted && setActiveIndex(idx)}
+                className={`glass-card p-4 flex items-center gap-3 transition-all cursor-pointer ${
+                  isActive ? 'ring-2 ring-primary/50 bg-muted/30' : ''
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{ing.emoji}</span>
-                  <div className="flex-1">
-                    <h3 className="font-medium">{ing.name}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {getCategoryEmoji(ing.category)} Đơn vị: {ing.unit}
-                    </p>
-                  </div>
-                </div>
-
-                {report && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 rounded-lg bg-muted/50">
-                    {report.resolved_at ? (
-                      <CheckCircle2 size={14} className="text-green-500" />
-                    ) : report.is_low_stock ? (
-                      <AlertTriangle size={14} className="text-destructive" />
-                    ) : (
-                      <Clock size={14} />
+                <span className="text-2xl w-8 text-center">{ing.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-sm truncate">{ing.name}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {ing.unit}
+                    {report && !isSubmitted && (
+                      <span className="ml-2 text-amber-500">
+                        (lần trước: {report.remaining_quantity ?? '—'})
+                      </span>
                     )}
-                    <span>
-                      {report.resolved_at
-                        ? 'Đã xử lý'
-                        : `Báo cáo: ${report.remaining_quantity ?? '—'} ${ing.unit}`}
-                    </span>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      placeholder={`Tồn kho (${ing.unit})`}
-                      value={quantities[ing.id] || ''}
-                      onChange={e => setQuantities(prev => ({ ...prev, [ing.id]: e.target.value }))}
-                      className="flex-1 px-3 py-2 rounded-lg bg-muted border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
-                    <label className="flex items-center gap-1 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={lowStock[ing.id] || false}
-                        onChange={e => setLowStock(prev => ({ ...prev, [ing.id]: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="text-destructive text-xs">Sắp hết</span>
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Ghi chú (tùy chọn)"
-                    value={warnings[ing.id] || ''}
-                    onChange={e => setWarnings(prev => ({ ...prev, [ing.id]: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => handleSubmit(ing.id)}
-                    disabled={submitting === ing.id}
-                    className="w-full py-2 rounded-lg gradient-gold text-primary-foreground text-sm font-medium disabled:opacity-50"
-                  >
-                    {submitting === ing.id ? 'Đang gửi...' : 'Báo cáo'}
-                  </motion.button>
+                  </p>
                 </div>
+
+                {isSubmitted ? (() => {
+                  const st = statusMap[ing.id];
+                  const isNumeric = st === 'quantity' || (!st && quantities[ing.id]);
+                  if (isNumeric) {
+                    return (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleEditSubmitted(ing.id); }}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20"
+                      >
+                        <span className="text-primary text-xs font-medium">✓</span>
+                        <span className="font-mono text-xs text-primary font-semibold">
+                          {quantities[ing.id] || '0'}
+                        </span>
+                        <span className="text-xs text-primary/70">{ing.unit}</span>
+                      </button>
+                    );
+                  }
+                  const chipStyle = st === 'het'
+                    ? 'bg-destructive text-destructive-foreground'
+                    : st === 'ganHet'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-green-600 text-white';
+                  const chipLabel = st === 'het' ? 'Hết' : st === 'ganHet' ? 'Gần hết' : 'Nhiều';
+                  return (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleEditSubmitted(ing.id); }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${chipStyle}`}
+                    >
+                      {chipLabel}
+                    </button>
+                  );
+                })() : isActive ? (
+                <div className="flex items-center gap-2 ml-3">
+                    <div className="px-3 py-1.5 rounded-lg bg-background border border-border text-right min-w-[70px] font-mono text-lg">
+                      {activeQty || '—'}
+                    </div>
+                    <ChevronRight size={16} className="text-primary" />
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {quantities[ing.id] ? quantities[ing.id] : '...'}
+                  </span>
+                )}
               </motion.div>
             );
           })
         )}
+        {/* Spacer for numpad */}
+        <div className="h-[300px]" />
       </div>
+
+      {/* Fixed bottom panel: always visible */}
+      {activeIngredient && (
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border"
+        >
+            {/* Active ingredient info + status buttons inline */}
+            <div className="px-4 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{activeIngredient.emoji}</span>
+                <p className="font-medium text-sm flex-1 truncate">{activeIngredient.name}</p>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setStatus('nhieu')}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                    activeStatus === 'nhieu'
+                      ? 'bg-green-600 text-white shadow-lg shadow-green-600/20'
+                      : 'bg-muted/50 text-muted-foreground'
+                  }`}
+                >
+                  Nhiều
+                </motion.button>
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setStatus('ganHet')}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                      activeStatus === 'ganHet'
+                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                        : 'bg-muted/50 text-muted-foreground'
+                    }`}
+                  >
+                    Gần hết
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setStatus('het')}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                      activeStatus === 'het'
+                        ? 'bg-destructive text-destructive-foreground shadow-lg shadow-destructive/20'
+                        : 'bg-muted/50 text-muted-foreground'
+                    }`}
+                  >
+                    Hết
+                  </motion.button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 px-10">
+                {activeStatus === 'het' ? 'Hết' : activeStatus === 'ganHet' ? 'Gần hết' : activeStatus === 'nhieu' ? 'Nhiều' : `${activeQty || '0'} ${activeIngredient.unit}`}
+              </p>
+            </div>
+
+            {/* Numpad */}
+            <div className="px-3 pb-2">
+              <div className="grid grid-cols-3 gap-1.5">
+                {numpadKeys.map(key => (
+                  <motion.button
+                    key={key}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => handleNumpadPress(key)}
+                    className={`py-3 rounded-lg text-lg font-medium transition-colors ${
+                      key === 'DEL'
+                        ? 'bg-muted/50 text-muted-foreground'
+                        : key === '.'
+                        ? 'bg-muted text-foreground'
+                        : 'bg-muted/70 text-foreground'
+                    }`}
+                  >
+                    {key === 'DEL' ? '⌫' : key}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="px-3 pb-4 flex gap-2">
+              {activeIndex < ingredients.length - 1 ? (
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleNext}
+                  className="flex-1 py-3 rounded-lg gradient-gold text-primary-foreground text-sm font-medium"
+                >
+                  Tiếp theo
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleSubmitAll}
+                  disabled={submitting}
+                  className="flex-1 py-3 rounded-lg bg-green-600 text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {submitting ? 'Đang gửi...' : `Hoàn thành (${submitted.size + 1}/${ingredients.length})`}
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+        )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, LogOut, Settings } from 'lucide-react';
+import { ArrowLeft, LogOut, Settings, Package } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
@@ -77,6 +77,14 @@ export default function SalaryEmployee() {
           <h1 className="font-display text-xl font-bold text-gradient-gold flex-1 truncate">
             {fullName ? buildEmployeeTitle(fullName, 'Bảng lương') : 'Bảng lương'}
           </h1>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/stock-alert')}
+            aria-label="Tồn kho"
+            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Package size={18} />
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate('/settings')}

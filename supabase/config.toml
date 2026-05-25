@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.seed-salary-test]
 verify_jwt = false
+
+[functions.seed-stock-reports]
+verify_jwt = false
+
+[functions.seed-salary-entries]
+verify_jwt = false

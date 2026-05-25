@@ -11,6 +11,7 @@ import AdminEmployeeManager from "@/components/AdminEmployeeManager";
 import AdminIngredientManager from "@/components/AdminIngredientManager";
 import AdminIngredientEditor from "@/components/AdminIngredientEditor";
 import AdminStockReports from "@/components/AdminStockReports";
+import DemoEmployeeStockView from "@/components/DemoEmployeeStockView";
 import AppBootState from "@/components/AppBootState";
 import { withTimeout } from "@/lib/withTimeout";
 import { formatDateViet } from "@/lib/salaryCalculations";
@@ -38,6 +39,33 @@ function IngredientsTab() {
         </button>
       </div>
       {subTab === 'editor' ? <AdminIngredientEditor /> : <AdminIngredientManager />}
+    </div>
+  );
+}
+
+function StockReportsTab() {
+  const [subTab, setSubTab] = useState<'admin' | 'demo'>('admin');
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <button
+          onClick={() => setSubTab('admin')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            subTab === 'admin' ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          Tất cả báo cáo
+        </button>
+        <button
+          onClick={() => setSubTab('demo')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            subTab === 'demo' ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          Xem trước nhân viên
+        </button>
+      </div>
+      {subTab === 'admin' ? <AdminStockReports /> : <DemoEmployeeStockView />}
     </div>
   );
 }
@@ -369,7 +397,7 @@ export default function AdminDashboard() {
         )}
 
         {tab === 'stock-reports' && (
-          <AdminStockReports />
+          <StockReportsTab />
         )}
       </div>
     </div>

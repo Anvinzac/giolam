@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -43,6 +44,7 @@ interface ProfileInfo {
 }
 
 export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [record, setRecord] = useState<SalaryRecord | null>(null);
   const [period, setPeriod] = useState<PeriodInfo | null>(null);
@@ -64,7 +66,11 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
         .limit(1)
         .maybeSingle();
 
-      if (!snapData) { setLoading(false); return; }
+      if (!snapData) {
+        setLoading(false);
+        navigate('/salary/edit', { replace: true });
+        return;
+      }
       const snap = snapData as unknown as {
         salary_record_id: string;
         user_id: string;
