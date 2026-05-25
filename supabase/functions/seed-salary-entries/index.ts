@@ -15,7 +15,7 @@ serve(async (req) => {
 
   const results: string[] = [];
 
-  // Get the active period (contains today)
+  // Get the active period (contains today), or fall back to most recent
   const today = new Date().toISOString().split("T")[0];
   const { data: periods } = await supabase
     .from("working_periods")
@@ -25,14 +25,25 @@ serve(async (req) => {
     .gte("end_date", today)
     .limit(1);
 
-  if (!periods || periods.length === 0) {
-    return new Response(JSON.stringify({ error: "No active period found" }), {
+  let period = (periods || [])[0];
+
+  // Fallback: if no period covers today, grab the most recent one
+  if (!period) {
+    const { data: fallback } = await supabase
+      .from("working_periods")
+      .select("*")
+      .eq("is_archived", false)
+      .order("end_date", { ascending: false })
+      .limit(1);
+    period = (fallback || [])[0];
+  }
+
+  if (!period) {
+    return new Response(JSON.stringify({ error: "No period found" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  const period = periods[0];
   const periodId = period.id;
   results.push(`📅 Using period: ${period.start_date} → ${period.end_date}`);
 
@@ -45,12 +56,15 @@ serve(async (req) => {
     allDates.push(dateStr);
   }
 
-  // Get special day rates for the period
+  // Get special day rates for the period (include description for note text)
   const { data: ratesData } = await supabase
     .from("special_day_rates")
-    .select("special_date")
+    .select("special_date, description_vi, rate_percent")
     .eq("period_id", periodId);
-  const specialDates = new Set((ratesData || []).map((r: any) => r.special_date));
+  const specialDateMap = new Map();
+  (ratesData || []).forEach((r: any) => {
+    specialDateMap.set(r.special_date, { description: r.description_vi, rate: r.rate_percent });
+  });
 
   // Seed salary entries for nvienc and nviend
   const accounts = ["nvienc", "nviend"];
@@ -119,22 +133,25 @@ serve(async (req) => {
         });
       }
     } else if (profile.shift_type === "basic" || profile.shift_type === "daily") {
-      // Type A/E: seed only special dates that don't exist
-      for (const dateStr of specialDates) {
+      // Type A/E: seed only special dates (rate > 0) that don't exist
+      for (const [dateStr, info] of specialDateMap) {
         if (existingDates.has(dateStr)) continue;
+        if (info.rate <= 0) continue;
         entriesToInsert.push({
           user_id: userId,
           period_id: periodId,
           entry_date: dateStr,
           sort_order: 0,
           is_day_off: false,
+          note: info.description || null,
           is_admin_reviewed: true,
         });
       }
     } else if (profile.shift_type === "overtime") {
-      // Type B: seed ALL dates — clock_in pre-filled, clock_out blank to enter
+      // Type B: seed ALL dates — clock_in pre-filled, clock_out blank, special rate notes
       for (const dateStr of allDates) {
         if (existingDates.has(dateStr)) continue;
+        const special = specialDateMap.get(dateStr);
         entriesToInsert.push({
           user_id: userId,
           period_id: periodId,
@@ -142,7 +159,7 @@ serve(async (req) => {
           sort_order: 0,
           is_day_off: false,
           off_percent: 0,
-          note: null,
+          note: special?.description || null,
           clock_in: profile.default_clock_in || "17:00",
           clock_out: null,
           is_admin_reviewed: true,
@@ -162,6 +179,33 @@ serve(async (req) => {
       }
     } else {
       results.push(`  ⏭️  No new entries needed`);
+    }
+
+    // Seed employee allowances for Type B (gui_xe)
+    if (profile.shift_type === "overtime") {
+      const { data: existingAllowances } = await supabase
+        .from("employee_allowances")
+        .select("allowance_key")
+        .eq("user_id", userId)
+        .eq("period_id", periodId);
+      const existingKeys = new Set((existingAllowances || []).map((a: any) => a.allowance_key));
+
+      if (!existingKeys.has("gui_xe")) {
+        const { error: allowErr } = await supabase.from("employee_allowances").insert({
+          user_id: userId,
+          period_id: periodId,
+          allowance_key: "gui_xe",
+          is_enabled: true,
+          amount: 0,
+        });
+        if (allowErr) {
+          results.push(`  ⚠️  Failed to seed gui_xe allowance: ${allowErr.message}`);
+        } else {
+          results.push(`  ✅ Seeded gui_xe allowance`);
+        }
+      } else {
+        results.push(`  📋 gui_xe allowance already exists`);
+      }
     }
   }
 

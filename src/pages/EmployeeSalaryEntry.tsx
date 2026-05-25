@@ -82,6 +82,19 @@ export default function EmployeeSalaryEntry() {
     selectedPeriod?.end_date,
     selectedPeriod?.off_days || []
   );
+
+  const seedAllPeriodDays = useMemo(
+    () => profile?.shift_type === 'overtime' && selectedPeriod
+      ? {
+          periodStart: selectedPeriod.start_date,
+          periodEnd: selectedPeriod.end_date,
+          defaultClockIn: profile.default_clock_in || '17:00',
+          defaultClockOut: profile.default_clock_out || '22:00',
+          offDays: selectedPeriod.off_days || [],
+        }
+      : undefined,
+    [profile?.shift_type, profile?.default_clock_in, profile?.default_clock_out, selectedPeriod?.start_date, selectedPeriod?.end_date, selectedPeriod?.off_days],
+  );
   
   const {
     entries,
@@ -94,6 +107,7 @@ export default function EmployeeSalaryEntry() {
     editorMode: 'employee',
     enableRealtime: true,
     seedAllDays: profile?.shift_type === 'basic',
+    seedAllPeriodDays,
     employeeReviewMode: profile?.shift_type === 'overtime' ? 'auto' : 'pending',
   });
   

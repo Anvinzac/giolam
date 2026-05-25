@@ -652,7 +652,20 @@ export default function SalaryTableTypeB({
                       {/* Right: normal columns */}
                       <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
                         <button
-                          onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
+                          onClick={() => {
+                            if (readOnly || e.is_day_off) return;
+                            if (!e.clock_out) {
+                              setPickingClock({
+                                entryDate: e.entry_date,
+                                sortOrder: e.sort_order,
+                                clockIn: e.clock_in || globalClockIn,
+                                clockOut: e.clock_out,
+                                pageEntries: orderedEntries,
+                              });
+                            } else {
+                              showRowChips(cellKey);
+                            }
+                          }}
                           className={`w-[38px] text-right text-sm font-medium ${
                             !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                           }`}
@@ -796,7 +809,20 @@ export default function SalaryTableTypeB({
                   <>
                     {/* Clock out */}
                     <button
-                      onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
+                      onClick={() => {
+                        if (readOnly || e.is_day_off) return;
+                        if (!e.clock_out) {
+                          setPickingClock({
+                            entryDate: e.entry_date,
+                            sortOrder: e.sort_order,
+                            clockIn: e.clock_in || globalClockIn,
+                            clockOut: e.clock_out,
+                            pageEntries: orderedEntries,
+                          });
+                        } else {
+                          showRowChips(cellKey);
+                        }
+                      }}
                       className={`justify-self-end text-right text-sm font-medium ${
                         !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                       }`}

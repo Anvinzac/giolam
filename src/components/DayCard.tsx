@@ -68,9 +68,10 @@ export default function DayCard({
 
   const handleTimeClick = (field: string, current: string | null) => {
     if (isOffDay || !isActive) return;
-    if (hasDefaultTime && current) {
-      setEditingTime({ field, current });
-    } else if (!hasDefaultTime) {
+    if (hasDefaultTime) {
+      const fallback = field.includes('In') ? defaultClockIn : defaultClockOut;
+      setEditingTime({ field, current: current || fallback || '08:00' });
+    } else {
       setEditingTime({ field, current: current || '08:00' });
     }
   };
