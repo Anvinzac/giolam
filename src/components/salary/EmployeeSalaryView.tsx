@@ -57,6 +57,46 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     const fetchAll = async () => {
       setLoading(true);
 
+      // Check for current editable period first
+      const today = new Date().toISOString().split('T')[0];
+      const { data: currentPeriods } = await supabase
+        .from('working_periods')
+        .select('*')
+        .eq('is_archived', false)
+        .lte('start_date', today)
+        .gte('end_date', today)
+        .limit(1);
+
+      let currentPeriod = ((currentPeriods || []) as PeriodInfo[])[0];
+
+      // Fallback: if no period covers today, grab the most recent one
+      // (include archived periods — editing grace period may extend after period ends)
+      if (!currentPeriod) {
+        const { data: fallback } = await supabase
+          .from('working_periods')
+          .select('*')
+          .order('end_date', { ascending: false })
+          .limit(1);
+        currentPeriod = ((fallback || []) as PeriodInfo[])[0];
+      }
+
+      // If there's a current period, check if it's editable
+      if (currentPeriod) {
+        const { data: myRec } = await supabase
+          .from('salary_records')
+          .select('status')
+          .eq('user_id', userId)
+          .eq('period_id', currentPeriod.id)
+          .maybeSingle();
+
+        // If no record or draft, go to edit page
+        if (!myRec || (myRec as any)?.status === 'draft') {
+          setLoading(false);
+          navigate('/salary/edit', { replace: true });
+          return;
+        }
+      }
+
       // Read frozen snapshot only — admin edits after publish do not leak through.
       const { data: snapData } = await supabase
         .from('salary_published_snapshots')
@@ -68,7 +108,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
 
       if (!snapData) {
         setLoading(false);
-        navigate('/salary/edit', { replace: true });
+        // No snapshot and no editable period — show empty state
         return;
       }
       const snap = snapData as unknown as {
@@ -113,7 +153,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     };
 
     fetchAll();
-  }, [userId]);
+  }, [userId, navigate]);
 
   const globalClockIn = useMemo(() => {
     const raw = profile?.default_clock_in || '17:00';
