@@ -45,8 +45,6 @@ serve(async (req) => {
     allDates.push(dateStr);
   }
 
-  const offDaySet = new Set((period.off_days || []) as string[]);
-
   // Get special day rates for the period
   const { data: ratesData } = await supabase
     .from("special_day_rates")
@@ -107,22 +105,21 @@ serve(async (req) => {
       // Type C/D: seed ALL dates in the period with default clock times
       for (const dateStr of allDates) {
         if (existingDates.has(dateStr)) continue;
-        const isOff = offDaySet.has(dateStr);
         entriesToInsert.push({
           user_id: userId,
           period_id: periodId,
           entry_date: dateStr,
           sort_order: 0,
-          is_day_off: isOff,
-          off_percent: isOff ? 100 : 0,
-          note: isOff ? "Nghỉ" : null,
-          clock_in: isOff ? null : (profile.default_clock_in || "08:00"),
-          clock_out: isOff ? null : (profile.default_clock_out || "17:30"),
+          is_day_off: false,
+          off_percent: 0,
+          note: null,
+          clock_in: profile.default_clock_in || "08:00",
+          clock_out: profile.default_clock_out || "17:30",
           is_admin_reviewed: true,
         });
       }
     } else if (profile.shift_type === "basic" || profile.shift_type === "daily") {
-      // Type A: seed only special dates that don't exist
+      // Type A/E: seed only special dates that don't exist
       for (const dateStr of specialDates) {
         if (existingDates.has(dateStr)) continue;
         entriesToInsert.push({
@@ -135,20 +132,19 @@ serve(async (req) => {
         });
       }
     } else if (profile.shift_type === "overtime") {
-      // Type B: seed ALL dates with clock times
+      // Type B: seed ALL dates — clock_in pre-filled, clock_out blank to enter
       for (const dateStr of allDates) {
         if (existingDates.has(dateStr)) continue;
-        const isOff = offDaySet.has(dateStr);
         entriesToInsert.push({
           user_id: userId,
           period_id: periodId,
           entry_date: dateStr,
           sort_order: 0,
-          is_day_off: isOff,
-          off_percent: isOff ? 100 : 0,
-          note: isOff ? "Nghỉ" : null,
-          clock_in: isOff ? null : (profile.default_clock_in || "17:00"),
-          clock_out: isOff ? null : (profile.default_clock_out || "22:00"),
+          is_day_off: false,
+          off_percent: 0,
+          note: null,
+          clock_in: profile.default_clock_in || "17:00",
+          clock_out: null,
           is_admin_reviewed: true,
         });
       }

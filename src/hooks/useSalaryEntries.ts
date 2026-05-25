@@ -154,11 +154,10 @@ export function useSalaryEntries(
         }
       }
 
-      // Type B: seed ALL dates in the period with clock_in set
+      // Type B: seed ALL dates — clock_in pre-filled, clock_out blank to enter
       if (seedAllPeriodDays && periodId) {
         const existingDates = new Set(loaded.map(e => e.entry_date));
-        const { periodStart, periodEnd, defaultClockIn, defaultClockOut, offDays } = seedAllPeriodDays;
-        const offDaySet = new Set(offDays);
+        const { periodStart, periodEnd, defaultClockIn } = seedAllPeriodDays;
         const rows: Omit<SalaryEntry, 'id'>[] = [];
         const toActivate: { entryDate: string; sortOrder: number }[] = [];
 
@@ -168,10 +167,9 @@ export function useSalaryEntries(
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           // Format as local date (YYYY-MM-DD), NOT UTC
           const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const isOff = offDaySet.has(dateStr);
           if (existingDates.has(dateStr)) {
             const existing = loaded.find(e => e.entry_date === dateStr && e.sort_order === 0);
-            if (existing && existing.is_day_off && !isOff && !existing.clock_in && !existing.clock_out) {
+            if (existing && existing.is_day_off && !existing.clock_in && !existing.clock_out) {
               toActivate.push({ entryDate: dateStr, sortOrder: 0 });
             }
             continue;
@@ -181,12 +179,12 @@ export function useSalaryEntries(
             period_id: periodId,
             entry_date: dateStr,
             sort_order: 0,
-            is_day_off: isOff,
-            off_percent: isOff ? 100 : 0,
-            note: isOff ? 'Nghỉ' : null,
-            clock_in: isOff ? null : defaultClockIn,
-            clock_out: isOff ? null : (defaultClockOut || null),
-            total_hours: isOff ? null : (defaultClockIn && defaultClockOut ? calcHoursFromTimes(defaultClockIn, defaultClockOut) : null),
+            is_day_off: false,
+            off_percent: 0,
+            note: null,
+            clock_in: defaultClockIn,
+            clock_out: null,
+            total_hours: null,
             allowance_rate_override: null,
             base_daily_wage: 0,
             allowance_amount: 0,
