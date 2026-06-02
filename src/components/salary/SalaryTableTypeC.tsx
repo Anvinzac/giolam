@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Plus, X, Clock } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
+import { isDayBeforeFullMoon, isDayBeforeNewMoon } from '@/lib/lunarUtils';
 import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -531,13 +532,45 @@ export default function SalaryTableTypeC({
         rateDesc = undefined; // No notice for other days
       }
     }
-    // Sunday + lunar combos like "Chủ Nhật & Rằm + 50%" wrap onto a
-    // second line in the row's note cell. Abbreviate "Chủ Nhật" → "CN"
-    // so the whole notice fits on one line. Only applied for Type C and
-    // Type D (this component is the shared renderer for both); other
-    // shift types render the description elsewhere and aren't affected.
+    // Note-cell abbreviations for Type C / Type D, applied only where
+    // they actually save horizontal space:
+    //
+    //   1. Combo notices like "Chủ Nhật & Rằm + 50%" or
+    //      "Chủ Nhật & Mùng 1 + 50%" wrap onto a second line. When the
+    //      description contains an "&", abbreviate the Sunday segment
+    //      ("Chủ Nhật" → "CN") and, if also paired with a new-moon,
+    //      ("Mùng 1" → "M1"). Standalone "Chủ Nhật + 20%" or standalone
+    //      "Mùng 1 + 40%" stay as-is — they fit fine.
+    //
+    //   2. "Ngày chay" (fasting day) is replaced with the lunar day
+    //      number it represents:
+    //        - day before full moon → "14AL"  (e.g. 2026-04-30)
+    //        - day before new moon  → "30AL"  (e.g. 2026-05-16)
+    //      The actual lunar status is computed from entry_date via
+    //      lunarUtils so this stays correct for every period.
     if (rateDesc) {
-      rateDesc = rateDesc.replace(/Chủ\s*Nhật/g, 'CN').replace(/Chu\s*Nhat/g, 'CN');
+      // (1) combo-only abbreviations
+      if (rateDesc.includes('&')) {
+        rateDesc = rateDesc
+          .replace(/Chủ\s*Nhật/g, 'CN')
+          .replace(/Chu\s*Nhat/g, 'CN')
+          .replace(/Mùng\s*1/g, 'M1')
+          .replace(/Mung\s*1/g, 'M1');
+      }
+      // (2) Ngày chay → lunar-day abbreviation
+      if (/Ngày\s*chay|Ngay\s*chay/.test(rateDesc)) {
+        const d = new Date(e.entry_date + 'T12:00:00');
+        const lunarLabel = isDayBeforeFullMoon(d)
+          ? '14AL'
+          : isDayBeforeNewMoon(d)
+            ? '30AL'
+            : null;
+        if (lunarLabel) {
+          rateDesc = rateDesc
+            .replace(/Ngày\s*chay/g, lunarLabel)
+            .replace(/Ngay\s*chay/g, lunarLabel);
+        }
+      }
     }
     
     const cellKey = `${e.entry_date}-${e.sort_order}`;
