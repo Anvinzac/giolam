@@ -712,12 +712,18 @@ export default function SalaryAdmin() {
     if (!breakdown || !selectedEmployee) return;
     try {
       await publish(breakdown.total, breakdown);
+      setPublishedTotals(prev => {
+        const next = new Map(prev);
+        next.set(selectedEmployee.user_id, breakdown.total);
+        return next;
+      });
+      await refreshPublishedTotals();
       toast.success(`Đã công bố lương cho ${selectedEmployee.full_name}`);
     } catch (err) {
       console.error('Publish failed:', err);
       toast.error(`Lỗi công bố lương: ${err instanceof Error ? err.message : 'Lỗi không xác định'}`);
     }
-  }, [breakdown, selectedEmployee, publish]);
+  }, [breakdown, selectedEmployee, publish, refreshPublishedTotals]);
 
   const handleNameChange = useCallback(async (name: string) => {
     if (!selectedEmployee || !name.trim()) return;
@@ -1329,7 +1335,6 @@ export default function SalaryAdmin() {
                 entries={entries}
                 rates={rates}
                 allowances={allowances}
-                offDays={selectedPeriod.off_days || []}
                 hourlyRate={selectedEmployee.hourly_rate}
                 periodStart={selectedPeriod.start_date}
                 periodEnd={selectedPeriod.end_date}
