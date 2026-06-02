@@ -125,7 +125,19 @@ export default function SalaryTableTypeC({
   } | null>(null);
 
   const effectiveStart = customStartDate || periodStart;
-  const effectiveEnd = customEndDate || periodEnd;
+  // Default end is the period end (or admin-picked custom end), but stretch
+  // it so any salary_entries persisted past the period boundary stay
+  // visible — e.g. chiloan (Type D) carrying May 28-31 rows on a period
+  // that ends May 24. Without this, filteredEntries / splitIntoPages
+  // silently dropped the out-of-range rows even though they still
+  // contribute to computeTotalSalaryTypeD.
+  const rawEnd = customEndDate || periodEnd;
+  const maxEntryDate = useMemo(() => {
+    let max = rawEnd;
+    for (const e of entries) if (e.entry_date > max) max = e.entry_date;
+    return max;
+  }, [entries, rawEnd]);
+  const effectiveEnd = maxEntryDate;
 
   useEffect(() => {
     setNewRowDate(effectiveEnd >= periodStart ? effectiveStart : periodStart);
