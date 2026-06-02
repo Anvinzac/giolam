@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Plus, X, Clock } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
-import { isDayBeforeFullMoon, isDayBeforeNewMoon } from '@/lib/lunarUtils';
 import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -569,14 +568,30 @@ export default function SalaryTableTypeC({
           .replace(/Mùng\s*1/g, 'M1')
           .replace(/Mung\s*1/g, 'M1');
       }
-      // (2) Ngày chay → lunar-day abbreviation
+      // (2) Ngày chay → lunar-day abbreviation. The astronomical lunar
+      // formula in lunarUtils misses dates where the full/new moon
+      // falls late in the day (its ±0.017-cycle threshold shifts the
+      // detection by ~half a day in the wrong direction). Instead use
+      // the special_day_rates table itself — Vietnamese lunar dating
+      // is what already populates day_type='full_moon'/'new_moon' on
+      // the *following* date, so tomorrow's row tells us which kind of
+      // fasting day this is.
       if (/Ngày\s*chay|Ngay\s*chay/.test(rateDesc)) {
-        const d = new Date(e.entry_date + 'T12:00:00');
-        const lunarLabel = isDayBeforeFullMoon(d)
-          ? '14AL'
-          : isDayBeforeNewMoon(d)
-            ? '30AL'
-            : null;
+        const nextDate = (() => {
+          const d = new Date(e.entry_date + 'T12:00:00');
+          d.setDate(d.getDate() + 1);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        })();
+        const tomorrowRow = rates.find(r => r.special_date === nextDate);
+        const lunarLabel =
+          tomorrowRow?.day_type === 'full_moon'
+            ? '14AL'
+            : tomorrowRow?.day_type === 'new_moon'
+              ? '30AL'
+              : null;
         if (lunarLabel) {
           rateDesc = rateDesc
             .replace(/Ngày\s*chay/g, lunarLabel)
