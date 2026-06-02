@@ -279,7 +279,17 @@ export default function SalaryTableTypeB({
   };
 
   const handleChipSelect = (entry: SalaryEntry, pageEntries: SalaryEntry[], clockOut: string) => {
-    onEntryUpdate(entry.entry_date, entry.sort_order, { clock_out: clockOut });
+    // Recompute total_hours from clock_in → new clock_out instead of
+    // leaving the seed-time sentinel value (0) in place. Without this,
+    // the row's compute path (`total_hours ?? calcHoursFromTimes(...)`)
+    // happily keeps using the cached 0 even after the chip wrote a
+    // real clock_out, and the extra-wage column stays at zero.
+    const baseIn = entry.clock_in || globalClockIn;
+    const recomputed = calcHoursFromTimes(baseIn, clockOut);
+    onEntryUpdate(entry.entry_date, entry.sort_order, {
+      clock_out: clockOut,
+      total_hours: recomputed,
+    });
 
     // Advance to next non-off-day entry in same page
     const currentIdx = pageEntries.findIndex(
@@ -367,6 +377,15 @@ export default function SalaryTableTypeB({
     const decimalHours = hours + minutes / 60;
     return Number.isInteger(decimalHours) ? `${decimalHours}` : decimalHours.toFixed(1);
   };
+
+  // A row whose clock_out matches its clock_in is the "pending input"
+  // sentinel from the Type B seed — show it as '—' so the cell looks
+  // empty / waiting, while still being tappable. Once admin or employee
+  // enters a real time the two diverge and the actual value renders.
+  const isSentinelClockOut = (entry: SalaryEntry) =>
+    !!entry.clock_in && !!entry.clock_out && entry.clock_in === entry.clock_out;
+  const formatClockOut = (entry: SalaryEntry) =>
+    isSentinelClockOut(entry) ? '—' : formatClockDecimal(entry.clock_out);
 
   const formatCompact = (amount: number) => {
     if (amount === 0) return '0';
@@ -668,7 +687,7 @@ export default function SalaryTableTypeB({
                             !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                           }`}
                         >
-                          {formatClockDecimal(e.clock_out)}
+                          {formatClockOut(e)}
                         </button>
                         <FormulaTooltip formula={formulaHours(e)} className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
                         <FormulaTooltip formula={formulaWage(hours)} className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
@@ -815,7 +834,7 @@ export default function SalaryTableTypeB({
                         !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                       }`}
                     >
-                      {formatClockDecimal(e.clock_out)}
+                      {formatClockOut(e)}
                     </button>
 
                     {/* Hours */}
