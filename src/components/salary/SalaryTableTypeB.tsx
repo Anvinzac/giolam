@@ -118,10 +118,47 @@ export default function SalaryTableTypeB({
   const [cellValue, setCellValue] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
 
-  // Extra hours input state — inline input on the plus button
-  const [extraHoursKey, setExtraHoursKey] = useState<string | null>(null);
+  // Extra-row dialog state. When the user taps the "+" button beside a
+  // date, instead of inserting a blank duplicate row immediately we open
+  // a small bottom-sheet asking for the custom hours (positive or
+  // negative — the breakdown formula multiplies hours × hourlyRate
+  // directly, so a negative value yields a deduction) plus an optional
+  // note. On confirm we insert at the next sort_order with those values
+  // already set, so the row doesn't have to be edited a second time.
+  const [extraRowFor, setExtraRowFor] = useState<string | null>(null);
   const [extraHoursValue, setExtraHoursValue] = useState('');
+  const [extraNoteValue, setExtraNoteValue] = useState('');
   const extraHoursRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (extraRowFor && extraHoursRef.current) extraHoursRef.current.focus();
+  }, [extraRowFor]);
+
+  const openExtraRowDialog = (entryDate: string) => {
+    setExtraHoursValue('');
+    setExtraNoteValue('');
+    setExtraRowFor(entryDate);
+  };
+  const cancelExtraRow = () => setExtraRowFor(null);
+  const confirmExtraRow = () => {
+    if (!extraRowFor) return;
+    const hours = parseFloat(extraHoursValue.replace(',', '.'));
+    if (!Number.isFinite(hours) || hours === 0) {
+      // Empty or non-numeric input → just close. Negative is fine.
+      setExtraRowFor(null);
+      return;
+    }
+    const sameDate = entries.filter(x => x.entry_date === extraRowFor);
+    const nextSort = sameDate.reduce((max, x) => Math.max(max, x.sort_order), 0) + 1;
+    onEntryUpdate(extraRowFor, nextSort, {
+      is_day_off: false,
+      off_percent: 0,
+      total_hours: hours,
+      clock_in: null,
+      clock_out: null,
+      note: extraNoteValue.trim() || null,
+    });
+    setExtraRowFor(null);
+  };
 
   // Chip state for sequential clock-out entry
   const [chipRowKey, setChipRowKey] = useState<string | null>(null);
@@ -581,7 +618,13 @@ export default function SalaryTableTypeB({
           const matchedRate = rates.find(r => r.special_date === e.entry_date);
           const rateDesc = matchedRate?.description_vi;
           const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
-          const chipsActive = !readOnly && chipRowKey === cellKey && !e.is_day_off;
+          // Global off-days ("Quán nghỉ") come from working_periods.off_days
+          // and must stay locked. Without this guard a stale row that landed
+          // in the sentinel state on an off-day date could still surface the
+          // chip strip / clock-out button — admins had been "fixing" them by
+          // tapping clock-out and accidentally writing real times back in.
+          const isGlobalOffDay = globalOffDaySet.has(e.entry_date);
+          const chipsActive = !readOnly && chipRowKey === cellKey && !e.is_day_off && !isGlobalOffDay;
           const isPending = false;
           const showAccept = false;
           const canDelete = canDeleteRow(e);
@@ -639,13 +682,11 @@ export default function SalaryTableTypeB({
                                   <Trash2 size={10} />
                                 </button>
                               ) : null
-                            ) : (
-                              <button onClick={async () => {
-                                const existing = entries.filter(x => x.entry_date === e.entry_date);
-                                const nextSort = existing.reduce((max, x) => Math.max(max, x.sort_order), 0) + 1;
-                                await onAddDuplicateRow(e.entry_date);
-                                showRowChips(`${e.entry_date}-${nextSort}`);
-                              }} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
+                            ) : isGlobalOffDay ? null : (
+                              <button
+                                onClick={() => openExtraRowDialog(e.entry_date)}
+                                className="mt-0.5 text-muted-foreground hover:text-primary transition-colors"
+                              >
                                 <Plus size={10} />
                               </button>
                             )
@@ -702,7 +743,7 @@ export default function SalaryTableTypeB({
                           // hatch, not the default. cec5430 routed null
                           // clock_out straight to the picker and silently
                           // dropped both the chip UX and the auto-advance.
-                          onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
+                          onClick={() => !readOnly && !e.is_day_off && !isGlobalOffDay && showRowChips(cellKey)}
                           className={`w-[38px] text-right text-sm font-medium ${
                             !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                           }`}
@@ -747,13 +788,11 @@ export default function SalaryTableTypeB({
                             <Trash2 size={10} />
                           </button>
                         ) : null
-                      ) : (
-                        <button onClick={async () => {
-                          const existing = entries.filter(x => x.entry_date === e.entry_date);
-                          const nextSort = existing.reduce((max, x) => Math.max(max, x.sort_order), 0) + 1;
-                          await onAddDuplicateRow(e.entry_date);
-                          showRowChips(`${e.entry_date}-${nextSort}`);
-                        }} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors">
+                      ) : isGlobalOffDay ? null : (
+                        <button
+                          onClick={() => openExtraRowDialog(e.entry_date)}
+                          className="mt-0.5 text-muted-foreground hover:text-primary transition-colors"
+                        >
                           <Plus size={10} />
                         </button>
                       )
@@ -990,6 +1029,75 @@ export default function SalaryTableTypeB({
         isPublished={mode === 'preview'}
         dailyTotals={dailyTotals}
       />
+
+      {extraRowFor && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={cancelExtraRow}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 z-50 p-4"
+          >
+            <div className="glass-card p-5 max-w-sm mx-auto space-y-4">
+              <div>
+                <h3 className="font-display font-semibold text-foreground">Thêm dòng</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{formatDateViet(extraRowFor)}</p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-[12px] text-muted-foreground shrink-0 w-20">Giờ thêm</label>
+                  <input
+                    ref={extraHoursRef}
+                    type="number"
+                    inputMode="decimal"
+                    step="0.5"
+                    value={extraHoursValue}
+                    onChange={ev => setExtraHoursValue(ev.target.value)}
+                    onKeyDown={ev => { if (ev.key === 'Enter') confirmExtraRow(); }}
+                    placeholder="vd. 2 hoặc -1.5"
+                    className="flex-1 px-2 py-1.5 rounded bg-background border border-border text-[14px] text-right"
+                  />
+                  <span className="text-[12px] text-muted-foreground w-6">giờ</span>
+                </div>
+                {extraHoursValue && Number.isFinite(parseFloat(extraHoursValue.replace(',', '.'))) && (
+                  <p className="text-[11px] text-muted-foreground text-right">
+                    ≈ {Math.round(parseFloat(extraHoursValue.replace(',', '.')) * hourlyRate / 1000)}k
+                  </p>
+                )}
+                <div className="flex items-start gap-2">
+                  <label className="text-[12px] text-muted-foreground shrink-0 w-20 mt-1.5">Ghi chú</label>
+                  <input
+                    type="text"
+                    value={extraNoteValue}
+                    onChange={ev => setExtraNoteValue(ev.target.value)}
+                    onKeyDown={ev => { if (ev.key === 'Enter') confirmExtraRow(); }}
+                    placeholder="tuỳ chọn"
+                    className="flex-1 px-2 py-1.5 rounded bg-background border border-border text-[14px]"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={cancelExtraRow}
+                  className="flex-1 px-3 py-2 rounded-lg bg-muted text-muted-foreground text-sm font-medium"
+                >Huỷ</button>
+                <button
+                  onClick={confirmExtraRow}
+                  className="flex-1 px-3 py-2 rounded-lg gradient-gold text-primary-foreground text-sm font-semibold"
+                >Thêm</button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
 
       {pickingClock && (
         <AnalogClock
