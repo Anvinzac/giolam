@@ -83,7 +83,21 @@ export default function SalaryTableTypeA({
     );
   }, [entries]);
 
-  const computeRow = (e: SalaryEntry) => computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
+  // Type E (daily) treats lunar days the same way Type D does: every
+  // worked hour on a new_moon / full_moon row pays at the elevated
+  // lunar hourly rate (35k) instead of the profile's normal rate.
+  // Other shift types — including Type A — keep their hourlyRate
+  // untouched; lunar days only add the percent allowance defined on
+  // the special_day_rates row.
+  const LUNAR_HOURLY_RATE = 35000;
+  const effectiveHourlyFor = (e: SalaryEntry): number => {
+    if (!isDailyMode) return hourlyRate;
+    const m = rates.find(r => r.special_date === e.entry_date);
+    return m?.day_type === 'new_moon' || m?.day_type === 'full_moon'
+      ? LUNAR_HOURLY_RATE
+      : hourlyRate;
+  };
+  const computeRow = (e: SalaryEntry) => computeTypeARowAmounts(e, dailyBase, effectiveHourlyFor(e), rates);
 
   const totalFromEntries = useMemo(() => {
     return visibleEntries.reduce((sum, e) => {

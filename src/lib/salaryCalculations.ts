@@ -302,8 +302,18 @@ export function computeTotalSalaryTypeE(
   const inPeriod = (date: string) =>
     !periodEnd || date <= periodEnd;
 
+  // Lunar days pay extra hours at 35k/hr regardless of the profile's
+  // normal rate, mirroring Type D's flat lunar rate.
+  const LUNAR_HOURLY_RATE = 35000;
+  const effectiveHourly = (e: SalaryEntry): number => {
+    const m = rates.find(r => r.special_date === e.entry_date);
+    return m?.day_type === 'new_moon' || m?.day_type === 'full_moon'
+      ? LUNAR_HOURLY_RATE
+      : hourlyRate;
+  };
+
   for (const e of entries) {
-    const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
+    const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, effectiveHourly(e), rates);
     totalAllowancesFromRates += allowance;
     totalExtraWages += extraWage;
 
