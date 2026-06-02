@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { SalaryEntry } from '@/types/salary';
+import { calcHoursFromTimes } from '@/lib/salaryCalculations';
 
 const sortEntries = (entries: SalaryEntry[]) =>
   [...entries].sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.sort_order - b.sort_order);
@@ -30,11 +31,19 @@ export interface UseSalaryEntriesOptions {
   enableRealtime?: boolean;
   /** For Type A: auto-seed working entries for each special day in the rates table */
   seedAllDays?: boolean;
-  /** For Type B: auto-seed entries for ALL dates in the period with clock_in set */
+  /**
+   * For Type B: auto-seed entries for ALL dates in the period with both
+   * clock_in AND clock_out pre-filled from the profile defaults. Admins
+   * and employees were previously seeing every freshly-seeded row land
+   * with clock_out=null, forcing them to "activate" the day before they
+   * could change the time — wasted effort. Pre-filling both lets them
+   * tap the row's clock-out cell and adjust immediately.
+   */
   seedAllPeriodDays?: {
     periodStart: string;
     periodEnd: string;
     defaultClockIn: string;
+    defaultClockOut: string;
     offDays: string[];
   };
   /** Whether employee edits should wait for admin review or be auto-approved */
@@ -154,10 +163,13 @@ export function useSalaryEntries(
         }
       }
 
-      // Type B: seed ALL dates — clock_in pre-filled, clock_out blank to enter
+      // Type B: seed ALL dates — both clock_in AND clock_out pre-filled
+      // so the row is "active" by default and the clock-out cell is
+      // immediately tappable / adjustable.
       if (seedAllPeriodDays && periodId) {
         const existingDates = new Set(loaded.map(e => e.entry_date));
-        const { periodStart, periodEnd, defaultClockIn } = seedAllPeriodDays;
+        const { periodStart, periodEnd, defaultClockIn, defaultClockOut } = seedAllPeriodDays;
+        const seededHours = calcHoursFromTimes(defaultClockIn, defaultClockOut);
         const rows: Omit<SalaryEntry, 'id'>[] = [];
         const toActivate: { entryDate: string; sortOrder: number }[] = [];
 
@@ -183,8 +195,8 @@ export function useSalaryEntries(
             off_percent: 0,
             note: null,
             clock_in: defaultClockIn,
-            clock_out: null,
-            total_hours: null,
+            clock_out: defaultClockOut,
+            total_hours: seededHours,
             allowance_rate_override: null,
             base_daily_wage: 0,
             allowance_amount: 0,
@@ -192,11 +204,20 @@ export function useSalaryEntries(
             total_daily_wage: 0,
           });
         }
-        // Activate existing off-day entries (no clock times)
+        // Activate existing off-day entries (no clock times) — pre-fill
+        // both clock_in and clock_out so the row matches the freshly-seeded
+        // shape and is immediately tappable.
         for (const { entryDate, sortOrder } of toActivate) {
           const { data: updated } = await supabase
             .from('salary_entries')
-            .update({ is_day_off: false, off_percent: 0, note: null, clock_in: defaultClockIn, clock_out: defaultClockOut || null })
+            .update({
+              is_day_off: false,
+              off_percent: 0,
+              note: null,
+              clock_in: defaultClockIn,
+              clock_out: defaultClockOut,
+              total_hours: seededHours,
+            })
             .match({ user_id: userId, period_id: periodId, entry_date: entryDate, sort_order: sortOrder })
             .select()
             .maybeSingle();
