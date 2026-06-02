@@ -392,7 +392,17 @@ export function computeTotalSalaryTypeB(
       continue;
     }
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
+    // Prefer the clock-derived hours whenever clock_in / clock_out are
+    // both present and different — that's the source of truth. A stored
+    // total_hours of 0 left behind by an earlier seed/revert run would
+    // otherwise short-circuit the `??` and zero out the row's wage even
+    // when the row carries a real shift. Fall back to total_hours only
+    // when the clocks can't produce a usable value.
+    const baseIn = e.clock_in || globalClockIn;
+    const clockHours = e.clock_out && baseIn && baseIn !== e.clock_out
+      ? calcHoursFromTimes(baseIn, e.clock_out)
+      : null;
+    const hours = clockHours ?? e.total_hours ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
     // Added rows (sort_order > 0) are pure delta adjustments — allowance
     // applies only on the extra wage itself, not on (dailyBase + extraWage).
