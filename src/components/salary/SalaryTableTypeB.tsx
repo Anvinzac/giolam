@@ -159,8 +159,6 @@ export default function SalaryTableTypeB({
     return () => cancelAnimationFrame(raf);
   }, [chipRowKey]);
 
-  // Double-tap ref for day-off toggle on date
-  const lastTapRef = useRef<{ key: string; time: number } | null>(null);
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
   const pages = useMemo(() => splitIntoPages(periodStart, periodEnd, entries), [periodStart, periodEnd, entries]);
@@ -320,19 +318,41 @@ export default function SalaryTableTypeB({
     return '';
   };
 
+  // Single tap on the row's date toggles a personal off-day:
+  //   - working/sentinel row  → is_day_off=true, note='Nghỉ', clock
+  //     times cleared. computeTotalSalaryTypeB deducts dailyBase for
+  //     this row automatically.
+  //   - personal off-day row  → revert to the sentinel (clock_in =
+  //     clock_out = default, total_hours = 0, note cleared).
+  //   - global off-day row    → ignored. "Quán nghỉ" days come from
+  //     working_periods.off_days; the employee can't claim/release
+  //     those individually.
+  // Single tap is the affordance now; the previous double-tap path
+  // and its lastTapRef were removed.
   const handleDateTap = (entry: SalaryEntry) => {
     if (readOnly) return;
-    const key = `${entry.entry_date}-${entry.sort_order}`;
-    const now = Date.now();
-    const last = lastTapRef.current;
-    if (last && last.key === key && now - last.time < 300) {
-      // Double tap → toggle day off
+    if (globalOffDaySet.has(entry.entry_date)) return;
+    if (entry.is_day_off) {
+      // Restore sentinel
+      const baseIn = entry.clock_in || globalClockIn;
       onEntryUpdate(entry.entry_date, entry.sort_order, {
-        is_day_off: !entry.is_day_off,
+        is_day_off: false,
+        off_percent: 0,
+        note: null,
+        clock_in: baseIn,
+        clock_out: baseIn,
+        total_hours: 0,
       });
-      lastTapRef.current = null;
     } else {
-      lastTapRef.current = { key, time: now };
+      // Personal off-day → "Nghỉ"
+      onEntryUpdate(entry.entry_date, entry.sort_order, {
+        is_day_off: true,
+        off_percent: 0,
+        note: 'Nghỉ',
+        clock_in: null,
+        clock_out: null,
+        total_hours: null,
+      });
     }
   };
 

@@ -176,7 +176,8 @@ export function useSalaryEntries(
       // but seeding intentionally does not consume it.
       if (seedAllPeriodDays && periodId) {
         const existingDates = new Set(loaded.map(e => e.entry_date));
-        const { periodStart, periodEnd, defaultClockIn } = seedAllPeriodDays;
+        const { periodStart, periodEnd, defaultClockIn, offDays } = seedAllPeriodDays;
+        const offDaySet = new Set(offDays || []);
         const rows: Omit<SalaryEntry, 'id'>[] = [];
         const toActivate: { entryDate: string; sortOrder: number }[] = [];
 
@@ -186,11 +187,37 @@ export function useSalaryEntries(
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           // Format as local date (YYYY-MM-DD), NOT UTC
           const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const isGlobalOff = offDaySet.has(dateStr);
           if (existingDates.has(dateStr)) {
             const existing = loaded.find(e => e.entry_date === dateStr && e.sort_order === 0);
-            if (existing && existing.is_day_off && !existing.clock_in && !existing.clock_out) {
+            // Don't reactivate rows on global off-days — they should stay
+            // as "Quán nghỉ" off-day entries.
+            if (existing && existing.is_day_off && !existing.clock_in && !existing.clock_out && !isGlobalOff) {
               toActivate.push({ entryDate: dateStr, sortOrder: 0 });
             }
+            continue;
+          }
+          if (isGlobalOff) {
+            // Global off-day: seed as off with the canonical note. No
+            // clock times, no hours — the daily wage is deducted by the
+            // breakdown formula.
+            rows.push({
+              user_id: userId,
+              period_id: periodId,
+              entry_date: dateStr,
+              sort_order: 0,
+              is_day_off: true,
+              off_percent: 0,
+              note: 'Quán nghỉ',
+              clock_in: null,
+              clock_out: null,
+              total_hours: null,
+              allowance_rate_override: null,
+              base_daily_wage: 0,
+              allowance_amount: 0,
+              extra_wage: 0,
+              total_daily_wage: 0,
+            });
             continue;
           }
           rows.push({
@@ -213,6 +240,7 @@ export function useSalaryEntries(
         }
         // Activate existing off-day entries (no clock times) — install
         // the same sentinel so they match the freshly-seeded shape.
+        // Global off-days are excluded from `toActivate` above.
         for (const { entryDate, sortOrder } of toActivate) {
           const { data: updated } = await supabase
             .from('salary_entries')
