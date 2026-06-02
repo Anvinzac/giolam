@@ -354,7 +354,11 @@ export default function SalaryTableTypeA({
                       onClick={() => !readOnly && startEditRow(e)}
                       className={`flex-1 text-left text-[14px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${!readOnly ? 'hover:text-foreground' : 'cursor-default'}`}
                     >
-                      {isOff ? `Nghỉ -${e.off_percent}%` : (e.note || rateDesc || '—')}
+                      {/* Manual note wins over the auto "Nghỉ -X%" placeholder
+                          so admin/employee edits on off-day rows persist
+                          visually (e.g. chinu reason text). The placeholder
+                          only shows when the note is empty. */}
+                      {e.note || (isOff ? `Nghỉ -${e.off_percent}%` : (rateDesc || '—'))}
                     </button>
                   )}
 

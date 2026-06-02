@@ -643,7 +643,9 @@ export default function SalaryTableTypeB({
                                   isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
                                 } ${!readOnly && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
                               >
-                                {e.is_day_off ? 'Nghỉ' : (e.note || rateDesc || '—')}
+                                {/* Manual note wins over the auto "Nghỉ" placeholder
+                                    so admin/employee edits persist on off-day rows. */}
+                                {e.note || (e.is_day_off ? 'Nghỉ' : (rateDesc || '—'))}
                               </button>
                             )}
                           </div>
@@ -760,7 +762,8 @@ export default function SalaryTableTypeB({
                       !readOnly && !e.is_day_off ? 'hover:text-foreground' : 'cursor-default'
                     }`}
                   >
-                    {e.is_day_off ? 'Nghỉ' : (e.note || rateDesc || '—')}
+                    {/* Manual note wins over the auto "Nghỉ" placeholder. */}
+                    {e.note || (e.is_day_off ? 'Nghỉ' : (rateDesc || '—'))}
                   </button>
                 )}
 
