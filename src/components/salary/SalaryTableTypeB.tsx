@@ -654,20 +654,16 @@ export default function SalaryTableTypeB({
                       {/* Right: normal columns */}
                       <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
                         <button
-                          onClick={() => {
-                            if (readOnly || e.is_day_off) return;
-                            if (!e.clock_out) {
-                              setPickingClock({
-                                entryDate: e.entry_date,
-                                sortOrder: e.sort_order,
-                                clockIn: e.clock_in || globalClockIn,
-                                clockOut: e.clock_out,
-                                pageEntries: orderedEntries,
-                              });
-                            } else {
-                              showRowChips(cellKey);
-                            }
-                          }}
+                          // Tapping clock-out always opens the chip strip so
+                          // rapid input + auto-advance via handleChipSelect
+                          // keeps working even for rows whose clock_out is
+                          // still null (seed state). The "Khác" chip rendered
+                          // inside renderChips opens the analog picker if the
+                          // user wants an exact time — that's the escape
+                          // hatch, not the default. cec5430 routed null
+                          // clock_out straight to the picker and silently
+                          // dropped both the chip UX and the auto-advance.
+                          onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
                           className={`w-[38px] text-right text-sm font-medium ${
                             !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                           }`}
@@ -812,20 +808,9 @@ export default function SalaryTableTypeB({
                   <>
                     {/* Clock out */}
                     <button
-                      onClick={() => {
-                        if (readOnly || e.is_day_off) return;
-                        if (!e.clock_out) {
-                          setPickingClock({
-                            entryDate: e.entry_date,
-                            sortOrder: e.sort_order,
-                            clockIn: e.clock_in || globalClockIn,
-                            clockOut: e.clock_out,
-                            pageEntries: orderedEntries,
-                          });
-                        } else {
-                          showRowChips(cellKey);
-                        }
-                      }}
+                      // See mobile clock-out note above — always open the
+                      // chip strip, "Khác" chip handles the analog picker.
+                      onClick={() => !readOnly && !e.is_day_off && showRowChips(cellKey)}
                       className={`justify-self-end text-right text-sm font-medium ${
                         !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                       }`}
