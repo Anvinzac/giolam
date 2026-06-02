@@ -531,6 +531,14 @@ export default function SalaryTableTypeC({
         rateDesc = undefined; // No notice for other days
       }
     }
+    // Sunday + lunar combos like "Chủ Nhật & Rằm + 50%" wrap onto a
+    // second line in the row's note cell. Abbreviate "Chủ Nhật" → "CN"
+    // so the whole notice fits on one line. Only applied for Type C and
+    // Type D (this component is the shared renderer for both); other
+    // shift types render the description elsewhere and aren't affected.
+    if (rateDesc) {
+      rateDesc = rateDesc.replace(/Chủ\s*Nhật/g, 'CN').replace(/Chu\s*Nhat/g, 'CN');
+    }
     
     const cellKey = `${e.entry_date}-${e.sort_order}`;
     const isScheduledOffDay = scheduledOffDays.has(e.entry_date);
