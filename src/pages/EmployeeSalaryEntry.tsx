@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings, Package } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
+import DockedStockReport from '@/components/DockedStockReport';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
 import SalaryTableTypeB from '@/components/salary/SalaryTableTypeB';
 import SalaryTableTypeC from '@/components/salary/SalaryTableTypeC';
@@ -348,7 +349,7 @@ export default function EmployeeSalaryEntry() {
   // Empty state
   if (periods.length === 0) {
     return (
-      <div className="min-h-screen bg-background pb-8">
+      <div className="min-h-screen bg-background pb-28">
         <header className="px-6 pt-12 pb-4 flex items-center gap-3">
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -405,7 +406,7 @@ export default function EmployeeSalaryEntry() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-28">
       <header className="px-6 pt-4 pb-2">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
@@ -435,14 +436,6 @@ export default function EmployeeSalaryEntry() {
               </div>
             )}
           </div>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/stock-alert')}
-            aria-label="Tồn kho"
-            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Package size={18} />
-          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}
@@ -569,6 +562,7 @@ export default function EmployeeSalaryEntry() {
           />
         )}
       </div>
+      <DockedStockReport />
     </div>
   );
 }
