@@ -11,6 +11,7 @@ import SalaryEmployee from "./pages/SalaryEmployee";
 import EmployeeSalaryEntry from "./pages/EmployeeSalaryEntry";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import StockAlertForm from "./pages/StockAlertForm";
+import NoticeBoard from "./pages/NoticeBoard";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import TestTypeC from "./pages/TestTypeC";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/salary" element={<SalaryEmployee />} />
           <Route path="/salary/edit" element={<EmployeeSalaryEntry />} />
           <Route path="/stock-alert" element={<StockAlertForm />} />
+          <Route path="/notice-board" element={<NoticeBoard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/test" element={<TestTypeC />} />
           <Route path="*" element={<NotFound />} />

@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, AlertTriangle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ChevronRight, Megaphone, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import { buildEmployeeTitle } from '@/lib/employeeGreeting';
@@ -42,6 +43,33 @@ export default function StockAlertForm() {
   type StockStatus = 'quantity' | 'het' | 'ganHet' | 'nhieu';
   const [statusMap, setStatusMap] = useState<Record<string, StockStatus>>({});
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
+
+  // Custom-named depletion notice (posts to the common board /notice-board).
+  const [customName, setCustomName] = useState('');
+  const [customNote, setCustomNote] = useState('');
+  const [postingCustom, setPostingCustom] = useState(false);
+  const [openCountFromBoard, setOpenCountFromBoard] = useState<number | null>(null);
+
+  const postCustomNotice = async () => {
+    const name = customName.trim();
+    if (!name || !userId || postingCustom) return;
+    setPostingCustom(true);
+    const { error } = await supabase.from('custom_depletion_notices').insert({
+      reported_by: userId,
+      ingredient_name: name,
+      note: customNote.trim() || null,
+    });
+    setPostingCustom(false);
+    if (error) {
+      console.error(error);
+      toast.error('Không gửi được, thử lại sau');
+      return;
+    }
+    setCustomName('');
+    setCustomNote('');
+    toast.success('Đã đăng lên bảng tin');
+    setOpenCountFromBoard(c => (c ?? 0) + 1);
+  };
 
   const listRef = useRef<HTMLDivElement>(null);
   const activeRowRef = useRef<HTMLDivElement>(null);
@@ -87,6 +115,13 @@ export default function StockAlertForm() {
         .gte('reported_at', startOfMonth)
         .order('reported_at', { ascending: false });
       if (existingReports?.length) setReports(existingReports as StockReport[]);
+
+      // Cheap "open notice count" badge for the shortcut button.
+      const { count: openCount } = await supabase
+        .from('custom_depletion_notices')
+        .select('id', { count: 'exact', head: true })
+        .is('resolved_at', null);
+      setOpenCountFromBoard(openCount ?? 0);
 
       setLoading(false);
     } catch (error) {
@@ -246,10 +281,24 @@ export default function StockAlertForm() {
           >
             <ArrowLeft size={18} />
           </motion.button>
-          <h1 className="font-display text-xl font-bold text-gradient-gold flex-1">
+          <h1 className="font-display text-xl font-bold text-gradient-gold flex-1 truncate">
             {fullName ? buildEmployeeTitle(fullName, 'Kiểm kho') : 'Kiểm kho'}
           </h1>
-          <span className="text-xs text-muted-foreground">
+          {/* Shortcut to the common notice board. Badge shows open count. */}
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => navigate('/notice-board')}
+            aria-label="Bảng tin kiểm kho"
+            className="relative p-2 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+          >
+            <Megaphone size={18} />
+            {openCountFromBoard !== null && openCountFromBoard > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                {openCountFromBoard > 99 ? '99+' : openCountFromBoard}
+              </span>
+            )}
+          </motion.button>
+          <span className="text-xs text-muted-foreground tabular-nums">
             {submitted.size}/{ingredients.length}
           </span>
         </div>
@@ -343,6 +392,70 @@ export default function StockAlertForm() {
             );
           })
         )}
+
+        {/* Custom-named depletion → posts to the common notice board.
+            Lives at the end of the list so the assigned-ingredient flow
+            stays the primary affordance; the input here is for anything
+            the employee notices is running out that isn't in their
+            assignment. */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="glass-card p-4 mt-4 space-y-3 border border-border/40"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+              <Megaphone size={15} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display font-semibold text-foreground text-sm leading-tight">
+                Báo cáo nguyên liệu khác
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                Đăng lên bảng tin chung
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/notice-board')}
+              className="text-[11px] text-primary hover:underline shrink-0 font-medium"
+            >
+              Bảng tin →
+            </button>
+          </div>
+          <div className="space-y-2">
+            <input
+              value={customName}
+              onChange={ev => setCustomName(ev.target.value)}
+              placeholder="Tên nguyên liệu (vd. Nước mắm)"
+              maxLength={80}
+              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
+            />
+            <input
+              value={customNote}
+              onChange={ev => setCustomNote(ev.target.value)}
+              onKeyDown={ev => { if (ev.key === 'Enter') postCustomNotice(); }}
+              placeholder="Ghi chú (tuỳ chọn)"
+              maxLength={140}
+              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
+            />
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={postCustomNotice}
+              disabled={!customName.trim() || postingCustom}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-display font-semibold text-sm transition-colors ${
+                customName.trim() && !postingCustom
+                  ? 'gradient-gold text-primary-foreground shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)]'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+              }`}
+            >
+              <Send size={14} />
+              {postingCustom ? 'Đang gửi…' : 'Đăng bảng tin'}
+            </motion.button>
+          </div>
+        </motion.div>
+
         {/* Spacer for numpad */}
         <div className="h-[300px]" />
       </div>
