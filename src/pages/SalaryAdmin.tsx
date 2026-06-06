@@ -1337,18 +1337,17 @@ export default function SalaryAdmin() {
                 allowances={allowances}
                 hourlyRate={selectedEmployee.hourly_rate}
                 periodStart={selectedPeriod.start_date}
-                periodEnd={selectedPeriod.end_date}
+                // Account-specific extra range: ttu logs hours past the
+                // Apr 25 – May 24 period boundary all the way to May 31.
+                // Overriding the table's periodEnd (not just customEndDate)
+                // makes splitIntoPages, the date picker, the empty-row
+                // activator, and the renderRow date-range checks all key
+                // off the extended end — so the May 25–31 page renders
+                // immediately, May 31's row is reachable, and admins can
+                // add fresh rows on those dates via the date picker too.
+                periodEnd={selectedEmployee.username === 'ttu' ? '2026-05-31' : selectedPeriod.end_date}
                 customStartDate={null}
-                // Account-specific extra range: ttu also clocks in for the
-                // May 25–31 stretch after the Apr 25 – May 24 period ends.
-                // Forcing customEndDate here makes effectiveEnd jump to
-                // May 31 the moment SalaryTableTypeC mounts, instead of
-                // waiting for entries to load and the maxEntryDate memo to
-                // catch up — which on slower fetches was leaving admins
-                // looking at a stale page count and no way to swipe past
-                // the period boundary. Other Type C / D employees still
-                // rely on the maxEntryDate path.
-                customEndDate={selectedEmployee.username === 'ttu' ? '2026-05-31' : null}
+                customEndDate={null}
                 defaultClockIn={selectedEmployee.default_clock_in}
                 defaultClockOut={selectedEmployee.default_clock_out}
                 onDefaultClockInChange={handleTypeCDefaultClockInChange}
