@@ -177,19 +177,24 @@ export default function SalaryTableTypeC({
   );
 
   // Default compact based on working days count — only set once on load.
-  // Employees always see full mode while editing; compact only kicks in
-  // for published/preview view with fewer than 15 working days.
+  // Anyone editing (admin or employee) starts in full mode so the
+  // swipeable pages are visible and every date is reachable; compact
+  // only kicks in for the published/preview view with fewer than 15
+  // worked days. Without this admins opening a fresh Type C employee
+  // (no clock times yet → compact auto-enabled → no swipeable pages)
+  // had no way to reach later dates like ttu's extended May 25–31
+  // range; the only rows visible were generic empty placeholders.
   const compactInitRef = useRef(false);
   useEffect(() => {
     if (compactInitRef.current) return;
     if (filteredEntries.length === 0) return;
     compactInitRef.current = true;
-    if (mode === 'employee') {
-      setCompact(false);
-    } else {
+    if (mode === 'preview') {
       setCompact(workingEntries.length < 15);
+    } else {
+      setCompact(false);
     }
-  }, [workingEntries.length, filteredEntries.length]);
+  }, [workingEntries.length, filteredEntries.length, mode]);
 
   const guiXeSummary = useMemo(() => {
     const fromBreakdown = breakdown?.allowances?.find(a => a.key === 'gui_xe');
