@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Package, ChevronUp, Maximize2, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { isDueToday } from '@/lib/reportFrequency';
 
 interface DockedStockReportProps {
   /** Force-hide the collapsed bar (it also auto-hides while the user types). */
@@ -88,9 +89,12 @@ export default function DockedStockReport({ hidden = false }: DockedStockReportP
 
     const { data: assigned } = await supabase
       .from('employee_ingredients')
-      .select('ingredient_id, ingredients(id, name, emoji, unit)')
+      .select('ingredient_id, report_weekdays, ingredients(id, name, emoji, unit)')
       .eq('employee_id', user.id);
+    // Only surface ingredients due today — weekly / specific-weekday
+    // assignments stay hidden on the days they aren't scheduled.
     const ings: AssignedIngredient[] = (assigned || [])
+      .filter((a: any) => isDueToday(a.report_weekdays))
       .map((a: any) => a.ingredients)
       .filter(Boolean);
     setIngredients(ings);

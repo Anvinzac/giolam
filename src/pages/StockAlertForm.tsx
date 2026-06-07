@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import { buildEmployeeTitle } from '@/lib/employeeGreeting';
+import { isDueToday } from '@/lib/reportFrequency';
 
 interface AssignedIngredient {
   id: string;
@@ -98,10 +99,13 @@ export default function StockAlertForm() {
 
       const { data: assigned } = await supabase
         .from('employee_ingredients')
-        .select('ingredient_id, ingredients(id, name, emoji, unit, category)')
+        .select('ingredient_id, report_weekdays, ingredients(id, name, emoji, unit, category)')
         .eq('employee_id', user.id);
       if (assigned?.length) {
+        // Only today's due ingredients — weekly / specific-weekday items
+        // don't clutter the daily checklist on off days.
         const ings = assigned
+          .filter((a: any) => isDueToday(a.report_weekdays))
           .map((a: any) => a.ingredients)
           .filter(Boolean);
         setIngredients(ings);

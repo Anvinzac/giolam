@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Search, Plus, X, Check, Package } from 'lucide-react';
+import { Users, Search, Plus, X, Check, Package, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
+import { WEEKDAYS, frequencyLabel } from '@/lib/reportFrequency';
 
 interface Employee {
   user_id: string;
@@ -22,6 +23,7 @@ interface Assignment {
   id: string;
   employee_id: string;
   ingredient_id: string;
+  report_weekdays: number[] | null;
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -112,6 +114,32 @@ export default function AdminIngredientManager() {
     loadData();
   };
 
+  // Which assignment's frequency editor is open (by assignment id).
+  const [freqEditorFor, setFreqEditorFor] = useState<string | null>(null);
+
+  const updateWeekdays = async (assignmentId: string, weekdays: number[] | null) => {
+    // Optimistic local update so the chips respond instantly.
+    setAssignments(prev => prev.map(a =>
+      a.id === assignmentId ? { ...a, report_weekdays: weekdays } : a
+    ));
+    const { error } = await supabase
+      .from('employee_ingredients')
+      .update({ report_weekdays: weekdays && weekdays.length > 0 ? weekdays : null } as any)
+      .eq('id', assignmentId);
+    if (error) {
+      toast.error(error.message);
+      loadData(); // reconcile on failure
+    }
+  };
+
+  const toggleWeekday = (assignment: Assignment, day: number) => {
+    const current = assignment.report_weekdays || [];
+    const next = current.includes(day)
+      ? current.filter(d => d !== day)
+      : [...current, day].sort((a, b) => a - b);
+    updateWeekdays(assignment.id, next.length > 0 ? next : null);
+  };
+
   if (loading) {
     return <div className="glass-card p-8 text-center text-muted-foreground">Đang tải...</div>;
   }
@@ -170,19 +198,79 @@ export default function AdminIngredientManager() {
                 .filter(i => assignedIngredientIds.has(i.id))
                 .map(ing => {
                   const assignment = assignments.find(a => a.ingredient_id === ing.id && a.employee_id === selectedEmployee);
+                  if (!assignment) return null;
+                  const isEditing = freqEditorFor === assignment.id;
+                  const isDaily = !assignment.report_weekdays || assignment.report_weekdays.length === 0;
                   return (
-                    <div key={ing.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <span>{ing.emoji}</span>
-                        <span className="text-sm">{ing.name}</span>
-                        <span className="text-xs text-muted-foreground">({ing.unit})</span>
+                    <div key={ing.id} className="rounded-lg bg-muted/50 px-3 py-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span>{ing.emoji}</span>
+                          <span className="text-sm truncate">{ing.name}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">({ing.unit})</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => setFreqEditorFor(isEditing ? null : assignment.id)}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                              isEditing
+                                ? 'bg-primary/20 text-primary'
+                                : isDaily
+                                  ? 'bg-muted text-muted-foreground hover:text-foreground'
+                                  : 'bg-primary/15 text-primary'
+                            }`}
+                          >
+                            <CalendarDays size={12} />
+                            {frequencyLabel(assignment.report_weekdays)}
+                          </button>
+                          <button
+                            onClick={() => removeAssignment(assignment.id)}
+                            className="p-1 rounded-md hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => removeAssignment(assignment!.id)}
-                        className="p-1 rounded-md hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
+
+                      {isEditing && (
+                        <div className="pt-1 space-y-2 border-t border-border/40">
+                          <p className="text-[11px] text-muted-foreground pt-1.5">
+                            Chọn ngày cần báo cáo. Không chọn = hàng ngày.
+                          </p>
+                          <div className="flex gap-1 flex-wrap">
+                            {WEEKDAYS.map(w => {
+                              const active = (assignment.report_weekdays || []).includes(w.value);
+                              return (
+                                <button
+                                  key={w.value}
+                                  onClick={() => toggleWeekday(assignment, w.value)}
+                                  className={`w-9 h-9 rounded-lg text-[12px] font-semibold transition-colors ${
+                                    active
+                                      ? 'gradient-gold text-primary-foreground'
+                                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                                  }`}
+                                >
+                                  {w.short}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="flex gap-2 pt-0.5">
+                            <button
+                              onClick={() => updateWeekdays(assignment.id, null)}
+                              className="text-[11px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Hàng ngày
+                            </button>
+                            <button
+                              onClick={() => updateWeekdays(assignment.id, [1])}
+                              className="text-[11px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              1 lần/tuần (T2)
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
