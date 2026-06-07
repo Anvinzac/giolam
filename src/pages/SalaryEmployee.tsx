@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, LogOut, Settings } from 'lucide-react';
+import { ArrowLeft, LogOut, Settings, Package } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
-import DockedStockReport from '@/components/DockedStockReport';
+import DockedStockReport, { openStockReport } from '@/components/DockedStockReport';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import { buildEmployeeTitle } from '@/lib/employeeGreeting';
@@ -78,6 +78,14 @@ export default function SalaryEmployee() {
           <h1 className="font-display text-xl font-bold text-gradient-gold flex-1 truncate">
             {fullName ? buildEmployeeTitle(fullName, 'Bảng lương') : 'Bảng lương'}
           </h1>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => openStockReport()}
+            aria-label="Báo cáo kiểm kho"
+            className="p-2 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+          >
+            <Package size={18} />
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate('/settings')}
