@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Megaphone, Sparkles, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, Check, Megaphone, ShoppingCart, Sparkles, Trash2, Undo2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
@@ -14,6 +14,10 @@ interface Notice {
   reported_at: string;
   resolved_at: string | null;
   resolved_by: string | null;
+  needs_purchase: boolean;
+  quantity: string | null;
+  dismissed_at: string | null;
+  dismissed_by: string | null;
 }
 
 interface ReporterMap {
@@ -42,6 +46,7 @@ export default function NoticeBoard() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [reporters, setReporters] = useState<ReporterMap>({});
 
@@ -53,9 +58,16 @@ export default function NoticeBoard() {
       if (!user) { navigate('/login'); return; }
       setUserId(user.id);
 
+      // Admin gate for the purchase-list done/dismiss controls.
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      setIsAdmin((roles || []).some((r: any) => r.role === 'admin'));
+
       const { data: rows, error } = await supabase
         .from('custom_depletion_notices')
-        .select('id, reported_by, ingredient_name, note, reported_at, resolved_at, resolved_by')
+        .select('id, reported_by, ingredient_name, note, reported_at, resolved_at, resolved_by, needs_purchase, quantity, dismissed_at, dismissed_by')
         .order('reported_at', { ascending: false });
       if (error) throw error;
       const list = (rows || []) as Notice[];
@@ -99,11 +111,21 @@ export default function NoticeBoard() {
     return () => { supabase.removeChannel(channel); };
   }, [load]);
 
-  const { open, resolved } = useMemo(() => {
+  // Buckets:
+  //   purchase  — open + needs_purchase (the "Cần mua" shopping list)
+  //   open      — open + plain notice
+  //   resolved  — done or dismissed (history, collapsed)
+  const { purchase, open, resolved } = useMemo(() => {
+    const p: Notice[] = [];
     const o: Notice[] = [];
     const r: Notice[] = [];
-    for (const n of notices) (n.resolved_at ? r : o).push(n);
-    return { open: o, resolved: r };
+    for (const n of notices) {
+      const isClosed = !!n.resolved_at || !!n.dismissed_at;
+      if (isClosed) r.push(n);
+      else if (n.needs_purchase) p.push(n);
+      else o.push(n);
+    }
+    return { purchase: p, open: o, resolved: r };
   }, [notices]);
 
   const markResolved = async (n: Notice) => {
@@ -120,15 +142,29 @@ export default function NoticeBoard() {
     }
   };
 
-  const undoResolve = async (n: Notice) => {
-    setNotices(prev => prev.map(x => x.id === n.id ? { ...x, resolved_at: null, resolved_by: null } : x));
+  const markDismissed = async (n: Notice) => {
+    const stamp = new Date().toISOString();
+    setNotices(prev => prev.map(x => x.id === n.id ? { ...x, dismissed_at: stamp, dismissed_by: userId } : x));
     const { error } = await supabase
       .from('custom_depletion_notices')
-      .update({ resolved_at: null, resolved_by: null })
+      .update({ dismissed_at: stamp, dismissed_by: userId } as any)
       .eq('id', n.id);
     if (error) {
       console.error(error);
-      setNotices(prev => prev.map(x => x.id === n.id ? { ...x, resolved_at: n.resolved_at, resolved_by: n.resolved_by } : x));
+      setNotices(prev => prev.map(x => x.id === n.id ? { ...x, dismissed_at: null, dismissed_by: null } : x));
+    }
+  };
+
+  const reopen = async (n: Notice) => {
+    const snap = { resolved_at: n.resolved_at, resolved_by: n.resolved_by, dismissed_at: n.dismissed_at, dismissed_by: n.dismissed_by };
+    setNotices(prev => prev.map(x => x.id === n.id ? { ...x, resolved_at: null, resolved_by: null, dismissed_at: null, dismissed_by: null } : x));
+    const { error } = await supabase
+      .from('custom_depletion_notices')
+      .update({ resolved_at: null, resolved_by: null, dismissed_at: null, dismissed_by: null } as any)
+      .eq('id', n.id);
+    if (error) {
+      console.error(error);
+      setNotices(prev => prev.map(x => x.id === n.id ? { ...x, ...snap } : x));
     }
   };
 
@@ -162,8 +198,9 @@ export default function NoticeBoard() {
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-xl font-bold text-gradient-gold leading-tight truncate">Bảng tin kiểm kho</h1>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              {open.length > 0
-                ? `${open.length} thông báo chưa xử lý`
+              {open.length + purchase.length > 0
+                ? [purchase.length > 0 ? `${purchase.length} cần mua` : null,
+                   open.length > 0 ? `${open.length} thông báo` : null].filter(Boolean).join(' · ')
                 : 'Mọi thứ đã được xử lý'}
             </p>
           </div>
@@ -174,8 +211,77 @@ export default function NoticeBoard() {
       </header>
 
       <div className="px-4 space-y-3">
+        {/* Cần mua — dedicated shopping-list section */}
+        {purchase.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <ShoppingCart size={14} className="text-amber-400" />
+              <p className="text-[12px] uppercase tracking-wider text-amber-400 font-bold">
+                Cần mua ({purchase.length})
+              </p>
+            </div>
+            <AnimatePresence initial={false}>
+              {purchase.map((n, idx) => {
+                const r = reporters[n.reported_by];
+                const canManage = isAdmin || n.reported_by === userId;
+                return (
+                  <motion.div
+                    key={n.id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: 30 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="glass-card p-4 border-l-4 border-l-amber-400 bg-amber-500/5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <p className="font-display font-bold text-foreground text-[16px] leading-tight">
+                            {n.ingredient_name}
+                          </p>
+                          {n.quantity && (
+                            <span className="text-[12px] font-semibold text-amber-400">× {n.quantity}</span>
+                          )}
+                        </div>
+                        {n.note && (
+                          <p className="text-[12px] text-muted-foreground mt-1 leading-snug">{n.note}</p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground/80 mt-2">
+                          <span className="text-foreground/70 font-medium">{r?.full_name || 'Ai đó'}</span>
+                          {' · '}{formatRelative(n.reported_at)}
+                        </p>
+                      </div>
+                      {canManage && (
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <motion.button
+                            whileTap={{ scale: 0.92 }}
+                            onClick={() => markResolved(n)}
+                            aria-label="Đã mua"
+                            className="px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 whitespace-nowrap"
+                          >
+                            <Check size={12} /> Đã mua
+                          </motion.button>
+                          <motion.button
+                            whileTap={{ scale: 0.92 }}
+                            onClick={() => markDismissed(n)}
+                            aria-label="Bỏ qua"
+                            className="px-3 py-1.5 rounded-full bg-muted text-muted-foreground border border-border text-[11px] font-semibold flex items-center gap-1 whitespace-nowrap hover:text-foreground transition-colors"
+                          >
+                            <X size={12} /> Bỏ qua
+                          </motion.button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+
         {/* Unresolved */}
-        {open.length === 0 ? (
+        {open.length === 0 && purchase.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -258,17 +364,22 @@ export default function NoticeBoard() {
                     className="glass-card p-3 flex items-center justify-between gap-3 opacity-70"
                   >
                     <div className="min-w-0 flex items-center gap-2">
-                      <Check size={13} className="text-emerald-400/70 shrink-0" />
+                      {n.dismissed_at ? (
+                        <X size={13} className="text-muted-foreground shrink-0" />
+                      ) : (
+                        <Check size={13} className="text-emerald-400/70 shrink-0" />
+                      )}
                       <p className="text-[13px] text-foreground/70 line-through truncate">
                         {n.ingredient_name}
+                        {n.quantity && <span className="ml-1 no-underline">× {n.quantity}</span>}
                       </p>
                       <span className="text-[10px] text-muted-foreground shrink-0">
-                        · {r?.full_name?.split(' ').slice(-1)[0] || '—'}
+                        · {n.dismissed_at ? 'bỏ qua' : 'xong'}
                       </span>
                     </div>
-                    {(n.reported_by === userId || n.resolved_by === userId) && (
+                    {(isAdmin || n.reported_by === userId || n.resolved_by === userId || n.dismissed_by === userId) && (
                       <button
-                        onClick={() => undoResolve(n)}
+                        onClick={() => reopen(n)}
                         aria-label="Mở lại"
                         className="p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground transition-colors"
                       >

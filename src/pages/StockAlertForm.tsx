@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, AlertTriangle, ChevronRight, Megaphone, Send } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ChevronRight, Megaphone, Send, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
@@ -47,6 +47,8 @@ export default function StockAlertForm() {
 
   // Custom-named depletion notice (posts to the common board /notice-board).
   const [customName, setCustomName] = useState('');
+  const [customQty, setCustomQty] = useState('');
+  const [customNeedsPurchase, setCustomNeedsPurchase] = useState(false);
   const [customNote, setCustomNote] = useState('');
   const [postingCustom, setPostingCustom] = useState(false);
   const [openCountFromBoard, setOpenCountFromBoard] = useState<number | null>(null);
@@ -59,7 +61,9 @@ export default function StockAlertForm() {
       reported_by: userId,
       ingredient_name: name,
       note: customNote.trim() || null,
-    });
+      quantity: customQty.trim() || null,
+      needs_purchase: customNeedsPurchase,
+    } as any);
     setPostingCustom(false);
     if (error) {
       console.error(error);
@@ -67,8 +71,10 @@ export default function StockAlertForm() {
       return;
     }
     setCustomName('');
+    setCustomQty('');
+    setCustomNeedsPurchase(false);
     setCustomNote('');
-    toast.success('Đã đăng lên bảng tin');
+    toast.success(customNeedsPurchase ? 'Đã thêm vào danh sách cần mua' : 'Đã đăng lên bảng tin');
     setOpenCountFromBoard(c => (c ?? 0) + 1);
   };
 
@@ -436,6 +442,34 @@ export default function StockAlertForm() {
               maxLength={80}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
             />
+            {/* Quantity + "cần mua" checkbox on one row */}
+            <div className="flex items-center gap-2">
+              <input
+                value={customQty}
+                onChange={ev => setCustomQty(ev.target.value)}
+                onKeyDown={ev => { if (ev.key === 'Enter') postCustomNotice(); }}
+                placeholder="Số lượng (tuỳ chọn)"
+                maxLength={40}
+                className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
+              />
+              <button
+                type="button"
+                onClick={() => setCustomNeedsPurchase(v => !v)}
+                aria-pressed={customNeedsPurchase}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold border transition-colors shrink-0 ${
+                  customNeedsPurchase
+                    ? 'border-primary bg-primary/15 text-primary'
+                    : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <span className={`w-4 h-4 rounded-[5px] border flex items-center justify-center ${
+                  customNeedsPurchase ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50'
+                }`}>
+                  {customNeedsPurchase && <Check size={12} strokeWidth={3} />}
+                </span>
+                Cần mua
+              </button>
+            </div>
             <input
               value={customNote}
               onChange={ev => setCustomNote(ev.target.value)}
@@ -455,7 +489,7 @@ export default function StockAlertForm() {
               }`}
             >
               <Send size={14} />
-              {postingCustom ? 'Đang gửi…' : 'Đăng bảng tin'}
+              {postingCustom ? 'Đang gửi…' : customNeedsPurchase ? 'Thêm cần mua' : 'Đăng bảng tin'}
             </motion.button>
           </div>
         </motion.div>
