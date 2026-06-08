@@ -25,6 +25,8 @@ const CATEGORIES = [
   { id: 'gas', name: 'Gas', emoji: '⛽' },
   { id: 'equipment', name: 'Dụng Cụ', emoji: '🔧' },
   { id: 'tissue', name: 'Vệ Sinh', emoji: '🧻' },
+  { id: 'extra', name: 'Extra', emoji: '✨' },
+  { id: 'wash', name: 'Rửa', emoji: '🧽' },
 ];
 
 const VEGETABLE_SUBCATEGORIES = [
