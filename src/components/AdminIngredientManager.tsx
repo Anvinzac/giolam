@@ -29,7 +29,7 @@ interface Assignment {
 const CATEGORY_EMOJI: Record<string, string> = {
   vegetables: '🥬', sauces: '🫙', spices: '🧂', grains: '🌾',
   oils: '🫒', proteins: '🥩', dairy: '🧀', gas: '⛽',
-  equipment: '🔧', tissue: '🧻',
+  equipment: '🔧', tissue: '🧻', takeaway: '🥡',
 };
 
 export default function AdminIngredientManager() {
