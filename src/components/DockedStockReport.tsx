@@ -46,11 +46,14 @@ export function openStockReport() {
 export default function DockedStockReport({ hidden = false }: DockedStockReportProps) {
   const navigate = useNavigate();
   const [autoHidden, setAutoHidden] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<AssignedIngredient[]>([]);
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const [loaded, setLoaded] = useState(false);
+  const collapsedRef = useRef<HTMLButtonElement | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
 
   // ── Auto-hide the collapsed bar while the user is typing salary data ──
   useEffect(() => {
@@ -123,9 +126,15 @@ export default function DockedStockReport({ hidden = false }: DockedStockReportP
   }, []);
 
   const doOpen = useCallback(() => {
+    setDismissed(false);
     setOpen(true);
     if (!loaded) load();
   }, [loaded, load]);
+
+  const dismiss = useCallback(() => {
+    setOpen(false);
+    setDismissed(true);
+  }, []);
 
   // External open trigger (salary-page header button etc.)
   useEffect(() => {
@@ -133,6 +142,22 @@ export default function DockedStockReport({ hidden = false }: DockedStockReportP
     window.addEventListener(OPEN_STOCK_REPORT_EVENT, handler);
     return () => window.removeEventListener(OPEN_STOCK_REPORT_EVENT, handler);
   }, [doOpen]);
+
+  // When the dock is collapsed, tapping anywhere outside its card should
+  // dismiss it so salary entry remains unobstructed. The header package
+  // button can still reopen it through openStockReport().
+  useEffect(() => {
+    if (open || dismissed) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (collapsedRef.current?.contains(target)) return;
+      if (sheetRef.current?.contains(target)) return;
+      setDismissed(true);
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [dismissed, open]);
 
   // ── Per-row reporting ──────────────────────────────────────────────
   const persist = async (ing: AssignedIngredient, state: RowState) => {
@@ -176,12 +201,13 @@ export default function DockedStockReport({ hidden = false }: DockedStockReportP
   };
 
   const reportedCount = ingredients.filter(i => rows[i.id]?.reported).length;
-  const slideAway = hidden || autoHidden;
+  const slideAway = hidden || autoHidden || dismissed;
 
   return (
     <>
       {/* Collapsed bar */}
       <motion.button
+        ref={collapsedRef}
         type="button"
         onClick={doOpen}
         aria-label="Báo cáo kiểm kho"
@@ -216,10 +242,11 @@ export default function DockedStockReport({ hidden = false }: DockedStockReportP
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
+              onClick={dismiss}
               className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             />
             <motion.div
+              ref={sheetRef}
               key="sheet"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
@@ -246,14 +273,18 @@ export default function DockedStockReport({ hidden = false }: DockedStockReportP
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate('/stock-alert')}
+                  onClick={() => {
+                    setOpen(false);
+                    setDismissed(true);
+                    navigate('/stock-alert');
+                  }}
                   aria-label="Toàn màn hình"
                   className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Maximize2 size={16} />
                 </button>
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={dismiss}
                   aria-label="Đóng"
                   className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -271,7 +302,11 @@ export default function DockedStockReport({ hidden = false }: DockedStockReportP
                   <div className="glass-card p-6 text-center space-y-2 mt-2">
                     <p className="text-sm text-muted-foreground">Bạn chưa được phân công nguyên liệu nào.</p>
                     <button
-                      onClick={() => navigate('/stock-alert')}
+                      onClick={() => {
+                        setOpen(false);
+                        setDismissed(true);
+                        navigate('/stock-alert');
+                      }}
                       className="text-xs text-primary hover:underline"
                     >
                       Mở trang kiểm kho →
