@@ -227,7 +227,7 @@ export default function AdminIngredientManager() {
         className="-mx-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
       >
         <div className="flex">
-          <section className="min-w-full shrink-0 snap-start px-4">
+          <section className="w-full min-w-0 shrink-0 snap-start px-4">
             <div className="glass-card p-4 space-y-3">
               <h3 className="font-display font-semibold flex items-center gap-2">
                 <Users size={16} />
@@ -262,7 +262,7 @@ export default function AdminIngredientManager() {
             </div>
           </section>
 
-          <section className="min-w-full shrink-0 snap-start px-4">
+          <section className="w-full min-w-0 shrink-0 snap-start px-4">
             <div className="glass-card p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -386,7 +386,7 @@ export default function AdminIngredientManager() {
             </div>
           </section>
 
-          <section className="min-w-full shrink-0 snap-start px-4">
+          <section className="w-full min-w-0 shrink-0 snap-start px-4">
             <div className="glass-card p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
