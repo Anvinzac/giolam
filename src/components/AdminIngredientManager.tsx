@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Users, Search, Plus, X, Check, Package, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ interface Employee {
   user_id: string;
   full_name: string;
   username: string | null;
+  department_id?: string | null;
   department_name?: string;
 }
 
@@ -43,7 +44,6 @@ export default function AdminIngredientManager() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [freqEditorFor, setFreqEditorFor] = useState<string | null>(null);
-  const pagerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadData();
@@ -52,7 +52,9 @@ export default function AdminIngredientManager() {
   const loadData = async () => {
     setLoading(true);
     const [{ data: profiles }, { data: ings }, { data: assigns }] = await Promise.all([
-      supabase.from('profiles').select('user_id, full_name, username'),
+      // Only real staff: department-less profiles are test accounts and
+      // shouldn't clutter the assignment picker.
+      supabase.from('profiles').select('user_id, full_name, username, department_id').not('department_id', 'is', null),
       supabase.from('ingredients').select('*').order('category').order('name'),
       supabase.from('employee_ingredients').select('*'),
     ]);
@@ -100,18 +102,7 @@ export default function AdminIngredientManager() {
 
   const scrollToPage = useCallback((page: number) => {
     setCurrentPage(page);
-    requestAnimationFrame(() => {
-      const el = pagerRef.current;
-      if (!el) return;
-      el.scrollTo({ left: el.clientWidth * page, behavior: 'smooth' });
-    });
   }, []);
-
-  const handlePagerScroll = () => {
-    const el = pagerRef.current;
-    if (!el || el.clientWidth === 0) return;
-    setCurrentPage(Math.round(el.scrollLeft / el.clientWidth));
-  };
 
   const handleSelectEmployee = (employeeId: string) => {
     setSelectedEmployee(employeeId);
@@ -218,13 +209,12 @@ export default function AdminIngredientManager() {
         })}
       </div>
 
-      <div
-        ref={pagerRef}
-        onScroll={handlePagerScroll}
-        className="-mx-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
-      >
-        <div className="flex">
-          <section className="min-w-full shrink-0 snap-start px-4">
+      <div className="-mx-4 overflow-hidden">
+        <div
+          className="flex transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${currentPage * 100}%)` }}
+        >
+          <section className="w-full min-w-0 shrink-0 px-4">
             <div className="glass-card p-4 space-y-3">
               <h3 className="font-display font-semibold flex items-center gap-2">
                 <Users size={16} />
@@ -259,7 +249,7 @@ export default function AdminIngredientManager() {
             </div>
           </section>
 
-          <section className="min-w-full shrink-0 snap-start px-4">
+          <section className="w-full min-w-0 shrink-0 px-4">
             <div className="glass-card p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -383,7 +373,7 @@ export default function AdminIngredientManager() {
             </div>
           </section>
 
-          <section className="min-w-full shrink-0 snap-start px-4">
+          <section className="w-full min-w-0 shrink-0 px-4">
             <div className="glass-card p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
