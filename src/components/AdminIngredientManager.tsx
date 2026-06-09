@@ -119,7 +119,10 @@ export default function AdminIngredientManager() {
   const handleSelectEmployee = (employeeId: string) => {
     setSelectedEmployee(employeeId);
     setFreqEditorFor(null);
-    scrollToPage(1);
+    // No tasks yet → jump straight to "Thêm" (add) so the admin can start
+    // assigning. Otherwise land on "Đã giao" to review existing tasks.
+    const hasTasks = assignments.some(a => a.employee_id === employeeId);
+    scrollToPage(hasTasks ? 1 : 2);
   };
 
   const assignIngredient = async (employeeId: string, ingredientId: string) => {
