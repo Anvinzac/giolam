@@ -46,6 +46,10 @@ export default function StockAlertForm() {
   const [submitted, setSubmitted] = useState<Set<string>>(new Set());
 
   // Custom-named depletion notice (posts to the common board /notice-board).
+  // Collapsed by default so the assigned-ingredient checklist stays the
+  // focus; the form only unfolds when the employee taps to report
+  // something extra.
+  const [customExpanded, setCustomExpanded] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customQty, setCustomQty] = useState('');
   const [customNeedsPurchase, setCustomNeedsPurchase] = useState(false);
@@ -74,6 +78,7 @@ export default function StockAlertForm() {
     setCustomQty('');
     setCustomNeedsPurchase(false);
     setCustomNote('');
+    setCustomExpanded(false);
     toast.success(customNeedsPurchase ? 'Đã thêm vào danh sách cần mua' : 'Đã đăng lên bảng tin');
     setOpenCountFromBoard(c => (c ?? 0) + 1);
   };
@@ -414,7 +419,13 @@ export default function StockAlertForm() {
           transition={{ delay: 0.05 }}
           className="glass-card p-4 mt-4 space-y-3 border border-border/40"
         >
-          <div className="flex items-center gap-2">
+          {/* Header doubles as the collapse toggle. Tapping anywhere but
+              the "Bảng tin →" link unfolds the form. */}
+          <button
+            type="button"
+            onClick={() => setCustomExpanded(v => !v)}
+            className="w-full flex items-center gap-2 text-left"
+          >
             <span className="w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
               <Megaphone size={15} />
             </span>
@@ -423,75 +434,95 @@ export default function StockAlertForm() {
                 Báo cáo nguyên liệu khác
               </p>
               <p className="text-[11px] text-muted-foreground leading-tight">
-                Đăng lên bảng tin chung
+                {customExpanded ? 'Điền thông tin bên dưới' : 'Chạm để báo nguyên liệu ngoài danh sách'}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/notice-board')}
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={ev => { ev.stopPropagation(); navigate('/notice-board'); }}
               className="text-[11px] text-primary hover:underline shrink-0 font-medium"
             >
               Bảng tin →
-            </button>
-          </div>
-          <div className="space-y-2">
-            <input
-              value={customName}
-              onChange={ev => setCustomName(ev.target.value)}
-              placeholder="Tên nguyên liệu (vd. Nước mắm)"
-              maxLength={80}
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
+            </span>
+            <ChevronRight
+              size={16}
+              className={`text-muted-foreground shrink-0 transition-transform ${customExpanded ? 'rotate-90' : ''}`}
             />
-            {/* Quantity + "cần mua" checkbox on one row */}
-            <div className="flex items-center gap-2">
-              <input
-                value={customQty}
-                onChange={ev => setCustomQty(ev.target.value)}
-                onKeyDown={ev => { if (ev.key === 'Enter') postCustomNotice(); }}
-                placeholder="Số lượng (tuỳ chọn)"
-                maxLength={40}
-                className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
-              />
-              <button
-                type="button"
-                onClick={() => setCustomNeedsPurchase(v => !v)}
-                aria-pressed={customNeedsPurchase}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold border transition-colors shrink-0 ${
-                  customNeedsPurchase
-                    ? 'border-primary bg-primary/15 text-primary'
-                    : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                }`}
+          </button>
+
+          <AnimatePresence initial={false}>
+            {customExpanded && (
+              <motion.div
+                key="custom-form"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
               >
-                <span className={`w-4 h-4 rounded-[5px] border flex items-center justify-center ${
-                  customNeedsPurchase ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50'
-                }`}>
-                  {customNeedsPurchase && <Check size={12} strokeWidth={3} />}
-                </span>
-                Cần mua
-              </button>
-            </div>
-            <input
-              value={customNote}
-              onChange={ev => setCustomNote(ev.target.value)}
-              onKeyDown={ev => { if (ev.key === 'Enter') postCustomNotice(); }}
-              placeholder="Ghi chú (tuỳ chọn)"
-              maxLength={140}
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
-            />
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={postCustomNotice}
-              disabled={!customName.trim() || postingCustom}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-display font-semibold text-sm transition-colors ${
-                customName.trim() && !postingCustom
-                  ? 'gradient-gold text-primary-foreground shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)]'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
-              }`}
-            >
-              <Send size={14} />
-              {postingCustom ? 'Đang gửi…' : customNeedsPurchase ? 'Thêm cần mua' : 'Đăng bảng tin'}
-            </motion.button>
-          </div>
+                <div className="space-y-2 pt-1">
+                  <input
+                    value={customName}
+                    onChange={ev => setCustomName(ev.target.value)}
+                    placeholder="Tên nguyên liệu (vd. Nước mắm)"
+                    maxLength={80}
+                    autoFocus
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
+                  />
+                  {/* Quantity + "cần mua" checkbox on one row */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={customQty}
+                      onChange={ev => setCustomQty(ev.target.value)}
+                      onKeyDown={ev => { if (ev.key === 'Enter') postCustomNotice(); }}
+                      placeholder="Số lượng (tuỳ chọn)"
+                      maxLength={40}
+                      className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomNeedsPurchase(v => !v)}
+                      aria-pressed={customNeedsPurchase}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold border transition-colors shrink-0 ${
+                        customNeedsPurchase
+                          ? 'border-primary bg-primary/15 text-primary'
+                          : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded-[5px] border flex items-center justify-center ${
+                        customNeedsPurchase ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50'
+                      }`}>
+                        {customNeedsPurchase && <Check size={12} strokeWidth={3} />}
+                      </span>
+                      Cần mua
+                    </button>
+                  </div>
+                  <input
+                    value={customNote}
+                    onChange={ev => setCustomNote(ev.target.value)}
+                    onKeyDown={ev => { if (ev.key === 'Enter') postCustomNotice(); }}
+                    placeholder="Ghi chú (tuỳ chọn)"
+                    maxLength={140}
+                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary/50"
+                  />
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={postCustomNotice}
+                    disabled={!customName.trim() || postingCustom}
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-display font-semibold text-sm transition-colors ${
+                      customName.trim() && !postingCustom
+                        ? 'gradient-gold text-primary-foreground shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.6)]'
+                        : 'bg-muted text-muted-foreground cursor-not-allowed'
+                    }`}
+                  >
+                    <Send size={14} />
+                    {postingCustom ? 'Đang gửi…' : customNeedsPurchase ? 'Thêm cần mua' : 'Đăng bảng tin'}
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Spacer for numpad */}
