@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar } from 'lucide-react';
+import { Calendar, History } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import {
   SalaryRecord,
@@ -43,6 +44,20 @@ interface ProfileInfo {
   default_clock_out: string | null;
 }
 
+interface Snapshot {
+  salary_record_id: string;
+  user_id: string;
+  period_id: string;
+  published_at: string;
+  total_salary: number;
+  breakdown: SalaryBreakdown | null;
+  entries: SalaryEntry[];
+  allowances: EmployeeAllowance[];
+  rates: SpecialDayRate[];
+  period_info: PeriodInfo | null;
+  profile_info: ProfileInfo | null;
+}
+
 export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -52,12 +67,56 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
   const [entries, setEntries] = useState<SalaryEntry[]>([]);
   const [rates, setRates] = useState<SpecialDayRate[]>([]);
   const [allowances, setAllowances] = useState<EmployeeAllowance[]>([]);
+  // All published snapshots for this employee, newest first, plus which
+  // one is on screen — lets them browse past payslips, not just the latest.
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Hydrate the visible record/period/profile/etc. from one snapshot.
+  const applySnapshot = useCallback((snap: Snapshot) => {
+    setRecord({
+      id: snap.salary_record_id,
+      user_id: snap.user_id,
+      period_id: snap.period_id,
+      total_salary: snap.total_salary,
+      salary_breakdown: snap.breakdown,
+      status: 'published',
+      published_at: snap.published_at,
+    } as unknown as SalaryRecord);
+    setPeriod(snap.period_info);
+    setProfile(snap.profile_info);
+    setEntries(snap.entries || []);
+    setRates(snap.rates || []);
+    const frozenAllowances = snap.allowances || [];
+    const workingDays = (snap.entries || []).filter(
+      e => !e.is_day_off && (e.clock_in || e.clock_out)
+    ).length;
+    setAllowances(frozenAllowances.map(a =>
+      a.allowance_key === 'gui_xe' && a.is_enabled
+        ? { ...a, amount: workingDays * 10000 }
+        : a
+    ));
+  }, []);
+
+  const selectPeriod = useCallback((id: string) => {
+    const snap = snapshots.find(s => s.salary_record_id === id);
+    if (snap) { setSelectedId(id); applySnapshot(snap); }
+  }, [snapshots, applySnapshot]);
 
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
 
-      // Check for current editable period first
+      // Fetch every frozen snapshot (newest first) up front so we can
+      // decide whether there's any published history to show.
+      const { data: snapData } = await supabase
+        .from('salary_published_snapshots')
+        .select('*')
+        .eq('user_id', userId)
+        .order('published_at', { ascending: false });
+      const list = (snapData || []) as unknown as Snapshot[];
+
+      // Check for current editable period.
       const today = new Date().toISOString().split('T')[0];
       const { data: currentPeriods } = await supabase
         .from('working_periods')
@@ -80,8 +139,12 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
         currentPeriod = ((fallback || []) as PeriodInfo[])[0];
       }
 
-      // If there's a current period, check if it's editable
-      if (currentPeriod) {
+      // Only bounce to the editor when there is genuinely nothing to show
+      // here — i.e. no published payslip exists yet AND the current period
+      // is still editable. If the employee has any published history, this
+      // page shows it (with the period picker) instead of redirecting, so
+      // past payslips stay reachable during an open period.
+      if (currentPeriod && list.length === 0) {
         const { data: myRec } = await supabase
           .from('salary_records')
           .select('status')
@@ -89,7 +152,6 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           .eq('period_id', currentPeriod.id)
           .maybeSingle();
 
-        // If no record or draft, go to edit page
         if (!myRec || (myRec as any)?.status === 'draft') {
           setLoading(false);
           navigate('/salary/edit', { replace: true });
@@ -97,63 +159,23 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
         }
       }
 
-      // Read frozen snapshot only — admin edits after publish do not leak through.
-      const { data: snapData } = await supabase
-        .from('salary_published_snapshots')
-        .select('*')
-        .eq('user_id', userId)
-        .order('published_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!snapData) {
+      if (list.length === 0) {
         setLoading(false);
         // No snapshot and no editable period — show empty state
         return;
       }
-      const snap = snapData as unknown as {
-        salary_record_id: string;
-        user_id: string;
-        period_id: string;
-        published_at: string;
-        total_salary: number;
-        breakdown: SalaryBreakdown | null;
-        entries: SalaryEntry[];
-        allowances: EmployeeAllowance[];
-        rates: SpecialDayRate[];
-        period_info: PeriodInfo | null;
-        profile_info: ProfileInfo | null;
-      };
 
-      setRecord({
-        id: snap.salary_record_id,
-        user_id: snap.user_id,
-        period_id: snap.period_id,
-        total_salary: snap.total_salary,
-        salary_breakdown: snap.breakdown,
-        status: 'published',
-        published_at: snap.published_at,
-      } as unknown as SalaryRecord);
-      setPeriod(snap.period_info);
-      setProfile(snap.profile_info);
-      setEntries(snap.entries || []);
-      setRates(snap.rates || []);
-
-      const frozenAllowances = snap.allowances || [];
-      const workingDays = (snap.entries || []).filter(
-        e => !e.is_day_off && (e.clock_in || e.clock_out)
-      ).length;
-      setAllowances(frozenAllowances.map(a =>
-        a.allowance_key === 'gui_xe' && a.is_enabled
-          ? { ...a, amount: workingDays * 10000 }
-          : a
-      ));
-
+      // Newest snapshot on screen by default; the picker switches between
+      // the frozen historical payslips. Admin edits after publish never
+      // leak through — these snapshots are immutable.
+      setSnapshots(list);
+      setSelectedId(list[0].salary_record_id);
+      applySnapshot(list[0]);
       setLoading(false);
     };
 
     fetchAll();
-  }, [userId, navigate]);
+  }, [userId, navigate, applySnapshot]);
 
   const globalClockIn = useMemo(() => {
     const raw = profile?.default_clock_in || '17:00';
@@ -211,10 +233,61 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     );
   }
 
+  // Compact "dd/MM" for the history chips.
+  const chipRange = (s: Snapshot) => {
+    const p = s.period_info;
+    if (!p) return '—';
+    const dm = (iso: string) => {
+      const [, m, d] = iso.split('-');
+      return `${d}/${m}`;
+    };
+    return `${dm(p.start_date)}–${dm(p.end_date)}`;
+  };
+
   return (
     <div className="space-y-3">
+      {/* Period history picker — only when there's more than one payslip */}
+      {snapshots.length > 1 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 px-1 text-muted-foreground">
+            <History size={12} />
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Kỳ lương</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
+            {snapshots.map(s => {
+              const active = s.salary_record_id === selectedId;
+              return (
+                <button
+                  key={s.salary_record_id}
+                  type="button"
+                  onClick={() => selectPeriod(s.salary_record_id)}
+                  className={`relative shrink-0 rounded-xl px-3 py-2 text-left transition-colors ${
+                    active
+                      ? 'gradient-gold text-primary-foreground'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  <span className="block text-[12px] font-semibold leading-tight whitespace-nowrap">
+                    {chipRange(s)}
+                  </span>
+                  <span className={`block text-[11px] leading-tight whitespace-nowrap ${active ? 'opacity-90' : 'opacity-70'}`}>
+                    {formatVND(s.total_salary).replace(' đ', '')}đ
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Period label + total */}
-      <div className="glass-card p-4">
+      <motion.div
+        key={selectedId || 'period'}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18 }}
+        className="glass-card p-4"
+      >
         <p className="text-xs text-muted-foreground">
           {formatDateViet(period.start_date)} – {formatDateViet(period.end_date)}
         </p>
@@ -250,7 +323,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
             </div>
           );
         })()}
-      </div>
+      </motion.div>
 
       {/* Full salary table in preview mode */}
       {(profile.shift_type === 'basic' || profile.shift_type === 'daily') && (

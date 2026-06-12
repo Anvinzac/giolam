@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings, History } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 import DockedStockReport from '@/components/DockedStockReport';
@@ -60,6 +60,7 @@ export default function EmployeeSalaryEntry() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [hasHistory, setHasHistory] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
@@ -165,6 +166,14 @@ export default function EmployeeSalaryEntry() {
           return;
         }
         setUserId(user.id);
+
+        // Does this employee have any published payslip to look back on?
+        // Drives the History shortcut in the header.
+        supabase
+          .from('salary_published_snapshots')
+          .select('salary_record_id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .then(({ count }) => setHasHistory((count ?? 0) > 0));
 
         // Profile
         const { data: prof, error: profErr } = await withTimeout(
@@ -436,6 +445,16 @@ export default function EmployeeSalaryEntry() {
               </div>
             )}
           </div>
+          {hasHistory && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate('/salary')}
+              aria-label="Lịch sử lương"
+              className="p-2 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+            >
+              <History size={18} />
+            </motion.button>
+          )}
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}
