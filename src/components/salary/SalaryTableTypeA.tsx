@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
@@ -72,6 +72,7 @@ export default function SalaryTableTypeA({
   const [expandedOff, setExpandedOff] = useState<string | null>(null);
   const [expandedRate, setExpandedRate] = useState<string | null>(null);
   const [addingDate, setAddingDate] = useState(false);
+  const [pendingOffExpandDate, setPendingOffExpandDate] = useState<string | null>(null);
   const lastTapRef = useRef<{ date: string; time: number } | null>(null);
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
@@ -164,6 +165,21 @@ export default function SalaryTableTypeA({
   }, [visibleEntries, dailyBase, rates, baseSalary, isDailyMode, coveragePeriodEnd]);
 
   const rowKey = (e: SalaryEntry) => `${e.entry_date}-${e.sort_order}`;
+
+  useEffect(() => {
+    if (!pendingOffExpandDate) return;
+    const entry = visibleEntries.find(
+      (e) => e.entry_date === pendingOffExpandDate && e.is_day_off
+    );
+    if (entry) {
+      setExpandedOff(rowKey(entry));
+      if (entry.off_percent === 0) {
+        onEntryUpdate(entry.entry_date, entry.sort_order, { off_percent: 100 });
+      }
+      setPendingOffExpandDate(null);
+    }
+  }, [visibleEntries, pendingOffExpandDate, onEntryUpdate]);
+
   const formatExtraHoursNote = (hours: number) => {
     const normalized = Number.isInteger(hours) ? `${hours}` : `${hours}`.replace(/\.0$/, '');
     return `Tăng ca ${normalized} giờ`;
@@ -235,10 +251,12 @@ export default function SalaryTableTypeA({
       // Double tap detected - toggle off day
       const entry = visibleEntries.find(e => e.entry_date === entryDate && e.sort_order === sortOrder);
       if (entry) {
+        const becomingOff = !entry.is_day_off;
         onEntryUpdate(entryDate, sortOrder, {
-          is_day_off: !entry.is_day_off,
-          off_percent: entry.is_day_off ? 0 : 100,
+          is_day_off: becomingOff,
+          off_percent: becomingOff ? 100 : 0,
         });
+        setExpandedOff(becomingOff ? rowKey(entry) : null);
       }
       lastTapRef.current = null;
     } else {
@@ -294,6 +312,7 @@ export default function SalaryTableTypeA({
             entries={entries}
             onSelect={(date) => {
               onAddRowAtDate(date);
+              setPendingOffExpandDate(date);
               setAddingDate(false);
             }}
             onClose={() => setAddingDate(false)}
@@ -390,10 +409,15 @@ export default function SalaryTableTypeA({
                   <span
                     className={`w-[46px] text-center text-[13px] font-medium ${
                       isOff ? 'text-destructive' : rate < 0 ? 'text-destructive' : 'text-muted-foreground'
-                    } ${!readOnly && mode === 'admin' && !isOff ? 'cursor-pointer hover:text-foreground transition-colors' : ''}`}
+                    } ${!readOnly && (isOff || (mode === 'admin' && !isOff)) ? 'cursor-pointer hover:text-foreground transition-colors' : ''}`}
                     onClick={(ev) => {
-                      if (readOnly || mode !== 'admin' || isOff) return;
+                      if (readOnly) return;
                       ev.stopPropagation();
+                      if (isOff) {
+                        setExpandedOff(expandedOff === key ? null : key);
+                        return;
+                      }
+                      if (mode !== 'admin') return;
                       setExpandedRate(expandedRate === key ? null : key);
                     }}
                   >
@@ -479,10 +503,12 @@ export default function SalaryTableTypeA({
                     {/* Action buttons */}
                     <div className="flex gap-2">
                       <button onClick={() => {
+                        const becomingOff = !e.is_day_off;
                         onEntryUpdate(e.entry_date, e.sort_order, {
-                          is_day_off: !e.is_day_off,
-                          off_percent: e.is_day_off ? 0 : 100,
+                          is_day_off: becomingOff,
+                          off_percent: becomingOff ? 100 : 0,
                         });
+                        setExpandedOff(becomingOff ? key : null);
                       }} className={`text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors ${
                         isOff ? 'bg-destructive/20 text-destructive' : 'bg-muted text-muted-foreground'
                       }`}>
@@ -504,21 +530,11 @@ export default function SalaryTableTypeA({
                   <div className="px-3 pb-3 pt-1">
                     <OffPercentSnapper
                       value={e.off_percent}
-                      onChange={(v) => onEntryUpdate(e.entry_date, e.sort_order, { off_percent: v })}
+                      onChange={(v) => {
+                        onEntryUpdate(e.entry_date, e.sort_order, { off_percent: v });
+                        setExpandedOff(null);
+                      }}
                     />
-                  </div>
-                )}
-                {isOff && !isEditing && !readOnly && (
-                  <button
-                    onClick={() => setExpandedOff(expandedOff === key ? null : key)}
-                    className="w-full text-[10px] text-center text-muted-foreground py-1 hover:text-foreground transition-colors"
-                  >
-                    {expandedOff === key ? 'Ẩn' : `Nghỉ ${e.off_percent}% · Nhấn để chỉnh`}
-                  </button>
-                )}
-                {isOff && readOnly && (
-                  <div className="w-full text-[10px] text-center text-muted-foreground py-1">
-                    Nghỉ {e.off_percent}%
                   </div>
                 )}
 
