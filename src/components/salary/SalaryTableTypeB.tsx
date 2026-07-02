@@ -299,18 +299,21 @@ export default function SalaryTableTypeB({
   };
 
   // ── Chip helpers ────────────────────────────────────────────────────────────
-  const startChipAutoHide = (rowKey: string) => {
-    if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
-    chipAutoHideTimerRef.current = setTimeout(() => {
-      setChipRowKey(prev => (prev === rowKey ? null : prev));
-      chipAutoHideTimerRef.current = null;
-    }, 3000);
-  };
+  // Manually opened rows (tapping the '—' clock-out cell) stay open until the
+  // user taps a chip — no auto-hide. Only the row auto-advanced-to after a
+  // chip selection gets a 10s auto-hide, so the suggestion doesn't linger
+  // forever if the next day isn't being entered right away.
+  const NEXT_ROW_AUTO_HIDE_MS = 10000;
 
-  const showRowChips = (rowKey: string) => {
+  const showRowChips = (rowKey: string, autoHideMs?: number) => {
     if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
     setChipRowKey(rowKey);
-    startChipAutoHide(rowKey);
+    if (autoHideMs) {
+      chipAutoHideTimerRef.current = setTimeout(() => {
+        setChipRowKey(prev => (prev === rowKey ? null : prev));
+        chipAutoHideTimerRef.current = null;
+      }, autoHideMs);
+    }
   };
 
   const handleChipSelect = (entry: SalaryEntry, pageEntries: SalaryEntry[], clockOut: string) => {
@@ -340,8 +343,9 @@ export default function SalaryTableTypeB({
 
     if (nextEntry) {
       const nextKey = `${nextEntry.entry_date}-${nextEntry.sort_order}`;
-      showRowChips(nextKey);
+      showRowChips(nextKey, NEXT_ROW_AUTO_HIDE_MS);
     } else {
+      if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
       setChipRowKey(null);
     }
   };
