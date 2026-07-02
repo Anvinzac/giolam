@@ -82,8 +82,10 @@ function getClockOutChips(clockIn: string, anchorTime?: string | null): string[]
   return defaultChips.map(m => formatMinutesToTime(m));
 }
 
+// Fade only the right edge — the left edge holds the "Khác" chip (and the
+// first time chip), which should stay fully visible instead of being faded out.
 const CHIP_FADE_MASK =
-  'linear-gradient(to right, transparent 0, black 28px, black calc(100% - 28px), transparent 100%)';
+  'linear-gradient(to right, black 0, black calc(100% - 28px), transparent 100%)';
 
 export default function SalaryTableTypeB({
   entries, rates, allowances, baseSalary, hourlyRate,
@@ -181,16 +183,14 @@ export default function SalaryTableTypeB({
 
   useEffect(() => {
     if (!chipRowKey) return;
-    // Align the just-activated row's chip scroller so the first core chip is
-    // at the left edge. Use rAF so refs are populated after the render.
+    // Reset the chip scroller to the very start so the "Khác" chip (which
+    // sits before the first time chip) is fully visible at the left edge
+    // instead of being scrolled out by the old core-chip alignment.
     const raf = requestAnimationFrame(() => {
       chipScrollRefs.current.forEach((scroller, key) => {
         if (!scroller) return;
         if (!key.startsWith(chipRowKey)) return;
-        const coreChip = scroller.querySelector<HTMLElement>('[data-chip-core-start="true"]');
-        if (coreChip) {
-          scroller.scrollLeft = coreChip.offsetLeft - scroller.offsetLeft;
-        }
+        scroller.scrollLeft = 0;
       });
     });
     return () => cancelAnimationFrame(raf);
@@ -299,21 +299,18 @@ export default function SalaryTableTypeB({
   };
 
   // ── Chip helpers ────────────────────────────────────────────────────────────
-  // Manually opened rows (tapping the '—' clock-out cell) stay open until the
-  // user taps a chip — no auto-hide. Only the row auto-advanced-to after a
-  // chip selection gets a 10s auto-hide, so the suggestion doesn't linger
-  // forever if the next day isn't being entered right away.
-  const NEXT_ROW_AUTO_HIDE_MS = 10000;
+  // Every chip strip auto-hides after 10s — whether opened manually (tapping
+  // the '—' clock-out cell) or auto-advanced to after a chip selection.
+  // Tapping a chip also dismisses/advances immediately.
+  const CHIP_AUTO_HIDE_MS = 10000;
 
-  const showRowChips = (rowKey: string, autoHideMs?: number) => {
+  const showRowChips = (rowKey: string, autoHideMs: number = CHIP_AUTO_HIDE_MS) => {
     if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
     setChipRowKey(rowKey);
-    if (autoHideMs) {
-      chipAutoHideTimerRef.current = setTimeout(() => {
-        setChipRowKey(prev => (prev === rowKey ? null : prev));
-        chipAutoHideTimerRef.current = null;
-      }, autoHideMs);
-    }
+    chipAutoHideTimerRef.current = setTimeout(() => {
+      setChipRowKey(prev => (prev === rowKey ? null : prev));
+      chipAutoHideTimerRef.current = null;
+    }, autoHideMs);
   };
 
   const handleChipSelect = (entry: SalaryEntry, pageEntries: SalaryEntry[], clockOut: string) => {
@@ -343,7 +340,7 @@ export default function SalaryTableTypeB({
 
     if (nextEntry) {
       const nextKey = `${nextEntry.entry_date}-${nextEntry.sort_order}`;
-      showRowChips(nextKey, NEXT_ROW_AUTO_HIDE_MS);
+      showRowChips(nextKey);
     } else {
       if (chipAutoHideTimerRef.current) clearTimeout(chipAutoHideTimerRef.current);
       setChipRowKey(null);
@@ -647,7 +644,7 @@ export default function SalaryTableTypeB({
             >
               {/* ── Mobile row ─────────────────────────────────────────────── */}
               <div
-                className={`relative min-h-[52px] py-2.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden overflow-hidden ${
+                className={`relative min-h-[52px] py-2.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden overflow-hidden flex items-center gap-2 ${
                   e.is_day_off ? 'opacity-40' : ''
                 } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
                   isMoonDay ? 'moon-accent-row' : ''
@@ -655,6 +652,68 @@ export default function SalaryTableTypeB({
                   isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''
                 }`}
               >
+                {/* Left: date + note — always visible, even while chips are up */}
+                <div className="min-w-0 flex-1 pr-1">
+                  <div className="flex items-start gap-1">
+                    {!readOnly && (
+                      isDupe ? (
+                        canDelete ? (
+                          <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
+                            <Trash2 size={10} />
+                          </button>
+                        ) : null
+                      ) : isGlobalOffDay ? null : (
+                        <button
+                          onClick={() => openExtraRowDialog(e.entry_date)}
+                          className="mt-0.5 text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <Plus size={10} />
+                        </button>
+                      )
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <button
+                        onClick={() => handleDateTap(e)}
+                        className={`block font-semibold text-[15px] leading-none ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
+                      >
+                        {isDupe ? '↳' : formatDayOnly(e.entry_date)}
+                      </button>
+                      {editingCell === `${cellKey}-note` && !readOnly ? (
+                        <div className="relative mt-1">
+                          <input
+                            value={cellValue}
+                            onChange={ev => setCellValue(ev.target.value)}
+                            onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                            onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
+                            className="block w-full rounded bg-background border border-border px-2 py-1 pr-6 text-[12px] min-w-0"
+                            autoFocus
+                          />
+                          {cellValue && (
+                            <button
+                              onMouseDown={ev => { ev.preventDefault(); setCellValue(''); }}
+                              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5 text-[10px]"
+                              tabIndex={-1}
+                            >✕</button>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
+                          className={`mt-1 block text-left text-[12px] leading-tight ${
+                            isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+                          } ${!readOnly && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+                        >
+                          {/* Manual note wins over the auto "Nghỉ" placeholder
+                              so admin/employee edits persist on off-day rows. */}
+                          {e.note || (e.is_day_off ? 'Nghỉ' : (rateDesc || '—'))}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Right: columns OR chips — only this half swaps. Date + note
+                    above stay visible; chips replace just the clock-out / hours
+                    / wage / allowance / total cluster. */}
                 <AnimatePresence initial={false} mode="popLayout">
                   {chipsActive ? (
                     <motion.div
@@ -663,108 +722,44 @@ export default function SalaryTableTypeB({
                       animate={{ y: 0 }}
                       exit={{ y: '-180%' }}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-                      className="w-full min-h-[38px] flex items-center"
+                      className="flex-1 min-w-0 ml-1 flex items-center"
                     >
                       {renderChips(e, orderedEntries)}
                     </motion.div>
                   ) : (
                     <motion.div
-                      key="body"
+                      key="cols"
                       initial={{ y: '180%' }}
                       animate={{ y: 0 }}
                       exit={{ y: '-180%' }}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex items-center justify-between gap-2 w-full"
+                      className="ml-1 flex shrink-0 items-center gap-3 text-right"
                     >
-                      {/* Left: date + note */}
-                      <div className="min-w-0 flex-1 pr-1">
-                        <div className="flex items-start gap-1">
-                          {!readOnly && (
-                            isDupe ? (
-                              canDelete ? (
-                                <button onClick={() => e.id && onRemoveEntry(e.id)} className="mt-0.5 text-destructive/60 hover:text-destructive">
-                                  <Trash2 size={10} />
-                                </button>
-                              ) : null
-                            ) : isGlobalOffDay ? null : (
-                              <button
-                                onClick={() => openExtraRowDialog(e.entry_date)}
-                                className="mt-0.5 text-muted-foreground hover:text-primary transition-colors"
-                              >
-                                <Plus size={10} />
-                              </button>
-                            )
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <button
-                              onClick={() => handleDateTap(e)}
-                              className={`block font-semibold text-[15px] leading-none ${getDayColor(e.entry_date)} ${!readOnly ? 'hover:opacity-70 transition-opacity' : 'cursor-default'}`}
-                            >
-                              {isDupe ? '↳' : formatDayOnly(e.entry_date)}
-                            </button>
-                            {editingCell === `${cellKey}-note` && !readOnly ? (
-                              <div className="relative mt-1">
-                                <input
-                                  value={cellValue}
-                                  onChange={ev => setCellValue(ev.target.value)}
-                                  onBlur={() => saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                                  onKeyDown={ev => ev.key === 'Enter' && saveCellEdit(e.entry_date, e.sort_order, 'note')}
-                                  className="block w-full rounded bg-background border border-border px-2 py-1 pr-6 text-[12px] min-w-0"
-                                  autoFocus
-                                />
-                                {cellValue && (
-                                  <button
-                                    onMouseDown={ev => { ev.preventDefault(); setCellValue(''); }}
-                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground p-0.5 text-[10px]"
-                                    tabIndex={-1}
-                                  >✕</button>
-                                )}
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
-                                className={`mt-1 block text-left text-[12px] leading-tight ${
-                                  isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
-                                } ${!readOnly && !e.is_day_off ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
-                              >
-                                {/* Manual note wins over the auto "Nghỉ" placeholder
-                                    so admin/employee edits persist on off-day rows. */}
-                                {e.note || (e.is_day_off ? 'Nghỉ' : (rateDesc || '—'))}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {/* Right: normal columns */}
-                      <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
-                        <button
-                          // Tapping clock-out always opens the chip strip so
-                          // rapid input + auto-advance via handleChipSelect
-                          // keeps working even for rows whose clock_out is
-                          // still null (seed state). The "Khác" chip rendered
-                          // inside renderChips opens the analog picker if the
-                          // user wants an exact time — that's the escape
-                          // hatch, not the default. cec5430 routed null
-                          // clock_out straight to the picker and silently
-                          // dropped both the chip UX and the auto-advance.
-                          onClick={() => !readOnly && !e.is_day_off && !isGlobalOffDay && showRowChips(cellKey)}
-                          className={`w-[38px] text-right text-sm font-medium ${
-                            !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
-                          }`}
-                        >
-                          {formatClockOut(e)}
-                        </button>
-                        <FormulaTooltip formula={formulaHours(e)} className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
-                        <FormulaTooltip formula={formulaWage(hours)} className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
-                          {extraWage > 0 ? formatCompact(extraWage) : '—'}
-                        </FormulaTooltip>
-                        <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
-                          {allowance !== 0 ? formatCompact(allowance) : ''}
-                        </FormulaTooltip>
-                        <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
-                          {formatCompact(total)}
-                        </FormulaTooltip>
-                      </div>
+                      <button
+                        // Tapping clock-out always opens the chip strip so
+                        // rapid input + auto-advance via handleChipSelect
+                        // keeps working even for rows whose clock_out is
+                        // still null (seed state). The "Khác" chip rendered
+                        // inside renderChips opens the analog picker if the
+                        // user wants an exact time — that's the escape
+                        // hatch, not the default.
+                        onClick={() => !readOnly && !e.is_day_off && !isGlobalOffDay && showRowChips(cellKey)}
+                        className={`w-[38px] text-right text-sm font-medium ${
+                          !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
+                        }`}
+                      >
+                        {formatClockOut(e)}
+                      </button>
+                      <FormulaTooltip formula={formulaHours(e)} className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
+                      <FormulaTooltip formula={formulaWage(hours)} className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
+                        {extraWage > 0 ? formatCompact(extraWage) : '—'}
+                      </FormulaTooltip>
+                      <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
+                        {allowance !== 0 ? formatCompact(allowance) : ''}
+                      </FormulaTooltip>
+                      <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
+                        {formatCompact(total)}
+                      </FormulaTooltip>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -848,42 +843,67 @@ export default function SalaryTableTypeB({
                 {/* Clock out — or chips spanning remaining columns */}
                 {chipsActive ? (
                   <div
-                    className="col-span-5 relative min-w-0"
-                    style={{ maskImage: CHIP_FADE_MASK, WebkitMaskImage: CHIP_FADE_MASK }}
+                    className="col-span-5 relative min-w-0 flex items-center gap-1"
                   >
-                    <div
-                      ref={registerChipScroller(`${cellKey}-desktop`)}
-                      className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
+                    {/* "Khác" — fixed outside the scroller so the time-chip
+                        strip keeps its original tap-position alignment. */}
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setPickingClock({
+                          entryDate: e.entry_date,
+                          sortOrder: e.sort_order,
+                          clockIn: e.clock_in || globalClockIn,
+                          clockOut: e.clock_out,
+                          pageEntries: orderedEntries,
+                        });
+                        setChipRowKey(null);
+                      }}
+                      className="flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10 transition-colors"
                     >
-                      {(() => {
-                        const eIdx = orderedEntries.findIndex(
-                          oe => oe.entry_date === e.entry_date && oe.sort_order === e.sort_order
-                        );
-                        let anch: string | null = null;
-                        for (let j = eIdx - 1; j >= 0; j--) {
-                          if (!orderedEntries[j].is_day_off && orderedEntries[j].clock_out) {
-                            anch = orderedEntries[j].clock_out;
-                            break;
+                      Khác
+                    </motion.button>
+                    <div
+                      className="relative flex-1 min-w-0"
+                      style={{ maskImage: CHIP_FADE_MASK, WebkitMaskImage: CHIP_FADE_MASK }}
+                    >
+                      <div
+                        ref={registerChipScroller(`${cellKey}-desktop`)}
+                        className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
+                      >
+                        {(() => {
+                          const eIdx = orderedEntries.findIndex(
+                            oe => oe.entry_date === e.entry_date && oe.sort_order === e.sort_order
+                          );
+                          let anch: string | null = null;
+                          for (let j = eIdx - 1; j >= 0; j--) {
+                            if (!orderedEntries[j].is_day_off && orderedEntries[j].clock_out) {
+                              anch = orderedEntries[j].clock_out;
+                              break;
+                            }
                           }
-                        }
-                        return getClockOutChips(e.clock_in || globalClockIn, anch);
-                      })().map((time, i) => (
-                        <motion.button
-                          key={time}
-                          data-chip-core-start={i === CHIP_CORE_START_INDEX ? 'true' : undefined}
-                          initial={{ opacity: 0, scale: 0.85 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                          onClick={() => handleChipSelect(e, orderedEntries, time)}
-                          className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
-                            e.clock_out === time
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10'
-                          }`}
-                        >
-                          {formatClockDecimal(time)}
-                        </motion.button>
-                      ))}
+                          return getClockOutChips(e.clock_in || globalClockIn, anch);
+                        })().map((time, i) => (
+                          <motion.button
+                            key={time}
+                            data-chip-core-start={i === CHIP_CORE_START_INDEX ? 'true' : undefined}
+                            initial={{ opacity: 0, scale: 0.85 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                            onClick={() => handleChipSelect(e, orderedEntries, time)}
+                            className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
+                              e.clock_out === time
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border/60 bg-muted/60 text-foreground hover:border-primary/60 hover:bg-primary/10'
+                            }`}
+                          >
+                            {formatClockDecimal(time)}
+                          </motion.button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ) : (

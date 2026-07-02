@@ -177,6 +177,13 @@ export function useSalaryEntries(
       if (seedAllPeriodDays && periodId) {
         const existingDates = new Set(loaded.map(e => e.entry_date));
         const { periodStart, periodEnd, defaultClockIn, offDays } = seedAllPeriodDays;
+        // Don't auto-seed days for periods that already ended — the rows should
+        // already exist, and re-seeding would resurrect rows the admin deleted.
+        const todayStr = new Date().toISOString().slice(0, 10);
+        if (periodEnd < todayStr) {
+          setEntries(sortEntries(loaded));
+          setLoading(false);
+        } else {
         const offDaySet = new Set(offDays || []);
         const rows: Omit<SalaryEntry, 'id'>[] = [];
         const toActivate: { entryDate: string; sortOrder: number }[] = [];
@@ -241,35 +248,73 @@ export function useSalaryEntries(
         // Activate existing off-day entries (no clock times) — install
         // the same sentinel so they match the freshly-seeded shape.
         // Global off-days are excluded from `toActivate` above.
+        //
+        // Apply the sentinel OPTIMISTICALLY to the in-memory list so the
+        // rows flip to interactive immediately, then fire the DB writes
+        // (one bulk update + one insert) in the background. The previous
+        // loop awaited a separate update per row, which serialized N
+        // network round-trips and kept `loading=true` (and the rows in
+        // their stale non-interactive shape) until every call landed.
         for (const { entryDate, sortOrder } of toActivate) {
-          const { data: updated } = await supabase
-            .from('salary_entries')
-            .update({
+          const idx = loaded.findIndex(e => e.entry_date === entryDate && e.sort_order === sortOrder);
+          if (idx >= 0) {
+            loaded[idx] = {
+              ...loaded[idx],
               is_day_off: false,
               off_percent: 0,
               note: null,
               clock_in: defaultClockIn,
               clock_out: defaultClockIn, // sentinel
               total_hours: 0,
-            })
-            .match({ user_id: userId, period_id: periodId, entry_date: entryDate, sort_order: sortOrder })
-            .select()
-            .maybeSingle();
-          if (updated) {
-            const idx = loaded.findIndex(e => e.entry_date === entryDate && e.sort_order === sortOrder);
-            if (idx >= 0) loaded[idx] = updated as SalaryEntry;
+            };
           }
         }
-        if (rows.length > 0) {
-          const { data: inserted, error: insertErr } = await supabase
-            .from('salary_entries')
-            .insert(rows)
-            .select();
-          if (!insertErr && inserted) {
-            loaded = sortEntries([...loaded, ...(inserted as SalaryEntry[])]);
-          }
+        // Optimistically include the new rows too (id-less until the
+        // insert lands; merged back below / via realtime).
+        loaded = sortEntries([...loaded, ...(rows as SalaryEntry[])]);
+
+        const toActivateDates = toActivate.map(t => t.entryDate);
+        const insertPromise = rows.length > 0
+          ? supabase.from('salary_entries').insert(rows).select()
+          : Promise.resolve<{ data: SalaryEntry[] | null; error: null }>({ data: null, error: null });
+        const activatePromise = toActivateDates.length > 0
+          ? supabase
+              .from('salary_entries')
+              .update({
+                is_day_off: false,
+                off_percent: 0,
+                note: null,
+                clock_in: defaultClockIn,
+                clock_out: defaultClockIn,
+                total_hours: 0,
+              })
+              .eq('user_id', userId)
+              .eq('period_id', periodId)
+              .in('entry_date', toActivateDates)
+              .eq('sort_order', 0)
+              .select()
+          : Promise.resolve<{ data: SalaryEntry[] | null; error: null }>({ data: null, error: null });
+
+        Promise.all([insertPromise, activatePromise]).then(([insRes, actRes]) => {
+          if (insRes.error) console.error('Failed to seed salary entries:', insRes.error);
+          if (actRes.error) console.error('Failed to activate off-day entries:', actRes.error);
+          const returned = [
+            ...((insRes.data as SalaryEntry[]) || []),
+            ...((actRes.data as SalaryEntry[]) || []),
+          ];
+          if (returned.length === 0) return;
+          // Merge server-generated ids / fields back onto the matching
+          // optimistic rows (by entry_date + sort_order).
+          setEntries(prev => {
+            const byKey = new Map(returned.map(r => [`${r.entry_date}-${r.sort_order}`, r]));
+            return sortEntries(prev.map(e => {
+              const srv = byKey.get(`${e.entry_date}-${e.sort_order}`);
+              return srv ? { ...e, ...srv } : e;
+            }));
+          });
+        });
         }
-      }
+        }
 
       setEntries(sortEntries(loaded));
       setLoading(false);
