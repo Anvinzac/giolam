@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Clock, Check } from 'lucide-react';
+import { Plus, Trash2, Clock, Check, Eye, EyeOff } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, computeTypeARowAmounts, formatDateViet, VIET_DAYS, formatVND, isTypeASupplementalEntry } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
@@ -71,6 +71,12 @@ export default function SalaryTableTypeA({
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [expandedOff, setExpandedOff] = useState<string | null>(null);
   const [expandedRate, setExpandedRate] = useState<string | null>(null);
+  // Per-row override for whether the inline off-percent snapper is
+  // visible while editing. Defaults to "shown" so freshly added off
+  // rows still get the 25/50/75/100 picker; the eye toggle next to
+  // the snapper header lets the user collapse it without losing the
+  // current off_percent value.
+  const [snapperVisible, setSnapperVisible] = useState<Record<string, boolean>>({});
   const [addingDate, setAddingDate] = useState(false);
   const [pendingOffExpandDate, setPendingOffExpandDate] = useState<string | null>(null);
   const lastTapRef = useRef<{ date: string; time: number } | null>(null);
@@ -148,17 +154,28 @@ export default function SalaryTableTypeA({
 
       if (supplemental) {
         // displayAmount = extraWage + extraAllowance — push as one slot.
-        if (displayAmount > 0) parts.push(displayAmount);
+        // Use !== 0 (not > 0) so a negative supplemental wage (e.g. a
+        // stray negative total_hours on a user-added row) still shows
+        // up in the breakdown popup as a deduction, matching what the
+        // row card now displays.
+        if (displayAmount !== 0) parts.push(displayAmount);
         continue;
       }
 
       // Primary working day
       if (isPastPeriod(e.entry_date)) {
-        parts.push(dailyBase + (allowance > 0 ? allowance : 0));
-      } else if (allowance > 0) {
+        parts.push(dailyBase + (allowance !== 0 ? allowance : 0));
+      } else if (allowance !== 0) {
         parts.push(allowance);
       }
-      if (extraWage > 0) parts.push(extraWage);
+      // extraWage can be negative (a stray negative total_hours) —
+      // surface it as its own slot so the breakdown popup reflects
+      // the row card. Past-period primary days also fold extraWage
+      // into the dailyBase+allowance slot above via computeRow's
+      // `total`, so push it separately here only for in-period days.
+      if (!isPastPeriod(e.entry_date) && extraWage !== 0) {
+        parts.push(extraWage);
+      }
     }
 
     return parts;
@@ -172,7 +189,17 @@ export default function SalaryTableTypeA({
       (e) => e.entry_date === pendingOffExpandDate && e.is_day_off
     );
     if (entry) {
-      setExpandedOff(rowKey(entry));
+      const key = rowKey(entry);
+      // The snapper now lives inside the edit bar, so pre-open edit
+      // mode and force the snapper visible. A freshly added row
+      // defaults to 100% off, but cover the off_percent=0 edge case
+      // (e.g. a persisted 0% off row arrives here) by bumping it to
+      // 100 so the user can pick a different snap immediately.
+      setEditingRow(key);
+      setEditNote(entry.note || '');
+      setEditRate(entry.allowance_rate_override?.toString() || '');
+      setEditHours(entry.total_hours?.toString() || '');
+      setSnapperVisible(prev => ({ ...prev, [key]: true }));
       if (entry.off_percent === 0) {
         onEntryUpdate(entry.entry_date, entry.sort_order, { off_percent: 100 });
       }
@@ -209,10 +236,17 @@ export default function SalaryTableTypeA({
   }, [breakdown, visibleEntries, allowances]);
 
   const startEditRow = (e: SalaryEntry) => {
-    setEditingRow(rowKey(e));
+    const key = rowKey(e);
+    setEditingRow(key);
     setEditNote(e.note || '');
     setEditRate(e.allowance_rate_override?.toString() || '');
     setEditHours(e.total_hours?.toString() || '');
+    // Default the inline snapper to visible for off rows so the 25/50/75/100
+    // picker is one tap away; working rows start hidden.
+    setSnapperVisible(prev => ({
+      ...prev,
+      [key]: prev[key] ?? e.is_day_off,
+    }));
   };
 
   const saveEditRow = (e: SalaryEntry) => {
@@ -414,7 +448,15 @@ export default function SalaryTableTypeA({
                       if (readOnly) return;
                       ev.stopPropagation();
                       if (isOff) {
-                        setExpandedOff(expandedOff === key ? null : key);
+                        // Off rows now expose the 25/50/75/100 picker
+                        // inside the edit bar; entering edit mode and
+                        // forcing the snapper open keeps the tap-the-
+                        // rate-cell shortcut working without resurrecting
+                        // the standalone snapper outside the bar.
+                        if (editingRow !== key) {
+                          startEditRow(e);
+                        }
+                        setSnapperVisible(prev => ({ ...prev, [key]: true }));
                         return;
                       }
                       if (mode !== 'admin') return;
@@ -427,7 +469,7 @@ export default function SalaryTableTypeA({
                   {/* Allowance */}
                   <FormulaTooltip
                     formula={isTypeASupplementalEntry(e)
-                      ? (extraWage > 0
+                      ? (extraWage !== 0
                           ? `${formatK(extraWage)} + ${formatK(allowance)}`
                           : null)
                       : formulaAllowance(rate)}
@@ -435,7 +477,7 @@ export default function SalaryTableTypeA({
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}
                   >
-                    {isOff ? formatCompact(-deduction) : (displayAmount > 0 ? formatCompact(displayAmount) : '—')}
+                    {isOff ? formatCompact(-deduction) : (displayAmount !== 0 ? formatCompact(displayAmount) : '—')}
                   </FormulaTooltip>
                 </div>
 
@@ -462,7 +504,24 @@ export default function SalaryTableTypeA({
                         min="0"
                         step="0.5"
                         value={editHours}
-                        onChange={ev => setEditHours(ev.target.value)}
+                        onChange={ev => {
+                          const next = ev.target.value;
+                          setEditHours(next);
+                          // Typing any positive number of hours means the
+                          // user is converting this slot into actual work
+                          // time, not a partial absence — flip the row
+                          // out of off-mode immediately so the snapper and
+                          // the live amount preview agree with the hours
+                          // they're entering. Zero/blank leaves the off
+                          // state untouched.
+                          const parsed = parseFloat(next);
+                          if (!isNaN(parsed) && parsed > 0 && e.is_day_off) {
+                            onEntryUpdate(e.entry_date, e.sort_order, {
+                              is_day_off: false,
+                              off_percent: 0,
+                            });
+                          }
+                        }}
                         placeholder="0"
                         className="w-[64px] px-2 py-1 rounded bg-background border border-border text-[13px] text-right"
                       />
@@ -499,7 +558,37 @@ export default function SalaryTableTypeA({
                           </span>
                         );
                       })()}
+                      {/* Inline toggle: collapse the off-percent snapper
+                          without leaving edit mode. Defaults to shown for
+                          off rows (so 25/50/75/100 stays one tap away)
+                          and hidden for working rows. */}
+                      <button
+                        type="button"
+                        onClick={() => setSnapperVisible(prev => ({ ...prev, [key]: !prev[key] }))}
+                        className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1 rounded"
+                        aria-label={snapperVisible[key] ? 'Ẩn thanh kéo % nghỉ' : 'Hiện thanh kéo % nghỉ'}
+                      >
+                        {snapperVisible[key]
+                          ? <EyeOff size={12} className="text-destructive/70" />
+                          : <Eye size={12} />}
+                        <span>% nghỉ</span>
+                      </button>
                     </div>
+                    {/* Inline draggable progress bar (off percent snapper).
+                        Rendered inside the edit bar so the user can hide
+                        it with the eye toggle above instead of having it
+                        stuck below the row. */}
+                    {snapperVisible[key] && (
+                      <OffPercentSnapper
+                        value={e.off_percent}
+                        onChange={(v) => {
+                          onEntryUpdate(e.entry_date, e.sort_order, { off_percent: v });
+                          // Tapping a snap now keeps the edit bar open so
+                          // the user can immediately pair it with hours.
+                          // Only the eye toggle dismisses the snapper.
+                        }}
+                      />
+                    )}
                     {/* Action buttons */}
                     <div className="flex gap-2">
                       <button onClick={() => {
@@ -522,19 +611,6 @@ export default function SalaryTableTypeA({
                         Hủy
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {/* Off percent snapper */}
-                {isOff && expandedOff === key && !readOnly && (
-                  <div className="px-3 pb-3 pt-1">
-                    <OffPercentSnapper
-                      value={e.off_percent}
-                      onChange={(v) => {
-                        onEntryUpdate(e.entry_date, e.sort_order, { off_percent: v });
-                        setExpandedOff(null);
-                      }}
-                    />
                   </div>
                 )}
 

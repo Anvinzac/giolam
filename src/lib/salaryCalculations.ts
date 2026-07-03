@@ -172,10 +172,21 @@ export function computeTypeARowAmounts(
   rates: SpecialDayRate[]
 ): TypeARowAmounts {
   const rate = getRateForDate(entry.entry_date, rates, entry.allowance_rate_override);
+  // total_hours is persisted as-is from the editor (which already blocks
+  // negatives at save time) but data can still arrive with a negative
+  // value via CSV import, a Supabase direct edit, or a seed. Let it
+  // flow through to a negative extraWage so the row card and breakdown
+  // popup surface the amount instead of silently dropping it.
   const extraWage = entry.total_hours ? roundToThousand(entry.total_hours * hourlyRate) : 0;
+  // The allowance-on-extra rule only applies to positive extra wages;
+  // for a negative extra wage the bonus would flip sign and add money,
+  // so keep extraAllowance at 0 in that case.
   const extraAllowance = extraWage > 0 ? roundToThousand(extraWage * rate / 100) : 0;
   const baseAllowance = roundToThousand(dailyBase * rate / 100);
-  const cappedPercent = Math.min(entry.off_percent, 100);
+  // Floor off_percent at 0 and cap it at 100. Without the floor, a
+  // stray negative off_percent (e.g. -50%) would invert the deduction
+  // and quietly pay the employee for taking an off day.
+  const cappedPercent = Math.max(0, Math.min(entry.off_percent, 100));
   const deduction = entry.is_day_off ? roundToThousand(dailyBase * cappedPercent / 100) : 0;
 
   if (entry.is_day_off) {
@@ -207,7 +218,14 @@ export function computeTypeARowAmounts(
     extraWage,
     deduction: 0,
     total: dailyBase + baseAllowance + extraWage,
-    displayAmount: baseAllowance,
+    // Include extraWage in displayAmount so a non-zero extra wage —
+    // positive OR negative — is visible on the row card. Without this,
+    // a negative total_hours on a primary day (baseAllowance = 0 on a
+    // regular weekday) would collapse to displayAmount = 0 and the
+    // row would render as "—" hiding the negative hours entirely.
+    // dailyBase is intentionally excluded here because it's already
+    // represented by the flat baseSalary slot in the breakdown popup.
+    displayAmount: baseAllowance + extraWage,
   };
 }
 

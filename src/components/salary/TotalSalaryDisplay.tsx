@@ -25,6 +25,11 @@ export default function TotalSalaryDisplay({
   isAdmin = false,
 }: TotalSalaryDisplayProps) {
   const [editing, setEditing] = useState(false);
+  // `inputVal` holds the SHORT form the admin typed (e.g. "50" = 50k
+  // = 50,000 VND). The visible field always renders typed digits plus
+  // a ghost ".000" hint so the multiplier convention is obvious
+  // without the admin having to read it in a tooltip. Matches the
+  // pattern used in SalaryAdmin's thousand-input editors.
   const [inputVal, setInputVal] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const hasDeposit = deposit > 0;
@@ -34,14 +39,27 @@ export default function TotalSalaryDisplay({
     if (editing && inputRef.current) inputRef.current.focus();
   }, [editing]);
 
+  // Convert a stored VND amount (e.g. 50000) back to short form
+  // (e.g. "50") so the editor can pre-fill with the same scale the
+  // admin originally typed. Rounded so a stored 49,500 displays as
+  // "50" — the editor is always in thousand-units, not raw VND.
+  const toShort = (v: number) => v <= 0 ? '' : Math.round(v / 1000).toString();
+  const fmtDot = (n: number) => n.toLocaleString('vi-VN');
+  const num = inputVal ? parseInt(inputVal, 10) : 0;
+  const typedFormatted = num > 0 ? fmtDot(num) : '';
+  const ghostFormatted = num > 0 ? '.000' : '000';
+
   const startEdit = () => {
     if (!isAdmin || !onDepositChange) return;
-    setInputVal(deposit > 0 ? deposit.toString() : '');
+    setInputVal(toShort(deposit));
     setEditing(true);
   };
 
   const saveDeposit = () => {
-    const val = parseInt(inputVal.replace(/\D/g, '')) || 0;
+    const cleaned = inputVal.replace(/\D/g, '');
+    const parsedShort = cleaned === '' ? 0 : parseInt(cleaned, 10);
+    // ×1000 convention: typed "50" means 50,000 VND.
+    const val = parsedShort > 0 ? parsedShort * 1000 : 0;
     onDepositChange?.(val);
     setEditing(false);
   };
@@ -89,17 +107,24 @@ export default function TotalSalaryDisplay({
               <span className="text-xs text-destructive/80 font-medium">Tạm ứng</span>
               {editing ? (
                 <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                  <input
-                    ref={inputRef}
-                    type="number"
-                    inputMode="numeric"
-                    value={inputVal}
-                    onChange={e => setInputVal(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveDeposit(); }}
-                    onBlur={saveDeposit}
-                    className="w-[100px] px-2 py-0.5 rounded bg-background border border-destructive/30 text-right text-sm font-bold text-destructive outline-none"
-                    placeholder="0"
-                  />
+                  <div className="flex items-center rounded border border-destructive/30 bg-background relative overflow-hidden min-w-[100px]">
+                    <input
+                      ref={inputRef}
+                      value={inputVal}
+                      onChange={e => setInputVal(e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={e => { if (e.key === 'Enter') saveDeposit(); }}
+                      onBlur={saveDeposit}
+                      className="absolute inset-0 opacity-0 text-[16px] w-full cursor-text"
+                      inputMode="numeric"
+                      autoFocus
+                    />
+                    <span className="text-sm font-bold text-destructive pointer-events-none px-2 py-0.5">
+                      {typedFormatted}
+                    </span>
+                    <span className="text-sm font-bold text-muted-foreground/40 pointer-events-none pr-2">
+                      {ghostFormatted}
+                    </span>
+                  </div>
                   {deposit > 0 && (
                     <button
                       onClick={e => { e.stopPropagation(); clearDeposit(); }}
