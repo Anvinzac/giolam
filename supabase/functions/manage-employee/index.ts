@@ -42,7 +42,7 @@ serve(async (req) => {
   const { action } = body;
 
   if (action === "create") {
-    const { username, full_name, shift_type, default_clock_in, default_clock_out, department_id } = body;
+    const { username, full_name, shift_type, default_clock_in, default_clock_out, department_id, base_salary, hourly_rate } = body;
 
     if (!username || !full_name) {
       return new Response(JSON.stringify({ error: "Username and full_name required" }), { status: 400, headers: corsHeaders });
@@ -70,6 +70,8 @@ serve(async (req) => {
         default_clock_in: default_clock_in || null,
         default_clock_out: default_clock_out || null,
         must_change_password: true,
+        base_salary: base_salary ?? 0,
+        hourly_rate: hourly_rate ?? 25000,
       }).eq("user_id", newUserId);
 
       // Pre-activate every day of every existing period so the allowance/base

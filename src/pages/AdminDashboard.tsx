@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign, Database, Terminal, Wand2, Package } from "lucide-react";
+import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign, Database, Terminal, Wand2, Package, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
+import { SpecialDayRate, DayType, DAY_TYPE_LABELS, DEFAULT_RATES } from "@/types/salary";
+import { generateDefaultSpecialDays, getVietnameseDescription, formatDateViet } from "@/lib/salaryCalculations";
 import AdminEmployeeList from "@/components/AdminEmployeeList";
 import AdminChangesList, { getLastViewedTime } from "@/components/AdminChangesList";
 import AdminRegistrations from "@/components/AdminRegistrations";
@@ -98,10 +100,51 @@ export default function AdminDashboard() {
   };
   const [regBadge, setRegBadge] = useState(0);
 
-  // New period form
-  const [startDate, setStartDate] = useState("");
+  // New period form — start date defaults to 1st of previous month
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const defaultStart = `${lastMonth.getFullYear()}-${pad(lastMonth.getMonth() + 1)}-${pad(lastMonth.getDate())}`;
+  const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState("");
-  const [offDays, setOffDays] = useState("");
+  const [offDaysSet, setOffDaysSet] = useState<Set<string>>(new Set());
+
+  // Special day rates preview (generated before period exists)
+  const [rates, setRates] = useState<SpecialDayRate[]>([]);
+  const [rateEditId, setRateEditId] = useState<string | null>(null);
+  const [rateEditDesc, setRateEditDesc] = useState("");
+  const [rateEditPercent, setRateEditPercent] = useState("");
+  const [showAddRate, setShowAddRate] = useState(false);
+  const [addRateDate, setAddRateDate] = useState("");
+  const [addRateType, setAddRateType] = useState<DayType>("custom");
+  const [addRateDesc, setAddRateDesc] = useState("");
+  const [addRatePercent, setAddRatePercent] = useState("0");
+  const [rateDeleteConfirm, setRateDeleteConfirm] = useState<string | null>(null);
+
+  // Auto-generate rates when date range changes
+  useEffect(() => {
+    if (!startDate || !endDate) { setRates([]); return; }
+    const generated = generateDefaultSpecialDays(startDate, endDate, "__preview__", Array.from(offDaysSet));
+    setRates(generated);
+  }, [startDate, endDate, offDaysSet]);
+
+  const dateRange: string[] = [];
+  if (startDate && endDate) {
+    const cur = new Date(startDate + "T00:00:00");
+    const end = new Date(endDate + "T00:00:00");
+    while (cur <= end) {
+      dateRange.push(`${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`);
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+
+  const toggleOffDay = (date: string) => {
+    setOffDaysSet((prev) => {
+      const next = new Set(prev);
+      next.has(date) ? next.delete(date) : next.add(date);
+      return next;
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -180,24 +223,32 @@ export default function AdminDashboard() {
   const createPeriod = async () => {
     if (!startDate || !endDate) { toast.error("Start and end dates required"); return; }
     
-    const offDaysArray = offDays.split(',').map(d => d.trim()).filter(Boolean);
+    const offDaysArray = Array.from(offDaysSet);
     
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('working_periods').insert({
+    const { data: period, error } = await supabase.from('working_periods').insert({
       start_date: startDate,
       end_date: endDate,
       off_days: offDaysArray,
       created_by: user?.id,
-    });
+    }).select().single();
 
     if (error) { toast.error(error.message); return; }
+
+    // Insert special day rates for the new period
+    if (period && rates.length > 0) {
+      const periodRates = rates.map(r => ({ ...r, period_id: period.id }));
+      await supabase.from('special_day_rates').insert(periodRates);
+    }
+
     toast.success("Period created!");
     
     const { data: p } = await supabase.from('working_periods').select('*').eq('is_archived', false).order('start_date', { ascending: false });
     setPeriods(p || []);
-    setStartDate("");
+    setStartDate(defaultStart);
     setEndDate("");
-    setOffDays("");
+    setOffDaysSet(new Set());
+    setRates([]);
   };
 
   const deletePeriod = async (id: string) => {
@@ -314,7 +365,7 @@ export default function AdminDashboard() {
                   onClick={() => {
                     setStartDate("2026-02-25");
                     setEndDate("2026-03-25");
-                    setOffDays("2026-03-23");
+                    setOffDaysSet(new Set(["2026-03-23"]));
                   }}
                   className="text-[10px] px-2 py-1 rounded-md bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                 >
@@ -349,24 +400,162 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Off Days (comma-separated dates: YYYY-MM-DD)</label>
-                <input
-                  type="text"
-                  value={offDays}
-                  onChange={(e) => setOffDays(e.target.value)}
-                  placeholder="2026-02-08, 2026-02-15"
-                  className="w-full mt-1 px-3 py-2 rounded-xl bg-muted border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
+              {dateRange.length > 0 && (
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    Off Days — tap to toggle ({offDaysSet.size} selected)
+                  </label>
+                  <div className="mt-1 p-2 rounded-xl bg-muted border border-border max-h-[200px] overflow-y-auto">
+                    <div className="grid grid-cols-7 gap-0.5">
+                      {dateRange.map((date) => {
+                        const d = new Date(date + "T00:00:00");
+                        const dayNum = d.getDate();
+                        const monthNum = d.getMonth() + 1;
+                        const isOff = offDaysSet.has(date);
+                        return (
+                          <button
+                            key={date}
+                            type="button"
+                            onClick={() => toggleOffDay(date)}
+                            className={`py-1.5 rounded-md text-[11px] font-medium transition-all ${
+                              isOff
+                                ? "bg-destructive/20 text-destructive ring-1 ring-destructive/40"
+                                : "bg-background/50 text-foreground hover:bg-background"
+                            }`}
+                            title={date}
+                          >
+                            {dayNum}/{monthNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {rates.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-muted-foreground">
+                      Phụ cấp đặc biệt ({rates.length} ngày)
+                    </label>
+                    <button
+                      onClick={() => { setShowAddRate(!showAddRate); setRateDeleteConfirm(null); }}
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      + Thêm
+                    </button>
+                  </div>
+                  <div className="rounded-xl bg-muted border border-border max-h-[180px] overflow-y-auto divide-y divide-border/30">
+                    {rates.map((r) => (
+                      <div key={r.id || r.special_date + r.day_type} className="px-3 py-1.5 flex items-center gap-2 text-xs">
+                        <span className="w-[60px] font-medium text-muted-foreground shrink-0">{formatDateViet(r.special_date)}</span>
+                        {rateEditId === (r.id || r.special_date + r.day_type) ? (
+                          <>
+                            <input
+                              value={rateEditDesc}
+                              onChange={e => setRateEditDesc(e.target.value)}
+                              className="flex-1 px-1.5 py-0.5 rounded bg-background border border-border text-xs min-w-0"
+                            />
+                            <input
+                              value={rateEditPercent}
+                              onChange={e => setRateEditPercent(e.target.value)}
+                              className="w-12 px-1 py-0.5 rounded bg-background border border-border text-xs text-right"
+                              inputMode="decimal"
+                            />
+                            <span className="text-[10px] text-muted-foreground">%</span>
+                            <button
+                              onClick={() => {
+                                setRates(prev => prev.map(rr => (rr.id || rr.special_date + rr.day_type) === rateEditId ? { ...rr, description_vi: rateEditDesc, rate_percent: parseFloat(rateEditPercent) || 0 } : rr));
+                                setRateEditId(null);
+                              }}
+                              className="p-0.5 text-emerald-400"
+                            ><Check size={12} /></button>
+                            <button onClick={() => setRateEditId(null)} className="p-0.5 text-muted-foreground"><XIcon size={12} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => { setRateEditId(r.id || r.special_date + r.day_type); setRateEditDesc(r.description_vi); setRateEditPercent(String(r.rate_percent)); setRateDeleteConfirm(null); }}
+                              className="flex-1 text-left truncate hover:text-primary transition-colors"
+                            >{r.description_vi}</button>
+                            <span className="text-foreground">{r.rate_percent}%</span>
+                            {rateDeleteConfirm === (r.id || r.special_date + r.day_type) ? (
+                              <div className="flex gap-0.5">
+                                <button onClick={() => { setRates(prev => prev.filter(rr => (rr.id || rr.special_date + rr.day_type) !== rateDeleteConfirm)); setRateDeleteConfirm(null); }} className="p-0.5 text-destructive"><Check size={12} /></button>
+                                <button onClick={() => setRateDeleteConfirm(null)} className="p-0.5 text-muted-foreground"><XIcon size={12} /></button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setRateDeleteConfirm(r.id || r.special_date + r.day_type); setRateEditId(null); }} className="p-0.5 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {showAddRate && (
+                    <div className="mt-2 p-3 rounded-xl bg-muted/50 border border-border space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Ngày</label>
+                          <input type="date" value={addRateDate} onChange={e => setAddRateDate(e.target.value)} className="w-full mt-0.5 px-2 py-1.5 rounded-lg bg-background border border-border text-xs" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Loại</label>
+                          <select value={addRateType} onChange={e => { const t = e.target.value as DayType; setAddRateType(t); setAddRatePercent(String(DEFAULT_RATES[t])); setAddRateDesc(getVietnameseDescription(t, DEFAULT_RATES[t])); }} className="w-full mt-0.5 px-2 py-1.5 rounded-lg bg-background border border-border text-xs">
+                            {(['saturday','sunday','day_before_new_moon','day_before_full_moon','new_moon','full_moon','public_holiday','custom'] as DayType[]).map(dt => (
+                              <option key={dt} value={dt}>{DAY_TYPE_LABELS[dt]}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-[1fr_80px] gap-2">
+                        <input value={addRateDesc} onChange={e => setAddRateDesc(e.target.value)} placeholder="Mô tả" className="px-2 py-1.5 rounded-lg bg-background border border-border text-xs" />
+                        <input value={addRatePercent} onChange={e => setAddRatePercent(e.target.value)} inputMode="decimal" className="px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-right" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (!addRateDate) { toast.error("Chọn ngày"); return; }
+                            const newId = addRateDate + "_" + addRateType;
+                            setRates(prev => [...prev, {
+                              period_id: "__preview__",
+                              special_date: addRateDate,
+                              day_type: addRateType,
+                              description_vi: addRateDesc || getVietnameseDescription(addRateType, parseFloat(addRatePercent) || 0),
+                              rate_percent: parseFloat(addRatePercent) || 0,
+                              sort_order: prev.length,
+                              id: newId,
+                            }].sort((a, b) => a.special_date.localeCompare(b.special_date)));
+                            setShowAddRate(false);
+                            setAddRateDate("");
+                            setAddRateDesc("");
+                            setAddRatePercent("0");
+                          }}
+                          className="flex-1 py-1.5 rounded-lg gradient-gold text-primary-foreground text-xs font-semibold"
+                        >+ Thêm</button>
+                        <button onClick={() => { setShowAddRate(false); setAddRateDate(""); }} className="px-4 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs">Hủy</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setStartDate(defaultStart); setEndDate(""); setOffDaysSet(new Set()); }}
+                  className="flex-1 py-2.5 rounded-xl bg-muted text-muted-foreground font-medium text-sm"
+                >
+                  Hủy
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={createPeriod}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-gold text-primary-foreground font-display font-semibold text-sm"
+                >
+                  <Plus size={16} />
+                  Create Period
+                </motion.button>
               </div>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={createPeriod}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl gradient-gold text-primary-foreground font-display font-semibold text-sm"
-              >
-                <Plus size={16} />
-                Create Period
-              </motion.button>
             </div>
 
             {/* Periods list */}
