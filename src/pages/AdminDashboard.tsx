@@ -16,7 +16,6 @@ import AdminStockReports from "@/components/AdminStockReports";
 import DemoEmployeeStockView from "@/components/DemoEmployeeStockView";
 import AppBootState from "@/components/AppBootState";
 import { withTimeout } from "@/lib/withTimeout";
-import { formatDateViet } from "@/lib/salaryCalculations";
 
 function IngredientsTab() {
   const [subTab, setSubTab] = useState<'editor' | 'assign'>('editor');
