@@ -85,7 +85,8 @@ serve(async (req) => {
       const resolvedShift = shift_type || "basic";
       const shouldPreActivate =
         resolvedShift === "basic" ||
-        (resolvedShift === "overtime" && !!default_clock_in);
+        resolvedShift === "daily" ||
+        resolvedShift === "overtime";
 
       if (shouldPreActivate) {
         const { data: periods } = await serviceClient
@@ -106,6 +107,7 @@ serve(async (req) => {
           const start = new Date(period.start_date + "T00:00:00Z");
           const end = new Date(period.end_date + "T00:00:00Z");
           const cur = new Date(start);
+          const defaultIn = default_clock_in || "17:00";
           while (cur <= end) {
             entries.push({
               user_id: newUserId,
@@ -113,10 +115,8 @@ serve(async (req) => {
               entry_date: cur.toISOString().slice(0, 10),
               sort_order: 0,
               is_day_off: false,
-              // Type B gets its default clock-in preloaded; Type A doesn't
-              // use clock times for base pay so leave it null.
-              clock_in: resolvedShift === "overtime" ? default_clock_in : null,
-              clock_out: null,
+              clock_in: resolvedShift === "overtime" ? defaultIn : null,
+              clock_out: resolvedShift === "overtime" ? defaultIn : null,
               is_admin_reviewed: true,
             });
             cur.setUTCDate(cur.getUTCDate() + 1);

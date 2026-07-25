@@ -198,8 +198,9 @@ export function useSalaryEntries(
           if (existingDates.has(dateStr)) {
             const existing = loaded.find(e => e.entry_date === dateStr && e.sort_order === 0);
             // Don't reactivate rows on global off-days — they should stay
-            // as "Quán nghỉ" off-day entries.
-            if (existing && existing.is_day_off && !existing.clock_in && !existing.clock_out && !isGlobalOff) {
+            // as "Quán nghỉ" off-day entries. For all other days, flip any
+            // off-day entries back to working days by default.
+            if (existing && existing.is_day_off && !isGlobalOff) {
               toActivate.push({ entryDate: dateStr, sortOrder: 0 });
             }
             continue;
@@ -227,6 +228,7 @@ export function useSalaryEntries(
             });
             continue;
           }
+          const effectiveClockIn = defaultClockIn || '17:00';
           rows.push({
             user_id: userId,
             period_id: periodId,
@@ -235,8 +237,8 @@ export function useSalaryEntries(
             is_day_off: false,
             off_percent: 0,
             note: null,
-            clock_in: defaultClockIn,
-            clock_out: defaultClockIn,   // sentinel: same as clock_in → pending input
+            clock_in: effectiveClockIn,
+            clock_out: effectiveClockIn,   // sentinel: same as clock_in → pending input
             total_hours: 0,
             allowance_rate_override: null,
             base_daily_wage: 0,
@@ -245,27 +247,23 @@ export function useSalaryEntries(
             total_daily_wage: 0,
           });
         }
-        // Activate existing off-day entries (no clock times) — install
-        // the same sentinel so they match the freshly-seeded shape.
+        // Activate existing off-day entries — install the same sentinel
+        // so they match the freshly-seeded working day shape.
         // Global off-days are excluded from `toActivate` above.
-        //
-        // Apply the sentinel OPTIMISTICALLY to the in-memory list so the
-        // rows flip to interactive immediately, then fire the DB writes
-        // (one bulk update + one insert) in the background. The previous
-        // loop awaited a separate update per row, which serialized N
-        // network round-trips and kept `loading=true` (and the rows in
-        // their stale non-interactive shape) until every call landed.
+        const defaultIn = defaultClockIn || '17:00';
         for (const { entryDate, sortOrder } of toActivate) {
           const idx = loaded.findIndex(e => e.entry_date === entryDate && e.sort_order === sortOrder);
           if (idx >= 0) {
+            const inTime = loaded[idx].clock_in || defaultIn;
+            const outTime = loaded[idx].clock_out || inTime;
             loaded[idx] = {
               ...loaded[idx],
               is_day_off: false,
               off_percent: 0,
               note: null,
-              clock_in: defaultClockIn,
-              clock_out: defaultClockIn, // sentinel
-              total_hours: 0,
+              clock_in: inTime,
+              clock_out: outTime,
+              total_hours: loaded[idx].total_hours ?? 0,
             };
           }
         }
@@ -284,8 +282,8 @@ export function useSalaryEntries(
                 is_day_off: false,
                 off_percent: 0,
                 note: null,
-                clock_in: defaultClockIn,
-                clock_out: defaultClockIn,
+                clock_in: defaultIn,
+                clock_out: defaultIn,
                 total_hours: 0,
               })
               .eq('user_id', userId)

@@ -516,16 +516,7 @@ export default function SalaryAdmin() {
     const seedKey = `${selectedEmployee.user_id}|${selectedPeriodId}`;
     if (seedingRef.current === seedKey) return;
 
-    if (selectedEmployee.shift_type === 'overtime') {
-      // Type B: seed all days in period, skip global off-days
-      seedingRef.current = seedKey;
-      const offDaySet = new Set(selectedPeriod.off_days || []);
-      const allDates = generateDateRange(selectedPeriod.start_date, selectedPeriod.end_date);
-      for (const dateStr of allDates) {
-        if (offDaySet.has(dateStr)) continue;
-        addRowAtDate(dateStr);
-      }
-    } else if (selectedEmployee.shift_type === 'daily') {
+    if (selectedEmployee.shift_type === 'daily') {
       // Type E (daily): hybrid seeding to match the contract.
       //
       // Within the period — the days the employee's previous Type A
