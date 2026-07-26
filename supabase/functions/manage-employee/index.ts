@@ -74,14 +74,7 @@ serve(async (req) => {
         hourly_rate: hourly_rate ?? 25000,
       }).eq("user_id", newUserId);
 
-      // Pre-activate every day of every existing period so the allowance/base
-      // accrues by default. Two shift types need this:
-      //   • overtime (Type B) — seeded with the default clock-in so the user
-      //     only fills clock-out or toggles day-off. Skipped if no
-      //     default_clock_in is set.
-      //   • basic (Type A) — seeded as "working" (no clock times); the daily
-      //     base + allowance rate applies automatically unless the day is
-      //     later flipped to off.
+      // Pre-activate period entries
       const resolvedShift = shift_type || "basic";
       const shouldPreActivate =
         resolvedShift === "basic" ||
@@ -102,24 +95,46 @@ serve(async (req) => {
               { onConflict: "user_id,period_id", ignoreDuplicates: true }
             );
 
-          // Generate every date in the period
           const entries: any[] = [];
-          const start = new Date(period.start_date + "T00:00:00Z");
-          const end = new Date(period.end_date + "T00:00:00Z");
-          const cur = new Date(start);
-          const defaultIn = default_clock_in || "17:00";
-          while (cur <= end) {
-            entries.push({
-              user_id: newUserId,
-              period_id: period.id,
-              entry_date: cur.toISOString().slice(0, 10),
-              sort_order: 0,
-              is_day_off: false,
-              clock_in: resolvedShift === "overtime" ? defaultIn : null,
-              clock_out: resolvedShift === "overtime" ? defaultIn : null,
-              is_admin_reviewed: true,
-            });
-            cur.setUTCDate(cur.getUTCDate() + 1);
+
+          if (resolvedShift === "basic" || resolvedShift === "daily") {
+            // Type A/E: seed only dates from special_day_rates with rate > 0
+            const { data: rates } = await serviceClient
+              .from("special_day_rates")
+              .select("special_date, description_vi, rate_percent")
+              .eq("period_id", period.id)
+              .gt("rate_percent", 0);
+
+            for (const rate of (rates || [])) {
+              entries.push({
+                user_id: newUserId,
+                period_id: period.id,
+                entry_date: rate.special_date,
+                sort_order: 0,
+                is_day_off: false,
+                note: rate.description_vi || null,
+                is_admin_reviewed: true,
+              });
+            }
+          } else {
+            // Type B (overtime): seed all dates with clock_in pre-filled
+            const start = new Date(period.start_date + "T00:00:00Z");
+            const end = new Date(period.end_date + "T00:00:00Z");
+            const cur = new Date(start);
+            const defaultIn = default_clock_in || "17:00";
+            while (cur <= end) {
+              entries.push({
+                user_id: newUserId,
+                period_id: period.id,
+                entry_date: cur.toISOString().slice(0, 10),
+                sort_order: 0,
+                is_day_off: false,
+                clock_in: defaultIn,
+                clock_out: null,
+                is_admin_reviewed: true,
+              });
+              cur.setUTCDate(cur.getUTCDate() + 1);
+            }
           }
 
           if (entries.length) {

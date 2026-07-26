@@ -66,23 +66,21 @@ serve(async (req) => {
     specialDateMap.set(r.special_date, { description: r.description_vi, rate: r.rate_percent });
   });
 
-  // Seed salary entries for nvienc and nviend
-  const accounts = ["nvienc", "nviend"];
+  // Seed salary entries for all employees by shift type
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("user_id, username, full_name, shift_type, default_clock_in, default_clock_out");
 
-  for (const username of accounts) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_id, shift_type, default_clock_in, default_clock_out")
-      .eq("username", username)
-      .maybeSingle();
+  if (!profiles || profiles.length === 0) {
+    return new Response(JSON.stringify({ success: true, results: ["No profiles found"] }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-    if (!profile) {
-      results.push(`⚠️  ${username}: profile not found`);
-      continue;
-    }
-
+  for (const profile of profiles) {
     const userId = profile.user_id;
-    results.push(`\n👤 ${username} (shift_type=${profile.shift_type}):`);
+    const label = profile.username || profile.full_name || userId;
+    results.push(`\n👤 ${label} (shift_type=${profile.shift_type}):`);
 
     // Ensure salary_records exists
     const { data: existingRecord } = await supabase
@@ -115,25 +113,8 @@ serve(async (req) => {
     // Seed entries based on shift type
     const entriesToInsert: any[] = [];
 
-    if (profile.shift_type === "notice_only" || profile.shift_type === "lunar_rate") {
-      // Type C/D: seed ALL dates in the period with default clock times
-      for (const dateStr of allDates) {
-        if (existingDates.has(dateStr)) continue;
-        entriesToInsert.push({
-          user_id: userId,
-          period_id: periodId,
-          entry_date: dateStr,
-          sort_order: 0,
-          is_day_off: false,
-          off_percent: 0,
-          note: null,
-          clock_in: profile.default_clock_in || "08:00",
-          clock_out: profile.default_clock_out || "17:30",
-          is_admin_reviewed: true,
-        });
-      }
-    } else if (profile.shift_type === "basic" || profile.shift_type === "daily") {
-      // Type A/E: seed only special dates (rate > 0) that don't exist
+    if (profile.shift_type === "basic" || profile.shift_type === "daily") {
+      // Type A/E: seed only dates from special_day_rates table (rate > 0)
       for (const [dateStr, info] of specialDateMap) {
         if (existingDates.has(dateStr)) continue;
         if (info.rate <= 0) continue;

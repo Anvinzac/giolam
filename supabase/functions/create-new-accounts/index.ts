@@ -117,7 +117,7 @@ serve(async (req) => {
         results.push(`✅ Profile set for ${emp.username} (${emp.full_name}, ${emp.shift_type})`);
       }
 
-      // Pre-activate period entries for basic, daily, or overtime
+      // Pre-activate period entries
       const resolvedShift = emp.shift_type;
       const shouldPreActivate = resolvedShift === "basic" || resolvedShift === "daily" || resolvedShift === "overtime";
       if (shouldPreActivate) {
@@ -134,22 +134,45 @@ serve(async (req) => {
             );
 
           const entries: any[] = [];
-          const start = new Date(period.start_date + "T00:00:00Z");
-          const end = new Date(period.end_date + "T00:00:00Z");
-          const cur = new Date(start);
-          const defaultIn = emp.default_clock_in || "17:00";
-          while (cur <= end) {
-            entries.push({
-              user_id: userId,
-              period_id: period.id,
-              entry_date: cur.toISOString().slice(0, 10),
-              sort_order: 0,
-              is_day_off: false,
-              clock_in: resolvedShift === "overtime" ? defaultIn : null,
-              clock_out: resolvedShift === "overtime" ? defaultIn : null,
-              is_admin_reviewed: true,
-            });
-            cur.setUTCDate(cur.getUTCDate() + 1);
+
+          if (resolvedShift === "basic" || resolvedShift === "daily") {
+            // Type A/E: seed only dates from special_day_rates with rate > 0
+            const { data: rates } = await supabase
+              .from("special_day_rates")
+              .select("special_date, description_vi, rate_percent")
+              .eq("period_id", period.id)
+              .gt("rate_percent", 0);
+
+            for (const rate of (rates || [])) {
+              entries.push({
+                user_id: userId,
+                period_id: period.id,
+                entry_date: rate.special_date,
+                sort_order: 0,
+                is_day_off: false,
+                note: rate.description_vi || null,
+                is_admin_reviewed: true,
+              });
+            }
+          } else {
+            // Type B (overtime): seed all dates with clock_in pre-filled
+            const start = new Date(period.start_date + "T00:00:00Z");
+            const end = new Date(period.end_date + "T00:00:00Z");
+            const cur = new Date(start);
+            const defaultIn = emp.default_clock_in || "17:00";
+            while (cur <= end) {
+              entries.push({
+                user_id: userId,
+                period_id: period.id,
+                entry_date: cur.toISOString().slice(0, 10),
+                sort_order: 0,
+                is_day_off: false,
+                clock_in: defaultIn,
+                clock_out: null,
+                is_admin_reviewed: true,
+              });
+              cur.setUTCDate(cur.getUTCDate() + 1);
+            }
           }
 
           if (entries.length) {
