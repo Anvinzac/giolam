@@ -14,6 +14,7 @@ import AdminIngredientManager from "@/components/AdminIngredientManager";
 import AdminIngredientEditor from "@/components/AdminIngredientEditor";
 import AdminStockReports from "@/components/AdminStockReports";
 import DemoEmployeeStockView from "@/components/DemoEmployeeStockView";
+import AdminShiftRegister from "@/components/AdminShiftRegister";
 import AppBootState from "@/components/AppBootState";
 import { withTimeout } from "@/lib/withTimeout";
 
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [periods, setPeriods] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations' | 'ingredients' | 'stock-reports'>('shifts');
+  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations' | 'ingredients' | 'stock-reports' | 'shift-register'>('shifts');
   const [changesBadge, setChangesBadge] = useState(0);
   const [isSeeding, setIsSeeding] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -289,15 +290,16 @@ export default function AdminDashboard() {
             <DollarSign size={16} />
             Lương
           </button>
-          {[
-            { key: 'shifts' as const, label: 'Bảng công', icon: Table2, badge: 0 },
-            { key: 'registrations' as const, label: 'Đăng ký', icon: Calendar, badge: regBadge },
-            { key: 'changes' as const, label: 'Thay đổi', icon: Bell, badge: changesBadge },
-            { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar, badge: 0 },
-            { key: 'employees' as const, label: 'Nhân viên', icon: Users, badge: 0 },
-            { key: 'ingredients' as const, label: 'Kho', icon: Package, badge: 0 },
-            { key: 'stock-reports' as const, label: 'Báo cáo kho', icon: Package, badge: 0 },
-          ].map(({ key, label, icon: Icon, badge }) => (
+{[
+             { key: 'shifts' as const, label: 'Bảng công', icon: Table2, badge: 0 },
+             { key: 'shift-register' as const, label: 'Đăng ký ca', icon: Calendar, badge: 0 },
+             { key: 'registrations' as const, label: 'Đăng ký', icon: Calendar, badge: regBadge },
+             { key: 'changes' as const, label: 'Thay đổi', icon: Bell, badge: changesBadge },
+             { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar, badge: 0 },
+             { key: 'employees' as const, label: 'Nhân viên', icon: Users, badge: 0 },
+             { key: 'ingredients' as const, label: 'Kho', icon: Package, badge: 0 },
+             { key: 'stock-reports' as const, label: 'Báo cáo kho', icon: Package, badge: 0 },
+           ].map(({ key, label, icon: Icon, badge }) => (
             <button
               key={key}
               onClick={() => key === 'salary' ? navigate('/admin/salary') : setTab(key)}
@@ -326,6 +328,22 @@ export default function AdminDashboard() {
                 periodStart={periods[0].start_date}
                 periodEnd={periods[0].end_date}
                 offDays={periods[0].off_days || []}
+              />
+            ) : (
+              <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+                Chưa có kỳ làm việc nào
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'shift-register' && (
+          <>
+            {periods.length > 0 ? (
+              <AdminShiftRegister
+                periodId={periods[0].id}
+                periodStart={periods[0].start_date}
+                periodEnd={periods[0].end_date}
               />
             ) : (
               <div className="glass-card p-8 text-center text-muted-foreground text-sm">
