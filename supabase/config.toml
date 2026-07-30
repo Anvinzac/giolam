@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.inspect-type-b]
 verify_jwt = false
+
+[functions.temp-test-accounts]
+verify_jwt = false
