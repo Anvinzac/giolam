@@ -10,6 +10,7 @@ import SalaryAdmin from "./pages/SalaryAdmin";
 import SalaryEmployee from "./pages/SalaryEmployee";
 import EmployeeSalaryEntry from "./pages/EmployeeSalaryEntry";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
+import EmployeeShiftRegister from "./pages/EmployeeShiftRegister";
 import StockAlertForm from "./pages/StockAlertForm";
 import NoticeBoard from "./pages/NoticeBoard";
 import Settings from "./pages/Settings";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/dashboard" element={<EmployeeDashboard />} />
           <Route path="/salary" element={<SalaryEmployee />} />
           <Route path="/salary/edit" element={<EmployeeSalaryEntry />} />
+          <Route path="/shift-register" element={<EmployeeShiftRegister />} />
           <Route path="/stock-alert" element={<StockAlertForm />} />
           <Route path="/notice-board" element={<NoticeBoard />} />
           <Route path="/settings" element={<Settings />} />

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings, History } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings, History, CalendarPlus, Package } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
 import DockedStockReport from '@/components/DockedStockReport';
@@ -455,6 +455,22 @@ export default function EmployeeSalaryEntry() {
               <History size={18} />
             </motion.button>
           )}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/shift-register')}
+            aria-label="Đăng ký ca"
+            className="p-2 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors"
+          >
+            <CalendarPlus size={18} />
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/stock-alert')}
+            aria-label="Báo cáo kho"
+            className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
+          >
+            <Package size={18} />
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}

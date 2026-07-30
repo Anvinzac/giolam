@@ -26,8 +26,17 @@ interface Props {
 }
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const SHORT_NAMES: Record<string, string> = {
+  'Minh Vũ': 'M.Vũ',
+  'Minh Anh': 'M.Anh',
+  'Hữu Khang': 'H.Khang',
+};
+
+function shortName(full: string): string {
+  return SHORT_NAMES[full] || full;
+}
 const SHIFT_DEFAULTS: Record<string, { clock_in: string; clock_out: string; label: string; color: string; bg: string; border: string }> = {
-  morning: { clock_in: '08:00', clock_out: '15:00', label: 'Nay', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' },
+  morning: { clock_in: '08:00', clock_out: '15:00', label: 'Sáng', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' },
   afternoon: { clock_in: '15:00', clock_out: '22:00', label: 'Chiều', color: 'text-accent', bg: 'bg-accent/10', border: 'border-accent/20' },
 };
 
@@ -45,6 +54,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
   const [serviceEmployees, setServiceEmployees] = useState<{ user_id: string; full_name: string }[]>([]);
   const [activeEmployee, setActiveEmployee] = useState<string | null>(null);
   const [pendingToggles, setPendingToggles] = useState<Set<string>>(new Set());
+  const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
   const [pickerOpen, setPickerOpen] = useState<{ date: string; shift: string } | null>(null);
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [editSlot, setEditSlot] = useState<{ date: string; shift: string; userId: string } | null>(null);
@@ -64,11 +74,19 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
 
   useEffect(() => {
     const fetchData = async () => {
-      const [{ data: profiles }, { data: departments }, { data: shifts }] = await Promise.all([
+      const [{ data: profiles }, { data: departments }, { data: shifts }, { data: registrations }] = await Promise.all([
         supabase.from('profiles').select('user_id, full_name, work_shift, shift_type, department_id'),
         supabase.from('departments').select('id, name'),
         supabase.from('shifts').select('*').eq('period_id', periodId),
+        supabase.from('shift_registrations').select('user_id, status').eq('status', 'pending'),
       ]);
+
+      // Count pending registrations per employee
+      const pCounts: Record<string, number> = {};
+      for (const r of (registrations || [])) {
+        pCounts[r.user_id] = (pCounts[r.user_id] || 0) + 1;
+      }
+      setPendingCounts(pCounts);
 
       const receptionDept = (departments || []).find((d: any) => d.name === 'Reception');
       const receptionDeptId = receptionDept?.id || '';
@@ -126,7 +144,8 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
 
   useEffect(() => {
     if (!pickerOpen) return;
-    setSelectedEmployees(new Set());
+    const currentSlots = dayShifts[pickerOpen.date]?.[pickerOpen.shift] || [];
+    setSelectedEmployees(new Set(currentSlots.map(s => s.user_id)));
   }, [pickerOpen]);
 
   useEffect(() => {
@@ -229,20 +248,26 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
   }, [activeEmployee, dayShifts, periodId, serviceEmployees]);
 
   const handleDone = async () => {
-    if (!pickerOpen || selectedEmployees.size === 0) {
+    if (!pickerOpen) {
       setPickerOpen(null);
       return;
     }
 
     const defaults = SHIFT_DEFAULTS[pickerOpen.shift];
     const { data: { user } } = await supabase.auth.getUser();
-    const savedNames: string[] = [];
+    const currentSlots = dayShifts[pickerOpen.date]?.[pickerOpen.shift] || [];
+    const previousIds = new Set(currentSlots.map(s => s.user_id));
+
+    // Employees to add (newly selected) and to remove (deselected)
+    const toAdd = [...selectedEmployees].filter(id => !previousIds.has(id));
+    const toRemove = [...previousIds].filter(id => !selectedEmployees.has(id));
+
     let errors = 0;
 
-    for (const userId of selectedEmployees) {
+    // Add new employees
+    for (const userId of toAdd) {
       const emp = serviceEmployees.find(e => e.user_id === userId);
       if (!emp) continue;
-
       const { error } = await supabase.from('shifts').upsert({
         period_id: periodId,
         user_id: userId,
@@ -253,46 +278,45 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         clock_out: defaults.clock_out,
         notice: null,
         updated_by: user?.id,
-      } as any, {
-        onConflict: 'user_id,shift_date,shift_slot',
-      });
+      } as any, { onConflict: 'user_id,shift_date,shift_slot' });
+      if (error) errors++;
+    }
 
-      if (error) {
-        errors++;
-      } else {
-        savedNames.push(emp.full_name);
-      }
+    // Remove deselected employees
+    for (const userId of toRemove) {
+      const { error } = await supabase.from('shifts')
+        .delete()
+        .eq('period_id', periodId)
+        .eq('user_id', userId)
+        .eq('shift_date', pickerOpen.date)
+        .eq('shift_slot', pickerOpen.shift);
+      if (error) errors++;
     }
 
     if (errors > 0) {
-      toast.error(`Lỗi khi đăng ký ${errors} nhân viên`);
-    } else if (savedNames.length === 1) {
-      toast.success(`Đã đăng ký ${savedNames[0]}`);
-    } else if (savedNames.length > 1) {
-      toast.success(`Đã đăng ký ${savedNames.length} nhân viên`);
+      toast.error(`Lỗi: ${errors} thao tác thất bại`);
+    } else if (toAdd.length > 0 || toRemove.length > 0) {
+      toast.success(`Đã cập nhật`);
     }
 
-    setDayShifts(prev => {
-      const current = prev[pickerOpen.date]?.[pickerOpen.shift] || [];
-      const newSlots: ShiftSlot[] = [];
-      for (const userId of selectedEmployees) {
-        const emp = serviceEmployees.find(e => e.user_id === userId);
-        if (!emp || current.find(s => s.user_id === userId)) continue;
-        newSlots.push({
-          user_id: userId,
-          full_name: emp.full_name,
-          clock_in: defaults.clock_in,
-          clock_out: defaults.clock_out,
-        });
-      }
-      return {
-        ...prev,
-        [pickerOpen.date]: {
-          ...prev[pickerOpen.date],
-          [pickerOpen.shift]: [...current, ...newSlots],
-        },
-      };
-    });
+    // Update local state
+    setDayShifts(prev => ({
+      ...prev,
+      [pickerOpen.date]: {
+        ...prev[pickerOpen.date],
+        [pickerOpen.shift]: serviceEmployees
+          .filter(emp => selectedEmployees.has(emp.user_id))
+          .map(emp => {
+            const existing = currentSlots.find(s => s.user_id === emp.user_id);
+            return {
+              user_id: emp.user_id,
+              full_name: emp.full_name,
+              clock_in: existing?.clock_in || defaults.clock_in,
+              clock_out: existing?.clock_out || defaults.clock_out,
+            };
+          }),
+      },
+    }));
 
     setPickerOpen(null);
   };
@@ -438,18 +462,24 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
       <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
         {serviceEmployees.map(emp => {
           const isActive = activeEmployee === emp.user_id;
+          const count = pendingCounts[emp.user_id] || 0;
           return (
             <motion.button
               key={emp.user_id}
               whileTap={{ scale: 0.95 }}
               onClick={() => setActiveEmployee(isActive ? null : emp.user_id)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+              className={`relative shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                 isActive
                   ? 'gradient-gold text-primary-foreground border-transparent'
                   : 'bg-muted text-foreground border-border hover:bg-muted/80'
               }`}
             >
-              {emp.full_name}
+              {shortName(emp.full_name)}
+              {count > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center leading-none">
+                  {count}
+                </span>
+              )}
             </motion.button>
           );
         })}
@@ -459,7 +489,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
       {activeEmployee && (
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <span>Đang đăng ký cho</span>
-          <span className="font-semibold text-foreground">{activeEmpName}</span>
+          <span className="font-semibold text-foreground">{activeEmpName ? shortName(activeEmpName) : ''}</span>
           <button
             onClick={() => setActiveEmployee(null)}
             className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground hover:text-foreground text-[10px]"
@@ -483,7 +513,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
             </th>
             <th className="px-2 py-2 text-center border-b border-border">
               <span className="inline-flex items-center gap-1.5 text-success">
-                <Clock size={12} /> Nay
+                <Clock size={12} /> Sáng
               </span>
             </th>
             <th className="px-2 py-2 text-center border-b border-border">
@@ -591,7 +621,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
                         : 'bg-muted text-foreground hover:bg-muted/80'
                     }`}
                   >
-                    <span className="font-medium truncate">{emp.full_name}</span>
+                    <span className="font-medium truncate">{shortName(emp.full_name)}</span>
                     {isSelected && <Check size={16} />}
                   </button>
                 );
@@ -764,7 +794,7 @@ function ShiftCell({ dateStr, shiftKey, section, slots, activeEmployee, activeEm
                     : 'bg-muted text-foreground'
                 }`}
               >
-                {slot.full_name}
+                {shortName(slot.full_name)}
               </span>
             );
           })}
