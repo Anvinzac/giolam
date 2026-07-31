@@ -262,8 +262,8 @@ export default function AdminEmployeeManager() {
 
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Giờ làm mặc định</label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  <div>
+                <div className="relative w-full h-[58px] mt-1">
+                  <div className="absolute left-0 w-[38%]">
                     <span className="text-[10px] text-muted-foreground">Vào ca</span>
                     <input
                       type="time"
@@ -272,7 +272,8 @@ export default function AdminEmployeeManager() {
                       className="w-full mt-0.5 px-3 py-2.5 rounded-xl bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
-                  <div>
+                  <span className="absolute left-[38%] right-[38%] text-center text-muted-foreground text-sm leading-[58px]">–</span>
+                  <div className="absolute right-0 w-[38%]">
                     <span className="text-[10px] text-muted-foreground">Tan ca</span>
                     <input
                       type="time"

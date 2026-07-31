@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { Check, Pen, X, Undo, Clock, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, Pen, X, Undo, Clock, Calendar, ChevronLeft, ChevronRight, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { getWeekDates } from "@/lib/lunarUtils";
 import { format } from "date-fns";
@@ -27,7 +27,7 @@ interface Props {
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 const STATUS_STYLES: Record<string, { bg: string; border: string; text: string; icon: string; label: string }> = {
-  pending:  { bg: 'from-amber-500/15 via-amber-500/10 via-60% to-transparent', border: 'border-amber-500/20', text: 'text-amber-600', icon: 'text-amber-500', label: 'Chờ' },
+  pending:  { bg: 'from-amber-400/25 via-amber-400/10 via-60% to-transparent', border: 'border-amber-400/25', text: 'text-amber-500', icon: 'text-amber-400', label: 'Chờ' },
   approved: { bg: 'from-emerald-500/15 via-emerald-500/10 via-60% to-transparent', border: 'border-emerald-500/20', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Duyệt' },
   rejected: { bg: 'from-red-500/15 via-red-500/10 via-60% to-transparent', border: 'border-red-500/20', text: 'text-red-600', icon: 'text-red-500', label: 'Từ chối' },
   modified: { bg: 'from-violet-500/15 via-violet-500/10 via-60% to-transparent', border: 'border-violet-500/20', text: 'text-violet-600', icon: 'text-violet-500', label: 'Sửa' },
@@ -184,7 +184,7 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
           <Calendar size={16} className="text-primary" />
           {weekLabel}
           {pendingCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-bold">{pendingCount}</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-500 text-[10px] font-bold">{pendingCount}</span>
           )}
         </h2>
         <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground">
@@ -265,7 +265,9 @@ function RegCell({ regs, profiles, editingId, editClockIn, editClockOut, editNot
           <div key={reg.id} className={`rounded-sm bg-gradient-to-t ${s.bg} border ${s.border} p-1.5`}>
             <div className="flex items-center justify-between">
               <div className="text-[10px] font-semibold text-foreground truncate">{profiles.get(reg.user_id) || '?'}</div>
-              <span className={`text-[9px] font-semibold shrink-0 ml-1 ${s.text}`}>{s.label}</span>
+              <span className={`text-[9px] font-semibold shrink-0 ml-1 ${s.text}`}>
+                {reg.status === 'assigned' ? <UserCheck size={12} /> : s.label}
+              </span>
             </div>
             <div className="text-[8px] text-muted-foreground">
               {reg.clock_in?.slice(0, 5)}–{reg.clock_out?.slice(0, 5)}
@@ -289,18 +291,18 @@ function RegCell({ regs, profiles, editingId, editClockIn, editClockOut, editNot
       {pendingRegs.map((reg: Registration) => {
         const isEditing = editingId === reg.id;
         return (
-          <div key={reg.id} className="rounded-sm bg-gradient-to-t from-amber-500/15 via-amber-500/10 via-60% to-transparent border border-amber-500/20 p-1.5">
+          <div key={reg.id} className="rounded-sm bg-gradient-to-t from-amber-400/25 via-amber-400/10 via-60% to-transparent border border-amber-400/25 p-1.5">
             {!isEditing ? (
               <div>
                 <div className="flex items-center justify-between">
                   <div className="text-[10px] font-semibold text-foreground truncate">{profiles.get(reg.user_id) || '?'}</div>
-                  <span className="text-[8px] text-amber-500/80 italic shrink-0 ml-1">{STATUS_STYLES.pending.label}</span>
+                  <span className="text-[8px] text-amber-400/90 italic shrink-0 ml-1">{STATUS_STYLES.pending.label}</span>
                 </div>
                 <div className="text-[8px] text-muted-foreground">
                   {reg.clock_in?.slice(0, 5)}–{reg.clock_out?.slice(0, 5)}
-                  {reg.admin_note && <span className="text-amber-500/60 ml-1 italic">{reg.admin_note}</span>}
+                  {reg.admin_note && <span className="text-amber-400/70 ml-1 italic">{reg.admin_note}</span>}
                 </div>
-                <div className="grid grid-cols-3 gap-1 mt-1.5 pt-1 border-t border-amber-500/15">
+                <div className="grid grid-cols-3 gap-1 mt-1.5 pt-1 border-t border-amber-400/20">
                   <motion.button whileTap={{ scale: 0.95 }} onClick={() => onAction(reg.id, 'approved')}
                     className="py-1 rounded flex items-center justify-center text-emerald-600 hover:bg-emerald-500/10">
                     <Check size={14} />

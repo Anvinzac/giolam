@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Calendar, Clock, Check, ChevronLeft, ChevronRight, X, Users, Edit3 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Check, ChevronLeft, ChevronRight, X, User, Edit3, HelpCircle } from "lucide-react";
 import { getWeekDates, getMoonLabel } from "@/lib/lunarUtils";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ export default function EmployeeShiftRegister() {
   const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
   const [slotNames, setSlotNames] = useState<Record<string, string[]>>({});
   const [showApproved, setShowApproved] = useState(false);
+  const slideDir = useRef(0);
 
   const [editOpen, setEditOpen] = useState<{ dateStr: string; shiftKey: string } | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
@@ -186,11 +187,13 @@ export default function EmployeeShiftRegister() {
     if (isPending) {
       setPending(prev => { const n = new Set(prev); n.delete(key); return n; });
       setPendingDetails(prev => { const n = { ...prev }; delete n[key]; return n; });
+      setRegistrationStatus(prev => { const n = { ...prev }; delete n[key]; return n; });
     } else {
       setPending(prev => { const n = new Set(prev); n.add(key); return n; });
       setPendingDetails(prev => ({
         ...prev, [key]: { clockIn: defaults.clockIn, clockOut: defaults.clockOut, note: "" },
       }));
+      setRegistrationStatus(prev => ({ ...prev, [key]: 'pending' }));
     }
 
     // Fire DB in background
@@ -242,9 +245,11 @@ export default function EmployeeShiftRegister() {
     } as any, { onConflict: "user_id,shift_date,shift_slot" });
 
     const key = `${dateStr}|${shiftKey}`;
+    setPending(prev => { const n = new Set(prev); n.add(key); return n; });
     setPendingDetails(prev => ({
       ...prev, [key]: { clockIn: editClockIn, clockOut: editClockOut, note: editNote },
     }));
+    setRegistrationStatus(prev => ({ ...prev, [key]: 'pending' }));
     toast.success("Đã cập nhật");
     setEditOpen(null);
   };
@@ -292,14 +297,14 @@ export default function EmployeeShiftRegister() {
 
         {/* Week nav */}
         <div className="flex items-center justify-between">
-          <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
+          <button onClick={() => { slideDir.current = -1; setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; }); }} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
             <ChevronLeft size={16} />
           </button>
           <h2 className="font-display font-semibold text-xs flex items-center gap-1.5">
             <Calendar size={14} className="text-primary" />
             {weekLabel}
           </h2>
-          <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
+          <button onClick={() => { slideDir.current = 1; setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; }); }} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
             <ChevronRight size={16} />
           </button>
         </div>
@@ -307,15 +312,24 @@ export default function EmployeeShiftRegister() {
 
       {/* Swipe + content area */}
       <div
-        className="px-4 pt-2"
+        className="px-4 pt-2 overflow-hidden"
         onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
         onTouchEnd={(e) => {
           const dx = e.changedTouches[0].clientX - touchX.current;
           if (Math.abs(dx) > 60) {
+            slideDir.current = dx > 0 ? -1 : 1;
             setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + (dx > 0 ? -7 : 7)); return d; });
           }
         }}
       >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={weekLabel}
+          initial={{ x: slideDir.current * 50, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: -slideDir.current * 50, opacity: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
       {showApproved ? (
         <ApprovedShiftTable weekDates={weekDates} periodId={periodId} />
       ) : (
@@ -325,7 +339,7 @@ export default function EmployeeShiftRegister() {
             <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded bg-warning/20 border border-warning/30" /> Chờ duyệt</span>
           </div>
 
-          <div className="rounded-xl border border-border overflow-hidden">
+          <div className="border border-border overflow-hidden">
             <table className="table-fixed w-full text-xs border-collapse">
               <colgroup>
                 <col className="w-[24%]" />
@@ -397,6 +411,8 @@ export default function EmployeeShiftRegister() {
           </div>
         </>
       )}
+        </motion.div>
+      </AnimatePresence>
 
       </div>
 
@@ -415,17 +431,19 @@ export default function EmployeeShiftRegister() {
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
-                <div>
+              <div className="flex items-end justify-between w-full">
+                <div className="w-[43%]">
                   <label className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-1">Giờ vào</label>
                   <input type="time" value={editClockIn} onChange={e => setEditClockIn(e.target.value)}
-                    className="w-full px-2 py-2 rounded-xl bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                    className="w-full m-0 block px-3 py-2 rounded-xl bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none" />
                 </div>
-                <span className="text-muted-foreground text-sm pb-2">–</span>
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-1">Giờ ra</label>
-                  <input type="time" value={editClockOut} onChange={e => setEditClockOut(e.target.value)}
-                    className="w-full px-2 py-2 rounded-xl bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                <div className="flex-1 pb-3 text-center text-muted-foreground text-sm">–</div>
+                <div className="w-[43%] flex flex-col items-end">
+                  <div className="w-full">
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide block mb-1">Giờ ra</label>
+                    <input type="time" value={editClockOut} onChange={e => setEditClockOut(e.target.value)}
+                      className="w-full m-0 block px-3 py-2 rounded-xl bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none" />
+                  </div>
                 </div>
               </div>
               <div>
@@ -483,7 +501,7 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
   }, [periodId]);
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
+    <div className="border border-border overflow-hidden">
       <table className="table-fixed w-full text-xs border-collapse">
         <colgroup>
           <col className="w-[24%]" />
@@ -512,8 +530,8 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
                     <span className="text-sm font-semibold text-foreground/50">{format(date, "dd")}</span>
                   </div>
                 </td>
-                <td className="px-2 py-2 border-r border-border/30">
-                  <div className="flex flex-wrap gap-1">
+                <td className="px-2 py-2 border-r border-border/30 h-[80px] align-middle">
+                  <div className="flex flex-wrap justify-center gap-1">
                     {day.morning.length === 0 ? (
                       <span className="text-[10px] text-muted-foreground/50">—</span>
                     ) : day.morning.map((name, i) => (
@@ -521,8 +539,8 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
                     ))}
                   </div>
                 </td>
-                <td className="px-2 py-2">
-                  <div className="flex flex-wrap gap-1">
+                <td className="px-2 py-2 h-[80px] align-middle">
+                  <div className="flex flex-wrap justify-center gap-1">
                     {day.afternoon.length === 0 ? (
                       <span className="text-[10px] text-muted-foreground/50">—</span>
                     ) : day.afternoon.map((name, i) => (
@@ -545,26 +563,29 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
   onTap: () => void; onEdit: () => void;
 }) {
   const STATUS_STYLES: Record<string, { bg: string; text: string; icon: string; label: string }> = {
-    pending:  { bg: 'bg-gradient-to-t from-amber-500/20 via-amber-500/10 via-60% to-transparent', text: 'text-amber-600', icon: 'text-amber-500', label: 'Chờ duyệt' },
-    approved: { bg: 'bg-gradient-to-t from-emerald-500/20 via-emerald-500/10 via-60% to-transparent', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Đã duyệt' },
-    rejected: { bg: 'bg-gradient-to-t from-red-500/20 via-red-500/10 via-60% to-transparent', text: 'text-red-600', icon: 'text-red-500', label: 'Từ chối' },
-    modified: { bg: 'bg-gradient-to-t from-violet-500/20 via-violet-500/10 via-60% to-transparent', text: 'text-violet-600', icon: 'text-violet-500', label: 'Đã sửa' },
-    assigned: { bg: 'bg-gradient-to-t from-blue-500/20 via-blue-500/10 via-60% to-transparent', text: 'text-blue-600', icon: 'text-blue-500', label: 'Admin xếp' },
+    pending:  { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-amber-400/35 to-transparent', text: 'text-amber-500', icon: 'text-amber-400', label: 'Chờ duyệt' },
+    approved: { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-emerald-500/30 to-transparent', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Đã duyệt' },
+    rejected: { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-red-500/30 to-transparent', text: 'text-red-600', icon: 'text-red-500', label: 'Từ chối' },
+    modified: { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-violet-500/30 to-transparent', text: 'text-violet-600', icon: 'text-violet-500', label: 'Đã sửa' },
+    assigned: { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-blue-500/25 to-transparent', text: 'text-blue-600', icon: 'text-blue-500', label: 'Admin xếp' },
   };
 
   if (isAdminRegistered) {
     return (
-      <div className="w-full rounded-sm bg-gradient-to-t from-emerald-500/20 via-emerald-500/10 via-60% to-transparent flex flex-col items-center justify-center py-3 relative">
-        <Check size={16} className="text-emerald-500" />
-        <span className="text-[10px] font-semibold text-emerald-600">Đã đăng ký</span>
-        {count > 0 && (
-          <div className="flex items-center gap-0.5 mt-0.5 opacity-40">
-            {Array.from({ length: Math.min(count, 5) }, (_, i) => (
-              <Users key={i} size={8} />
-            ))}
-            {count > 5 && <span className="text-[8px]">+{count - 5}</span>}
-          </div>
-        )}
+      <div className="w-full bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-emerald-500/30 to-transparent min-h-[72px] flex flex-col relative">
+        <div className="h-1/3 flex items-start justify-end pt-0.5 px-1">
+          {count > 1 && (
+            <span className="text-[8px] text-emerald-400/60 flex items-center gap-0.5">
+              <User size={8} />{count}
+            </span>
+          )}
+          {count <= 1 && <span className="h-4" />}
+        </div>
+        <div className="h-1/3 flex items-center justify-center gap-1.5">
+          <Check size={16} className="text-emerald-500" />
+          <span className="text-[11px] font-semibold text-emerald-600">Đã đăng ký</span>
+        </div>
+        <div className="h-1/3" />
       </div>
     );
   }
@@ -576,38 +597,72 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
       (detail.clockIn !== defaults.in || detail.clockOut !== defaults.out || detail.note);
 
     return (
-      <button type="button"
-        onClick={status === 'pending' ? onTap : (status === 'assigned' ? undefined : () => onEdit())}
-        className={`w-full rounded-sm ${s.bg} flex flex-col items-center justify-center gap-0.5 py-3 relative`}>
-        <Check size={14} className={s.icon} />
-        <span className={`text-[10px] font-semibold ${s.text}`}>{s.label}</span>
-        {(hasCustom || status === 'modified') && (
-          <span className={`text-[8px] ${s.text}/50`}>
-            {hasCustom ? `${detail!.clockIn} – ${detail!.clockOut}` : ''}
-          </span>
-        )}
-        <span className="text-[9px] text-foreground/25 mt-1">Yêu cầu thêm</span>
-        {count > 1 && (
-          <span className="absolute top-0.5 right-1.5 text-[8px] opacity-40 flex items-center gap-0.5">
-            <Users size={8} />{count}
-          </span>
-        )}
-      </button>
+      <div className={`w-full ${s.bg} min-h-[72px] flex flex-col relative`}>
+        {/* Top third: person count at right */}
+        <div className="h-1/3 flex items-start justify-end pt-0.5 px-1">
+          {count > 1 && (
+            <span className="text-[8px] opacity-40 flex items-center gap-0.5">
+              <User size={8} />{count}
+            </span>
+          )}
+          {count <= 1 && <span className="h-4" />}
+        </div>
+        {/* Middle third: status text + optional custom sub-text */}
+        <button type="button"
+          onClick={status === 'pending' ? onTap : (status === 'assigned' ? undefined : () => onEdit())}
+          className={`h-1/3 flex flex-col items-center gap-0.5 appearance-none outline-none border-0 bg-transparent ${hasCustom || status === 'modified' ? 'justify-start pt-0.5' : 'justify-center'}`}>
+          <div className="flex items-center gap-1.5">
+            {status === 'pending' ? (
+              <>
+                <HelpCircle size={14} className={s.icon} />
+                <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
+              </>
+            ) : status === 'approved' ? (
+              <>
+                <Check size={14} className={s.icon} />
+                <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
+              </>
+            ) : status === 'assigned' ? (
+              <User size={14} className={s.text} />
+            ) : (
+              <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
+            )}
+          </div>
+          {(hasCustom || status === 'modified') && (
+            <span className={`text-[10px] ${s.text}/60`}>
+              {detail!.clockIn !== defaults.in && detail!.clockOut !== defaults.out
+                ? `Vào ${detail!.clockIn} – Ra ${detail!.clockOut}`
+                : detail!.clockIn !== defaults.in
+                  ? `Vào ${detail!.clockIn}`
+                  : detail!.clockOut !== defaults.out
+                    ? `Ra ${detail!.clockOut}`
+                    : detail!.note || ''}
+            </span>
+          )}
+        </button>
+        {/* Bottom third: extra notice at top */}
+        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          className="h-1/3 flex items-start justify-center pt-3 hover:bg-foreground/5 transition-colors appearance-none outline-none border-0 bg-transparent">
+          <span className="text-[10px] text-foreground/60 font-medium">Yêu cầu thêm</span>
+        </button>
+      </div>
     );
   }
 
   return (
     <motion.button whileTap={{ scale: 0.95 }} type="button" onClick={onTap}
-      className="w-full rounded-sm flex flex-col items-center justify-center py-3 hover:bg-muted/30 transition-colors">
-      <span className="text-lg leading-none text-muted-foreground/40">+</span>
-      {count > 0 && (
-        <div className="flex items-center gap-0.5 mt-1 opacity-30">
-          {Array.from({ length: Math.min(count, 5) }, (_, i) => (
-            <Users key={i} size={8} />
-          ))}
-          {count > 5 && <span className="text-[8px]">+{count - 5}</span>}
-        </div>
-      )}
+      className="w-full min-h-[72px] flex flex-col appearance-none outline-none border-0 bg-transparent">
+      <div className="h-1/3 flex items-start justify-end pt-0.5 px-1">
+        {count > 0 && (
+          <span className="text-[8px] opacity-30 flex items-center gap-0.5">
+            <User size={8} />{count}
+          </span>
+        )}
+      </div>
+      <div className="h-1/3 flex items-center justify-center">
+        <span className="text-[32px] leading-none text-muted-foreground/20">+</span>
+      </div>
+      <div className="h-1/3" />
     </motion.button>
   );
 }

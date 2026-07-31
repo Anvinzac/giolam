@@ -733,8 +733,8 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
               </div>
 
               <div className="p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+                <div className="relative w-full h-[58px]">
+                  <div className="absolute left-0 w-[38%]">
                     <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Giờ vào</label>
                     <input
                       type="time"
@@ -743,7 +743,8 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
                       className="w-full mt-1 px-3 py-2 rounded-xl bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
-                  <div>
+                  <span className="absolute left-[38%] right-[38%] text-center text-muted-foreground text-sm leading-[58px]">–</span>
+                  <div className="absolute right-0 w-[38%]">
                     <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Giờ ra</label>
                     <input
                       type="time"
