@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Calendar, Clock, Check, ChevronLeft, ChevronRight, X, Users, Eye, EyeOff, Edit3 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Check, ChevronLeft, ChevronRight, X, Users, Edit3 } from "lucide-react";
 import { getWeekDates, getMoonLabel } from "@/lib/lunarUtils";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ export default function EmployeeShiftRegister() {
   const [editClockOut, setEditClockOut] = useState("");
   const [editNote, setEditNote] = useState("");
   const editRef = useRef<HTMLDivElement>(null);
+  const touchX = useRef(0);
 
   const [weekStart, setWeekStart] = useState(() => {
     const now = new Date();
@@ -258,32 +259,60 @@ export default function EmployeeShiftRegister() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 pb-4">
-      <header className="flex items-center gap-3 pt-4 pb-2">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate("/dashboard")}
-          className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft size={18} />
-        </motion.button>
-        <h1 className="font-display text-lg font-bold text-foreground flex-1">Đăng ký ca</h1>
-        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowApproved(!showApproved)}
-          className={`p-2 rounded-xl transition-colors ${showApproved ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
-          {showApproved ? <EyeOff size={18} /> : <Eye size={18} />}
-        </motion.button>
-      </header>
+    <div className="min-h-screen bg-background pb-4 overflow-hidden">
+      {/* Tab bar */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 pt-4 pb-2">
+        <div className="flex items-center gap-2 mb-3">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate("/dashboard")}
+            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft size={18} />
+          </motion.button>
+          <div className="flex-1 flex bg-muted rounded-xl p-0.5">
+            <button
+              onClick={() => setShowApproved(false)}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                !showApproved ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+              }`}
+            >
+              Đăng ký
+            </button>
+            <button
+              onClick={() => setShowApproved(true)}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                showApproved ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+              }`}
+            >
+              Đã xếp ca
+            </button>
+          </div>
+        </div>
 
-      <div className="flex items-center justify-between mb-3">
-        <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground">
-          <ChevronLeft size={18} />
-        </button>
-        <h2 className="font-display font-semibold text-sm flex items-center gap-2">
-          <Calendar size={16} className="text-primary" />
-          {weekLabel}
-        </h2>
-        <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground">
-          <ChevronRight size={18} />
-        </button>
+        {/* Week nav */}
+        <div className="flex items-center justify-between">
+          <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
+            <ChevronLeft size={16} />
+          </button>
+          <h2 className="font-display font-semibold text-xs flex items-center gap-1.5">
+            <Calendar size={14} className="text-primary" />
+            {weekLabel}
+          </h2>
+          <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
+            <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
 
+      {/* Swipe + content area */}
+      <div
+        className="px-4 pt-2"
+        onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+        onTouchEnd={(e) => {
+          const dx = e.changedTouches[0].clientX - touchX.current;
+          if (Math.abs(dx) > 60) {
+            setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + (dx > 0 ? -7 : 7)); return d; });
+          }
+        }}
+      >
       {showApproved ? (
         <ApprovedShiftTable weekDates={weekDates} periodId={periodId} />
       ) : (
@@ -365,6 +394,8 @@ export default function EmployeeShiftRegister() {
           </div>
         </>
       )}
+
+      </div>
 
       {/* Edit modal for custom times */}
       {editOpen && (
