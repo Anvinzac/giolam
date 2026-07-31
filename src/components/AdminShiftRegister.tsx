@@ -226,6 +226,12 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
           .eq('user_id', activeEmployee)
           .eq('shift_date', dateStr)
           .eq('shift_slot', shiftKey);
+        await supabase.from('shift_registrations')
+          .delete()
+          .eq('user_id', activeEmployee)
+          .eq('shift_date', dateStr)
+          .eq('shift_slot', shiftKey)
+          .eq('status', 'assigned');
       } else {
         await supabase.from('shifts').upsert({
           period_id: periodId,
@@ -236,6 +242,14 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
           clock_in: defaults.clock_in,
           clock_out: defaults.clock_out,
           notice: null,
+        } as any, { onConflict: 'user_id,shift_date,shift_slot' });
+        await supabase.from('shift_registrations').upsert({
+          user_id: activeEmployee,
+          shift_date: dateStr,
+          shift_slot: shiftKey,
+          status: 'assigned',
+          clock_in: defaults.clock_in,
+          clock_out: defaults.clock_out,
         } as any, { onConflict: 'user_id,shift_date,shift_slot' });
       }
 
@@ -279,7 +293,15 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         notice: null,
         updated_by: user?.id,
       } as any, { onConflict: 'user_id,shift_date,shift_slot' });
-      if (error) errors++;
+      if (error) { errors++; continue; }
+      await supabase.from('shift_registrations').upsert({
+        user_id: userId,
+        shift_date: pickerOpen.date,
+        shift_slot: pickerOpen.shift,
+        status: 'assigned',
+        clock_in: defaults.clock_in,
+        clock_out: defaults.clock_out,
+      } as any, { onConflict: 'user_id,shift_date,shift_slot' });
     }
 
     // Remove deselected employees
@@ -290,7 +312,13 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         .eq('user_id', userId)
         .eq('shift_date', pickerOpen.date)
         .eq('shift_slot', pickerOpen.shift);
-      if (error) errors++;
+      if (error) { errors++; continue; }
+      await supabase.from('shift_registrations')
+        .delete()
+        .eq('user_id', userId)
+        .eq('shift_date', pickerOpen.date)
+        .eq('shift_slot', pickerOpen.shift)
+        .eq('status', 'assigned');
     }
 
     if (errors > 0) {
@@ -362,6 +390,16 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
 
     toast.success("Đã cập nhật");
     setEditSlot(null);
+
+    // Mirror to registrations
+    await supabase.from('shift_registrations').upsert({
+      user_id: editSlot.userId,
+      shift_date: editSlot.date,
+      shift_slot: editSlot.shift,
+      status: 'assigned',
+      clock_in: editClockIn || null,
+      clock_out: editClockOut || null,
+    } as any, { onConflict: 'user_id,shift_date,shift_slot' });
   };
 
   const handleDeleteSlot = async () => {
@@ -389,6 +427,13 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
 
     toast.success("Đã xóa đăng ký");
     setEditSlot(null);
+
+    await supabase.from('shift_registrations')
+      .delete()
+      .eq('user_id', editSlot.userId)
+      .eq('shift_date', editSlot.date)
+      .eq('shift_slot', editSlot.shift)
+      .eq('status', 'assigned');
   };
 
   const handleRemoveSlot = async (date: string, shift: string, userId: string) => {
@@ -416,6 +461,12 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     });
 
     toast.success("Đã xóa đăng ký");
+    await supabase.from('shift_registrations')
+      .delete()
+      .eq('user_id', userId)
+      .eq('shift_date', date)
+      .eq('shift_slot', shift)
+      .eq('status', 'assigned');
   };
 
   const toggleEmployee = (userId: string) => {

@@ -95,27 +95,27 @@ export default function EmployeeShiftRegister() {
     if (!userId || !periodId) return;
 
     const fetchShifts = async () => {
-      const { data } = await supabase.from("shifts")
+      const { data: shiftsData } = await supabase.from("shifts")
         .select("shift_date, shift_slot")
         .eq("user_id", userId)
         .eq("period_id", periodId);
 
       const reg = new Set<string>();
-      for (const s of (data || [])) {
+      for (const s of (shiftsData || [])) {
         reg.add(`${s.shift_date}|${s.shift_slot}`);
       }
-      setRegistered(reg);
 
-      const { data: regs } = await supabase.from("shift_registrations")
+      const { data: allRegs } = await supabase.from("shift_registrations")
         .select("shift_date, shift_slot, clock_in, clock_out, admin_note, status")
         .eq("user_id", userId);
 
       const pen = new Set<string>();
       const statusMap: Record<string, string> = {};
       const details: Record<string, { clockIn: string; clockOut: string; note: string }> = {};
-      for (const r of (regs || [])) {
+      for (const r of (allRegs || [])) {
         const key = `${r.shift_date}|${r.shift_slot}`;
         if (r.status === "pending") pen.add(key);
+        if (r.status === "assigned") reg.add(key);
         statusMap[key] = r.status;
         details[key] = {
           clockIn: (r as any).clock_in?.slice(0, 5) || "",
@@ -123,6 +123,7 @@ export default function EmployeeShiftRegister() {
           note: (r as any).admin_note || "",
         };
       }
+      setRegistered(reg);
       setPending(pen);
       setRegistrationStatus(statusMap);
       setPendingDetails(details);
@@ -181,19 +182,26 @@ export default function EmployeeShiftRegister() {
       ? { clockIn: "08:00", clockOut: "15:00" }
       : { clockIn: "15:00", clockOut: "22:00" };
 
+    // Optimistic: update UI immediately
     if (isPending) {
-      // Cancel
+      setPending(prev => { const n = new Set(prev); n.delete(key); return n; });
+      setPendingDetails(prev => { const n = { ...prev }; delete n[key]; return n; });
+    } else {
+      setPending(prev => { const n = new Set(prev); n.add(key); return n; });
+      setPendingDetails(prev => ({
+        ...prev, [key]: { clockIn: defaults.clockIn, clockOut: defaults.clockOut, note: "" },
+      }));
+    }
+
+    // Fire DB in background
+    if (isPending) {
       await supabase.from("shift_registrations")
         .delete()
         .eq("user_id", userId)
         .eq("shift_date", dateStr)
         .eq("shift_slot", shiftKey);
-
-      setPending(prev => { const n = new Set(prev); n.delete(key); return n; });
-      setPendingDetails(prev => { const n = { ...prev }; delete n[key]; return n; });
       toast.success("Đã hủy đăng ký");
     } else {
-      // Quick register with defaults
       await supabase.from("shift_registrations").upsert({
         user_id: userId,
         shift_date: dateStr,
@@ -203,11 +211,6 @@ export default function EmployeeShiftRegister() {
         clock_out: defaults.clockOut,
         admin_note: null,
       } as any, { onConflict: "user_id,shift_date,shift_slot" });
-
-      setPending(prev => { const n = new Set(prev); n.add(key); return n; });
-      setPendingDetails(prev => ({
-        ...prev, [key]: { clockIn: defaults.clockIn, clockOut: defaults.clockOut, note: "" },
-      }));
       toast.success("Đã gửi đăng ký");
     }
   };
@@ -546,6 +549,7 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
     approved: { bg: 'bg-gradient-to-t from-emerald-500/20 via-emerald-500/10 via-60% to-transparent', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Đã duyệt' },
     rejected: { bg: 'bg-gradient-to-t from-red-500/20 via-red-500/10 via-60% to-transparent', text: 'text-red-600', icon: 'text-red-500', label: 'Từ chối' },
     modified: { bg: 'bg-gradient-to-t from-violet-500/20 via-violet-500/10 via-60% to-transparent', text: 'text-violet-600', icon: 'text-violet-500', label: 'Đã sửa' },
+    assigned: { bg: 'bg-gradient-to-t from-blue-500/20 via-blue-500/10 via-60% to-transparent', text: 'text-blue-600', icon: 'text-blue-500', label: 'Admin xếp' },
   };
 
   if (isAdminRegistered) {
@@ -573,7 +577,7 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
 
     return (
       <button type="button"
-        onClick={status === 'pending' ? onTap : () => onEdit()}
+        onClick={status === 'pending' ? onTap : (status === 'assigned' ? undefined : () => onEdit())}
         className={`w-full rounded-sm ${s.bg} flex flex-col items-center justify-center gap-0.5 py-3 relative`}>
         <Check size={14} className={s.icon} />
         <span className={`text-[10px] font-semibold ${s.text}`}>{s.label}</span>

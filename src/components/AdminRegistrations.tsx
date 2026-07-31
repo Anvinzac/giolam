@@ -31,6 +31,7 @@ const STATUS_STYLES: Record<string, { bg: string; border: string; text: string; 
   approved: { bg: 'from-emerald-500/15 via-emerald-500/10 via-60% to-transparent', border: 'border-emerald-500/20', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Duyệt' },
   rejected: { bg: 'from-red-500/15 via-red-500/10 via-60% to-transparent', border: 'border-red-500/20', text: 'text-red-600', icon: 'text-red-500', label: 'Từ chối' },
   modified: { bg: 'from-violet-500/15 via-violet-500/10 via-60% to-transparent', border: 'border-violet-500/20', text: 'text-violet-600', icon: 'text-violet-500', label: 'Sửa' },
+  assigned: { bg: 'from-blue-500/15 via-blue-500/10 via-60% to-transparent', border: 'border-blue-500/20', text: 'text-blue-600', icon: 'text-blue-500', label: 'Xếp' },
 };
 
 export default function AdminRegistrations({ onBadgeCount }: Props) {
@@ -65,17 +66,19 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
     const profileMap = new Map((pro || []).map(p => [p.user_id, p.full_name]));
     setProfiles(profileMap);
 
-    // Only show registrations from test accounts (nvienc, nviend)
+    const testUsernames = new Set(['N. Viên C', 'N. Viên D']);
     const testIds = [...profileMap.entries()]
-      .filter(([_, name]) => name === 'N. Viên C' || name === 'N. Viên D')
+      .filter(([_, name]) => testUsernames.has(name))
       .map(([id]) => id);
 
-    const { data: regs } = testIds.length > 0
-      ? await supabase.from('shift_registrations').select('*').in('user_id', testIds).order('created_at', { ascending: false })
-      : { data: [] };
+    const { data: allRegs } = await supabase.from('shift_registrations').select('*').order('created_at', { ascending: false });
 
-    setRegistrations((regs as Registration[]) || []);
-    onBadgeCount?.(((regs as Registration[]) || []).filter(r => r.status === 'pending').length);
+    const regs = ((allRegs as Registration[]) || []).filter(r =>
+      testIds.includes(r.user_id) || r.status === 'assigned'
+    );
+
+    setRegistrations(regs);
+    onBadgeCount?.(regs.filter(r => r.status === 'pending').length);
     setLoading(false);
   };
 
@@ -84,6 +87,10 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
   }, []);
 
   const handleAction = async (id: string, status: 'approved' | 'rejected') => {
+    // Optimistic: update UI immediately
+    setRegistrations(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    onBadgeCount?.(registrations.filter(r => r.status === 'pending' && r.id !== id).length);
+
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('shift_registrations').update({
       status,
@@ -91,10 +98,16 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
       reviewed_at: new Date().toISOString(),
     } as any).eq('id', id);
     toast.success(status === 'approved' ? 'Đã duyệt' : 'Đã từ chối');
-    fetchData();
   };
 
   const handleModify = async (id: string) => {
+    // Optimistic: update UI immediately
+    setRegistrations(prev => prev.map(r => r.id === id ? {
+      ...r, status: 'modified', admin_clock_in: editClockIn || null,
+      admin_clock_out: editClockOut || null, admin_note: editNote || null,
+    } : r));
+    setEditingId(null);
+
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('shift_registrations').update({
       status: 'modified',
@@ -105,8 +118,6 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
       reviewed_at: new Date().toISOString(),
     } as any).eq('id', id);
     toast.success('Đã sửa và duyệt');
-    setEditingId(null);
-    fetchData();
   };
 
   const startEdit = (reg: Registration) => {
@@ -116,7 +127,13 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
     setEditNote(reg.admin_note || '');
   };
 
-  const handleRevert = async (id: string) => {
+  const handleRevert = async (id: string, wasAssigned?: boolean) => {
+    // Optimistic: revert UI immediately
+    setRegistrations(prev => prev.map(r => r.id === id ? {
+      ...r, status: 'pending', reviewed_by: null, reviewed_at: null,
+      admin_clock_in: null, admin_clock_out: null, admin_note: null,
+    } : r));
+
     await supabase.from('shift_registrations').update({
       status: 'pending',
       reviewed_by: null,
@@ -125,8 +142,20 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
       admin_clock_out: null,
       admin_note: null,
     } as any).eq('id', id);
+
+    if (wasAssigned) {
+      // Remove from shifts table too since it was admin-assigned
+      const reg = registrations.find(r => r.id === id);
+      if (reg) {
+        await supabase.from('shifts')
+          .delete()
+          .eq('user_id', reg.user_id)
+          .eq('shift_date', reg.shift_date)
+          .eq('shift_slot', reg.shift_slot);
+      }
+    }
+
     toast.success('Đã hoàn tác');
-    fetchData();
   };
 
   // Group registrations by date + shift_slot
@@ -247,7 +276,7 @@ function RegCell({ regs, profiles, editingId, editClockIn, editClockOut, editNot
               <span className="text-[7px] text-muted-foreground/40 w-1/2">
                 {reg.clock_in?.slice(0, 5)}–{reg.clock_out?.slice(0, 5)}
               </span>
-              <motion.button whileTap={{ scale: 0.95 }} onClick={() => onRevert(reg.id)}
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => onRevert(reg.id, reg.status === 'assigned')}
                 className="w-1/2 py-1 rounded flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:bg-foreground/5">
                 <Undo size={13} />
               </motion.button>
