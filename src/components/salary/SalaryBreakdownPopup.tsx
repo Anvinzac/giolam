@@ -42,6 +42,7 @@ export default function SalaryBreakdownPopup({
     .join('');
 
   const depositK = breakdown.deposit ? toK(breakdown.deposit) : 0;
+  const depositLabel = breakdown.deposit_label || 'Tạm ứng';
   const fullExpression = depositK > 0 ? `${expression}-${depositK}` : expression;
 
   const handleCopy = async () => {
@@ -89,7 +90,7 @@ export default function SalaryBreakdownPopup({
                 <h3 className="font-display font-semibold text-foreground">= {formatVND(breakdown.total)}</h3>
                 {depositK > 0 && (
                   <p className="font-display font-extrabold text-sm text-gradient-gold mt-0.5">
-                    Chuyển khoản: {formatVND(breakdown.total - (breakdown.deposit || 0))}
+                    {depositLabel}: {formatVND(breakdown.total - (breakdown.deposit || 0))}
                   </p>
                 )}
               </div>

@@ -54,7 +54,9 @@ interface SalaryTableTypeCProps {
   currentUserId?: string | null;
   shiftType?: 'notice_only' | 'lunar_rate';
   deposit?: number;
+  depositLabel?: string;
   onDepositChange?: (amount: number) => void;
+  onDepositLabelChange?: (label: string) => void;
 }
 
 export default function SalaryTableTypeC({
@@ -69,7 +71,9 @@ export default function SalaryTableTypeC({
   editMode, onAcceptEntry, onRemoveEntry, currentUserId,
   shiftType = 'notice_only',
   deposit = 0,
+  depositLabel = 'Tạm ứng',
   onDepositChange,
+  onDepositLabelChange,
 }: SalaryTableTypeCProps) {
   const mode: 'admin' | 'employee' | 'preview' =
     editMode ?? (isPreview ? 'preview' : 'admin');
@@ -1690,6 +1694,8 @@ export default function SalaryTableTypeC({
           <TotalSalaryDisplay
             total={breakdown?.total ?? 0}
             deposit={deposit}
+            depositLabel={depositLabel}
+            onDepositLabelChange={onDepositLabelChange}
             onTap={() => setShowBreakdown(true)}
             onDepositChange={onDepositChange}
             isAdmin={mode === 'admin'}

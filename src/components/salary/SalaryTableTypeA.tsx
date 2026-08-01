@@ -32,7 +32,9 @@ interface SalaryTableTypeAProps {
   onAcceptEntry?: (id: string) => void;
   currentUserId?: string | null;
   deposit?: number;
+  depositLabel?: string;
   onDepositChange?: (amount: number) => void;
+  onDepositLabelChange?: (label: string) => void;
   /**
    * 'basic' (default) renders the canonical Type A flow — flat monthly
    * baseSalary plus per-day allowances. 'daily' switches the breakdown
@@ -57,7 +59,7 @@ export default function SalaryTableTypeA({
   onHourlyRateChange,
   periodStart, periodEnd, breakdown, isPreview = false,
   editMode, onAcceptEntry, currentUserId,
-  deposit = 0, onDepositChange,
+  deposit = 0, depositLabel = 'Tạm ứng', onDepositChange, onDepositLabelChange,
   shiftType = 'basic',
   coveragePeriodEnd,
 }: SalaryTableTypeAProps) {
@@ -701,6 +703,8 @@ export default function SalaryTableTypeA({
       <TotalSalaryDisplay
         total={breakdown?.total ?? totalFromEntries}
         deposit={deposit}
+        depositLabel={depositLabel}
+        onDepositLabelChange={onDepositLabelChange}
         onTap={() => setShowBreakdown(true)}
         onDepositChange={onDepositChange}
         isAdmin={mode === 'admin'}

@@ -34,7 +34,9 @@ interface SalaryTableTypeBProps {
   onAcceptEntry?: (id: string) => void;
   currentUserId?: string | null;
   deposit?: number;
+  depositLabel?: string;
   onDepositChange?: (amount: number) => void;
+  onDepositLabelChange?: (label: string) => void;
   offDays?: string[];
 }
 
@@ -96,7 +98,7 @@ export default function SalaryTableTypeB({
   breakdown,
   isPreview = false,
   editMode, onAcceptEntry, currentUserId,
-  deposit = 0, onDepositChange,
+  deposit = 0, depositLabel = 'Tạm ứng', onDepositChange, onDepositLabelChange,
   offDays = [],
 }: SalaryTableTypeBProps) {
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
@@ -1039,6 +1041,8 @@ export default function SalaryTableTypeB({
         <TotalSalaryDisplay
           total={breakdown?.total ?? 0}
           deposit={deposit}
+          depositLabel={depositLabel}
+          onDepositLabelChange={onDepositLabelChange}
           onTap={() => setShowBreakdown(true)}
           onDepositChange={onDepositChange}
           isAdmin={mode === 'admin'}

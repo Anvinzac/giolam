@@ -461,6 +461,7 @@ export default function SalaryAdmin() {
 
   // Compute breakdown
   const [deposit, setDeposit] = useState(0);
+  const [depositLabel, setDepositLabel] = useState('Tạm ứng');
   const depositLoadedRef = useRef(false);
 
   // Reset deposit immediately when switching employees
@@ -469,6 +470,7 @@ export default function SalaryAdmin() {
     const uid = selectedEmployee?.user_id || null;
     if (uid !== prevEmployeeRef.current) {
       setDeposit(0);
+      setDepositLabel('Tạm ứng');
       depositLoadedRef.current = false; // block auto-save until record loads
       prevEmployeeRef.current = uid;
     }
@@ -480,7 +482,9 @@ export default function SalaryAdmin() {
     if (!record) return; // wait for record
     if (record.user_id !== selectedEmployee.user_id) return;
     const saved = (record.salary_breakdown as SalaryBreakdown | null)?.deposit || 0;
+    const savedLabel = (record.salary_breakdown as SalaryBreakdown | null)?.deposit_label || 'Tạm ứng';
     setDeposit(saved);
+    setDepositLabel(savedLabel);
     depositLoadedRef.current = true; // now safe to auto-save
   }, [record?.id, selectedEmployee?.user_id]);
 
@@ -504,8 +508,8 @@ export default function SalaryAdmin() {
 
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
     if (!rawBreakdown) return null;
-    return { ...rawBreakdown, deposit };
-  }, [rawBreakdown, deposit]);
+    return { ...rawBreakdown, deposit, deposit_label: depositLabel };
+  }, [rawBreakdown, deposit, depositLabel]);
 
   // Auto-seed entries when employee has none
   const seedingRef = useRef<string | null>(null);
@@ -1249,7 +1253,9 @@ export default function SalaryAdmin() {
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
                 deposit={deposit}
+                depositLabel={depositLabel}
                 onDepositChange={setDeposit}
+                onDepositLabelChange={setDepositLabel}
                 shiftType={selectedEmployee.shift_type === 'daily' ? 'daily' : 'basic'}
                 coveragePeriodEnd={selectedPeriod.end_date}
               />
@@ -1299,7 +1305,9 @@ export default function SalaryAdmin() {
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
                 deposit={deposit}
+                depositLabel={depositLabel}
                 onDepositChange={setDeposit}
+                onDepositLabelChange={setDepositLabel}
                 offDays={selectedPeriod.off_days || []}
               />
               ) : (
@@ -1358,7 +1366,9 @@ export default function SalaryAdmin() {
                 currentUserId={adminUid}
                 shiftType={selectedEmployee.shift_type}
                 deposit={deposit}
+                depositLabel={depositLabel}
                 onDepositChange={setDeposit}
+                onDepositLabelChange={setDepositLabel}
                 offDays={selectedPeriod.off_days || []}
               />
             )}

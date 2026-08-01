@@ -39,18 +39,12 @@ export function useEmployeeAllowances(
     const init = async () => {
       setLoading(true);
 
-      // Try to fetch existing allowances for this period
-      const { data } = await supabase
+      // Fetch existing allowances for this period
+      const { data: existing } = await supabase
         .from('employee_allowances')
         .select('*')
         .eq('user_id', userId)
         .eq('period_id', periodId);
-
-      if (data && data.length > 0) {
-        setAllowances(data as EmployeeAllowance[]);
-        setLoading(false);
-        return;
-      }
 
       const syncDefaults = async (defaults: AllowanceDefault[]) => {
         if (defaults.length === 0) return defaults;
@@ -104,24 +98,60 @@ export function useEmployeeAllowances(
       defaultAllowances = ensureBuiltInDefaults(defaultAllowances, userId);
       defaultAllowances = await syncDefaults(defaultAllowances);
 
-      // Create allowances for current period from employee defaults
-      const newAllowances: Omit<EmployeeAllowance, 'id'>[] = defaultAllowances.map(defaultAllowance => {
-        return {
-          user_id: userId,
-          period_id: periodId,
-          allowance_key: defaultAllowance.allowance_key,
-          label: defaultAllowance.label,
-          amount: defaultAllowance.amount,
-          is_enabled: defaultAllowance.is_enabled,
-        };
-      });
+      // Build full allowance set from defaults, merging with any existing rows
+      const existingByKey = new Map((existing || []).map(e => [e.allowance_key, e]));
+      const fullAllowances: EmployeeAllowance[] = [];
 
-      const { data: inserted } = await supabase
-        .from('employee_allowances')
-        .insert(newAllowances)
-        .select();
+      for (const def of defaultAllowances) {
+        if (existingByKey.has(def.allowance_key)) {
+          const row = { ...existingByKey.get(def.allowance_key)! };
+          // Fix stale/empty labels by pulling from defaults
+          if (!row.label && def.label) row.label = def.label;
+          fullAllowances.push(row);
+        } else {
+          fullAllowances.push({
+            user_id: userId,
+            period_id: periodId,
+            allowance_key: def.allowance_key,
+            label: def.label,
+            amount: def.amount,
+            is_enabled: def.is_enabled,
+          });
+        }
+      }
 
-      if (inserted) setAllowances(inserted as EmployeeAllowance[]);
+      // Fill in any missing allowances in the DB
+      const missingKeys = defaultAllowances
+        .filter(d => !existingByKey.has(d.allowance_key))
+        .map(d => d.allowance_key);
+
+      if (missingKeys.length > 0) {
+        const toInsert = defaultAllowances
+          .filter(d => missingKeys.includes(d.allowance_key))
+          .map(d => ({
+            user_id: userId,
+            period_id: periodId,
+            allowance_key: d.allowance_key,
+            label: d.label,
+            amount: d.amount,
+            is_enabled: d.is_enabled,
+          }));
+
+        const { data: inserted } = await supabase
+          .from('employee_allowances')
+          .insert(toInsert)
+          .select();
+
+        // Merge inserted rows (with their new IDs) into fullAllowances
+        if (inserted) {
+          for (const row of inserted) {
+            const idx = fullAllowances.findIndex(a => a.allowance_key === row.allowance_key && !a.id);
+            if (idx >= 0) fullAllowances[idx] = row as EmployeeAllowance;
+          }
+        }
+      }
+
+      setAllowances(fullAllowances);
       setLoading(false);
     };
 

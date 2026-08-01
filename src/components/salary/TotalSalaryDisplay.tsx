@@ -12,6 +12,8 @@ export function formatVND(amount: number): string {
 interface TotalSalaryDisplayProps {
   total: number;
   deposit?: number;
+  depositLabel?: string;
+  onDepositLabelChange?: (label: string) => void;
   onTap: () => void;
   onDepositChange?: (amount: number) => void;
   isAdmin?: boolean;
@@ -20,11 +22,16 @@ interface TotalSalaryDisplayProps {
 export default function TotalSalaryDisplay({
   total,
   deposit = 0,
+  depositLabel = 'Tạm ứng',
+  onDepositLabelChange,
   onTap,
   onDepositChange,
   isAdmin = false,
 }: TotalSalaryDisplayProps) {
   const [editing, setEditing] = useState(false);
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelInput, setLabelInput] = useState(depositLabel);
+  const labelInputRef = useRef<HTMLInputElement>(null);
   // `inputVal` holds the SHORT form the admin typed (e.g. "50" = 50k
   // = 50,000 VND). The visible field always renders typed digits plus
   // a ghost ".000" hint so the multiplier convention is obvious
@@ -38,6 +45,18 @@ export default function TotalSalaryDisplay({
   useEffect(() => {
     if (editing && inputRef.current) inputRef.current.focus();
   }, [editing]);
+
+  useEffect(() => {
+    if (editingLabel && labelInputRef.current) labelInputRef.current.focus();
+  }, [editingLabel]);
+
+  const closeLabelEdit = () => {
+    const trimmed = labelInput.trim();
+    if (trimmed && trimmed !== depositLabel) {
+      onDepositLabelChange?.(trimmed);
+    }
+    setEditingLabel(false);
+  };
 
   // Convert a stored VND amount (e.g. 50000) back to short form
   // (e.g. "50") so the editor can pre-fill with the same scale the
@@ -102,9 +121,36 @@ export default function TotalSalaryDisplay({
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
+            onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-destructive/8 border border-destructive/15">
-              <span className="text-xs text-destructive/80 font-medium">Tạm ứng</span>
+              {editingLabel && isAdmin ? (
+                <input
+                  ref={labelInputRef}
+                  value={labelInput}
+                  onChange={e => setLabelInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') closeLabelEdit();
+                    if (e.key === 'Escape') setEditingLabel(false);
+                  }}
+                  onBlur={closeLabelEdit}
+                  className="w-[90px] px-1.5 py-0.5 rounded bg-background border border-destructive/30 text-xs text-destructive font-medium outline-none"
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={`text-xs text-destructive/80 font-medium ${isAdmin && onDepositLabelChange ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (isAdmin && onDepositLabelChange) {
+                      setLabelInput(depositLabel);
+                      setEditingLabel(true);
+                    }
+                  }}
+                >
+                  {depositLabel}
+                </button>
+              )}
               {editing ? (
                 <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center rounded border border-destructive/30 bg-background relative overflow-hidden min-w-[100px]">
@@ -170,7 +216,7 @@ export default function TotalSalaryDisplay({
           onClick={e => { e.stopPropagation(); startEdit(); }}
           className="text-[10px] text-muted-foreground hover:text-destructive/70 transition-colors"
         >
-          + Tạm ứng
+          + {depositLabel}
         </button>
       )}
 

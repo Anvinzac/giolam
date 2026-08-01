@@ -75,6 +75,7 @@ export interface SalaryBreakdown {
   allowances: { key: AllowanceKey; label: string; amount: number; enabled: boolean }[];
   total: number;
   deposit?: number;
+  deposit_label?: string;
 }
 
 export interface SalaryPage {
