@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, LogOut, Settings, Package } from 'lucide-react';
+import { ArrowLeft, LogOut, Package, ChevronRight } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
-import DockedStockReport, { openStockReport } from '@/components/DockedStockReport';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import { buildEmployeeTitle } from '@/lib/employeeGreeting';
@@ -80,22 +79,6 @@ export default function SalaryEmployee() {
           </h1>
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={() => openStockReport()}
-            aria-label="Báo cáo kiểm kho"
-            className="p-2 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
-          >
-            <Package size={18} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/settings')}
-            aria-label="Cài đặt"
-            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Settings size={18} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
             onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
             aria-label="Đăng xuất"
             className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-destructive transition-colors"
@@ -108,7 +91,21 @@ export default function SalaryEmployee() {
       <div className="px-4">
         {userId && <EmployeeSalaryView userId={userId} />}
       </div>
-      <DockedStockReport />
+
+      {/* Inventory tracking bar at bottom */}
+      <div className="px-4 mt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <button
+          onClick={() => navigate('/stock-alert')}
+          className="w-full glass-card border border-emerald-500/20 bg-emerald-500/5 rounded-2xl px-4 py-3.5 flex items-center gap-3"
+        >
+          <Package size={20} className="text-emerald-500" />
+          <span className="flex-1 text-left">
+            <span className="text-[13px] font-semibold">Kiểm kho</span>
+            <span className="text-[11px] text-muted-foreground block">Báo cáo nguyên liệu tồn kho</span>
+          </span>
+          <ChevronRight size={16} className="text-muted-foreground" />
+        </button>
+      </div>
     </div>
   );
 }

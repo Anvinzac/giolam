@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Settings, History, CalendarPlus, Package } from 'lucide-react';
+import { ArrowLeft, Clock as ClockIcon, LogOut, Sun, Moon, Package, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { toast } from 'sonner';
-import DockedStockReport from '@/components/DockedStockReport';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
 import SalaryTableTypeB from '@/components/salary/SalaryTableTypeB';
 import SalaryTableTypeC from '@/components/salary/SalaryTableTypeC';
@@ -26,6 +25,7 @@ import {
 import { generateDateRange } from '@/lib/salaryPaging';
 import { EmployeeShiftType, SalaryBreakdown } from '@/types/salary';
 import AppBootState from '@/components/AppBootState';
+import ShiftRegistrationInline from '@/components/shift/ShiftRegistrationInline';
 import { withTimeout } from '@/lib/withTimeout';
 import { buildEmployeeTitle } from '@/lib/employeeGreeting';
 
@@ -37,6 +37,8 @@ interface Profile {
   hourly_rate: number;
   default_clock_in: string | null;
   default_clock_out: string | null;
+  department_id: string | null;
+  department_name: string | null;
 }
 
 interface Period {
@@ -60,7 +62,6 @@ export default function EmployeeSalaryEntry() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
-  const [hasHistory, setHasHistory] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
@@ -135,6 +136,21 @@ export default function EmployeeSalaryEntry() {
     return raw.length > 5 ? raw.slice(0, 5) : raw;
   }, [profile?.default_clock_out]);
 
+  // Determine if this employee is Reception (Phục vụ)
+  const isReception = useMemo(() => {
+    if (!profile?.department_name && !profile?.department_id) return false;
+    const name = profile.department_name?.toLowerCase() || '';
+    const id = profile.department_id || '';
+    return name.includes('reception')
+      || name.includes('phục vụ')
+      || name.includes('service')
+      || id === 'd0000000-0000-0000-0000-000000000002';
+  }, [profile?.department_name, profile?.department_id]);
+
+  const [activeTab, setActiveTab] = useState<'salary' | 'shifts'>('salary');
+  const tabDir = useRef(0);
+  const touchStartX = useRef(0);
+
   const employeeVisibleEntries = useMemo(
     () => {
       // Type A (basic/daily) entries don't need clock_in/clock_out — show all of them
@@ -167,18 +183,10 @@ export default function EmployeeSalaryEntry() {
         }
         setUserId(user.id);
 
-        // Does this employee have any published payslip to look back on?
-        // Drives the History shortcut in the header.
-        supabase
-          .from('salary_published_snapshots')
-          .select('salary_record_id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .then(({ count }) => setHasHistory((count ?? 0) > 0));
-
         // Profile
         const { data: prof, error: profErr } = await withTimeout(
           supabase.from('profiles')
-            .select('user_id, full_name, shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out')
+            .select('user_id, full_name, shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out, department_id')
             .eq('user_id', user.id)
             .single(),
           10000,
@@ -186,6 +194,18 @@ export default function EmployeeSalaryEntry() {
         );
         if (!mounted) return;
         if (profErr || !prof) throw profErr || new Error('Profile not found');
+
+        // Resolve department name
+        let departmentName: string | null = null;
+        const deptId = (prof as any).department_id || null;
+        if (deptId) {
+          const { data: depts } = await supabase
+            .from('departments')
+            .select('id, name');
+          const deptMap = new Map((depts || []).map((d: any) => [d.id, d.name]));
+          departmentName = deptMap.get(deptId) || null;
+        }
+
         setProfile({
           user_id: (prof as any).user_id,
           full_name: (prof as any).full_name || 'Nhân viên',
@@ -196,6 +216,8 @@ export default function EmployeeSalaryEntry() {
           hourly_rate: (prof as any).hourly_rate ?? 25000,
           default_clock_in: (prof as any).default_clock_in || null,
           default_clock_out: (prof as any).default_clock_out || null,
+          department_id: deptId,
+          department_name: departmentName,
         });
 
         // Find the period containing today. If none exists, fall back to the
@@ -372,14 +394,6 @@ export default function EmployeeSalaryEntry() {
           </h1>
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/settings')}
-            aria-label="Cài đặt"
-            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Settings size={18} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}
             aria-label={isLight ? 'Chuyển nền tối' : 'Chuyển nền sáng'}
             className={`p-2 rounded-xl transition-colors ${
@@ -419,16 +433,8 @@ export default function EmployeeSalaryEntry() {
       <header className="px-6 pt-4 pb-2">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-xl font-bold text-gradient-gold flex items-center gap-2">
+            <h1 className="font-display text-xl font-bold text-gradient-gold">
               {buildEmployeeTitle(profile.full_name)}
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => navigate('/settings')}
-                aria-label="Cài đặt"
-                className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-              >
-                <Settings size={16} />
-              </motion.button>
             </h1>
             {(profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && selectedPeriod && (
               <div className="flex items-center gap-2 mt-1">
@@ -445,32 +451,6 @@ export default function EmployeeSalaryEntry() {
               </div>
             )}
           </div>
-          {hasHistory && (
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/salary')}
-              aria-label="Lịch sử lương"
-              className="p-2 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
-            >
-              <History size={18} />
-            </motion.button>
-          )}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/shift-register')}
-            aria-label="Đăng ký ca"
-            className="p-2 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors"
-          >
-            <CalendarPlus size={18} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/stock-alert')}
-            aria-label="Báo cáo kho"
-            className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
-          >
-            <Package size={18} />
-          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={toggleTheme}
@@ -490,114 +470,296 @@ export default function EmployeeSalaryEntry() {
             <LogOut size={18} />
           </motion.button>
         </div>
-        
-        {/* ViewToggle for Type B employees */}
-        {profile.shift_type === 'overtime' && (
-          <div className="mt-2 flex justify-center">
-            <ViewToggle currentView={viewMode} onToggle={setViewMode} />
-          </div>
-        )}
       </header>
 
-      <div className="px-4 space-y-4">
-        {selectedPeriod && (profile.shift_type === 'basic' || profile.shift_type === 'daily') && (
-          <SalaryTableTypeA
-            entries={employeeVisibleEntries}
-            rates={rates}
-            allowances={allowances}
-            baseSalary={profile.base_salary}
-            hourlyRate={profile.hourly_rate}
-            onEntryUpdate={updateEntry}
-            onAddRowAtDate={addRowAtDate}
-            onAllowanceToggle={toggleAllowance}
-            onAllowanceUpdate={updateAllowance}
-            onAddAllowance={addAllowance}
-            periodStart={selectedPeriod.start_date}
-            periodEnd={selectedPeriod.end_date}
-            breakdown={breakdown}
-            editMode={isPublished ? 'preview' : 'employee'}
-            currentUserId={userId}
-            shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
-            coveragePeriodEnd={selectedPeriod.end_date}
-          />
-        )}
+      {/* Tab bar — only show for Reception employees */}
+      {isReception && (
+        <div className="mx-4 mb-3 flex bg-muted rounded-xl p-0.5">
+          <button
+            onClick={() => { tabDir.current = activeTab === 'shifts' ? 1 : -1; setActiveTab('salary'); }}
+            className={`flex-1 py-2 text-xs font-medium rounded-[10px] transition-colors ${
+              activeTab === 'salary' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            Chấm công
+          </button>
+          <button
+            onClick={() => { tabDir.current = activeTab === 'salary' ? -1 : 1; setActiveTab('shifts'); }}
+            className={`flex-1 py-2 text-xs font-medium rounded-[10px] transition-colors ${
+              activeTab === 'shifts' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+            }`}
+          >
+            Đăng ký ca
+          </button>
+        </div>
+      )}
 
-        {selectedPeriod && profile.shift_type === 'overtime' && (
-          <>
-            {viewMode === 'table' ? (
-              <SalaryTableTypeB
-                entries={employeeVisibleEntries}
-                rates={rates}
-                allowances={allowances}
-                baseSalary={profile.base_salary}
-                hourlyRate={profile.hourly_rate}
-                globalClockIn={globalClockIn}
-                onGlobalClockInChange={() => {}}
-                periodStart={selectedPeriod.start_date}
-                periodEnd={selectedPeriod.end_date}
-                onEntryUpdate={updateEntry}
-                onAddDuplicateRow={addDuplicateRow}
-                onRemoveEntry={removeEntry}
-                onAllowanceToggle={toggleAllowance}
-                onAllowanceUpdate={updateAllowance}
-                onAddAllowance={addAllowance}
-                onHourlyRateChange={noop}
-                breakdown={breakdown}
-                editMode={isPublished ? 'preview' : 'employee'}
-                currentUserId={userId}
-                offDays={selectedPeriod.off_days || []}
-              />
+      {/* Swipeable tab content — Reception only */}
+      {isReception ? (
+        <div
+          className="overflow-hidden touch-pan-y"
+          onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            const dx = e.changedTouches[0].clientX - touchStartX.current;
+            if (Math.abs(dx) > 50) {
+              if (dx > 0 && activeTab === 'shifts') {
+                tabDir.current = 1;
+                setActiveTab('salary');
+              } else if (dx < 0 && activeTab === 'salary') {
+                tabDir.current = -1;
+                setActiveTab('shifts');
+              }
+            }
+          }}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            {activeTab === 'salary' ? (
+              <motion.div
+                key="salary"
+                initial={{ x: -tabDir.current * 80, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: tabDir.current * 80, opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="px-4 space-y-4"
+              >
+                {profile.shift_type === 'overtime' && (
+                  <div className="flex justify-center">
+                    <ViewToggle currentView={viewMode} onToggle={setViewMode} />
+                  </div>
+                )}
+
+                {selectedPeriod && (profile.shift_type === 'basic' || profile.shift_type === 'daily') && (
+                  <SalaryTableTypeA
+                    entries={employeeVisibleEntries}
+                    rates={rates}
+                    allowances={allowances}
+                    baseSalary={profile.base_salary}
+                    hourlyRate={profile.hourly_rate}
+                    onEntryUpdate={updateEntry}
+                    onAddRowAtDate={addRowAtDate}
+                    onAllowanceToggle={toggleAllowance}
+                    onAllowanceUpdate={updateAllowance}
+                    onAddAllowance={addAllowance}
+                    periodStart={selectedPeriod.start_date}
+                    periodEnd={selectedPeriod.end_date}
+                    breakdown={breakdown}
+                    editMode={isPublished ? 'preview' : 'employee'}
+                    currentUserId={userId}
+                    shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
+                    coveragePeriodEnd={selectedPeriod.end_date}
+                  />
+                )}
+
+                {selectedPeriod && profile.shift_type === 'overtime' && (
+                  <>
+                    {viewMode === 'table' ? (
+                      <SalaryTableTypeB
+                        entries={employeeVisibleEntries}
+                        rates={rates}
+                        allowances={allowances}
+                        baseSalary={profile.base_salary}
+                        hourlyRate={profile.hourly_rate}
+                        globalClockIn={globalClockIn}
+                        onGlobalClockInChange={() => {}}
+                        periodStart={selectedPeriod.start_date}
+                        periodEnd={selectedPeriod.end_date}
+                        onEntryUpdate={updateEntry}
+                        onAddDuplicateRow={addDuplicateRow}
+                        onRemoveEntry={removeEntry}
+                        onAllowanceToggle={toggleAllowance}
+                        onAllowanceUpdate={updateAllowance}
+                        onAddAllowance={addAllowance}
+                        onHourlyRateChange={noop}
+                        breakdown={breakdown}
+                        editMode={isPublished ? 'preview' : 'employee'}
+                        currentUserId={userId}
+                        offDays={selectedPeriod.off_days || []}
+                      />
+                    ) : (
+                      <ImmersiveInputTypeB
+                        entries={entries}
+                        rates={rates}
+                        allowances={allowances}
+                        baseSalary={profile.base_salary}
+                        hourlyRate={profile.hourly_rate}
+                        globalClockIn={globalClockIn}
+                        periodStart={selectedPeriod.start_date}
+                        periodEnd={selectedPeriod.end_date}
+                        offDays={selectedPeriod.off_days || []}
+                        onEntryUpdate={updateEntry}
+                        breakdown={breakdown}
+                        currentUserId={userId}
+                      />
+                    )}
+                  </>
+                )}
+
+                {selectedPeriod && (profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && (
+                  <SalaryTableTypeC
+                    entries={entries}
+                    rates={rates}
+                    allowances={allowances}
+                    offDays={selectedPeriod.off_days || []}
+                    hourlyRate={profile.hourly_rate}
+                    periodStart={selectedPeriod.start_date}
+                    periodEnd={selectedPeriod.end_date}
+                    customStartDate={null}
+                    customEndDate={null}
+                    defaultClockIn={globalClockIn}
+                    defaultClockOut={globalClockOut}
+                    onDefaultClockInChange={handleDefaultClockInChange}
+                    onDefaultClockOutChange={handleDefaultClockOutChange}
+                    onEntryUpdate={updateEntry}
+                    onEntryDateChange={moveEntryToDate}
+                    onAddRowAtDate={addRowAtDate}
+                    onAllowanceToggle={toggleAllowance}
+                    onAllowanceUpdate={updateAllowance}
+                    onAddAllowance={addAllowance}
+                    onHourlyRateChange={noop}
+                    onCustomDateChange={() => {}}
+                    onRemoveEntry={removeEntry}
+                    breakdown={breakdown}
+                    editMode={isPublished ? 'preview' : 'employee'}
+                    currentUserId={userId}
+                    shiftType={profile.shift_type}
+                  />
+                )}
+              </motion.div>
             ) : (
-              <ImmersiveInputTypeB
-                entries={entries}
-                rates={rates}
-                allowances={allowances}
-                baseSalary={profile.base_salary}
-                hourlyRate={profile.hourly_rate}
-                globalClockIn={globalClockIn}
-                periodStart={selectedPeriod.start_date}
-                periodEnd={selectedPeriod.end_date}
-                offDays={selectedPeriod.off_days || []}
-                onEntryUpdate={updateEntry}
-                breakdown={breakdown}
-                currentUserId={userId}
-              />
+              <motion.div
+                key="shifts"
+                initial={{ x: -tabDir.current * 80, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: tabDir.current * 80, opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+              >
+                <ShiftRegistrationInline userId={userId} periodId={selectedPeriodId || ''} fullName={profile?.full_name || ''} />
+              </motion.div>
             )}
-          </>
-        )}
+          </AnimatePresence>
+        </div>
+      ) : (
+        /* Kitchen employees: no tabs, just salary */
+        <div className="px-4 space-y-4">
+          {profile.shift_type === 'overtime' && (
+            <div className="flex justify-center">
+              <ViewToggle currentView={viewMode} onToggle={setViewMode} />
+            </div>
+          )}
 
-        {selectedPeriod && (profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && (
-          <SalaryTableTypeC
-            entries={entries}
-            rates={rates}
-            allowances={allowances}
-            offDays={selectedPeriod.off_days || []}
-            hourlyRate={profile.hourly_rate}
-            periodStart={selectedPeriod.start_date}
-            periodEnd={selectedPeriod.end_date}
-            customStartDate={null}
-            customEndDate={null}
-            defaultClockIn={globalClockIn}
-            defaultClockOut={globalClockOut}
-            onDefaultClockInChange={handleDefaultClockInChange}
-            onDefaultClockOutChange={handleDefaultClockOutChange}
-            onEntryUpdate={updateEntry}
-            onEntryDateChange={moveEntryToDate}
-            onAddRowAtDate={addRowAtDate}
-            onAllowanceToggle={toggleAllowance}
-            onAllowanceUpdate={updateAllowance}
-            onAddAllowance={addAllowance}
-            onHourlyRateChange={noop}
-            onCustomDateChange={() => {}}
-            onRemoveEntry={removeEntry}
-            breakdown={breakdown}
-            editMode={isPublished ? 'preview' : 'employee'}
-            currentUserId={userId}
-            shiftType={profile.shift_type}
-          />
-        )}
+          {selectedPeriod && (profile.shift_type === 'basic' || profile.shift_type === 'daily') && (
+            <SalaryTableTypeA
+              entries={employeeVisibleEntries}
+              rates={rates}
+              allowances={allowances}
+              baseSalary={profile.base_salary}
+              hourlyRate={profile.hourly_rate}
+              onEntryUpdate={updateEntry}
+              onAddRowAtDate={addRowAtDate}
+              onAllowanceToggle={toggleAllowance}
+              onAllowanceUpdate={updateAllowance}
+              onAddAllowance={addAllowance}
+              periodStart={selectedPeriod.start_date}
+              periodEnd={selectedPeriod.end_date}
+              breakdown={breakdown}
+              editMode={isPublished ? 'preview' : 'employee'}
+              currentUserId={userId}
+              shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
+              coveragePeriodEnd={selectedPeriod.end_date}
+            />
+          )}
+
+          {selectedPeriod && profile.shift_type === 'overtime' && (
+            <>
+              {viewMode === 'table' ? (
+                <SalaryTableTypeB
+                  entries={employeeVisibleEntries}
+                  rates={rates}
+                  allowances={allowances}
+                  baseSalary={profile.base_salary}
+                  hourlyRate={profile.hourly_rate}
+                  globalClockIn={globalClockIn}
+                  onGlobalClockInChange={() => {}}
+                  periodStart={selectedPeriod.start_date}
+                  periodEnd={selectedPeriod.end_date}
+                  onEntryUpdate={updateEntry}
+                  onAddDuplicateRow={addDuplicateRow}
+                  onRemoveEntry={removeEntry}
+                  onAllowanceToggle={toggleAllowance}
+                  onAllowanceUpdate={updateAllowance}
+                  onAddAllowance={addAllowance}
+                  onHourlyRateChange={noop}
+                  breakdown={breakdown}
+                  editMode={isPublished ? 'preview' : 'employee'}
+                  currentUserId={userId}
+                  offDays={selectedPeriod.off_days || []}
+                />
+              ) : (
+                <ImmersiveInputTypeB
+                  entries={entries}
+                  rates={rates}
+                  allowances={allowances}
+                  baseSalary={profile.base_salary}
+                  hourlyRate={profile.hourly_rate}
+                  globalClockIn={globalClockIn}
+                  periodStart={selectedPeriod.start_date}
+                  periodEnd={selectedPeriod.end_date}
+                  offDays={selectedPeriod.off_days || []}
+                  onEntryUpdate={updateEntry}
+                  breakdown={breakdown}
+                  currentUserId={userId}
+                />
+              )}
+            </>
+          )}
+
+          {selectedPeriod && (profile.shift_type === 'notice_only' || profile.shift_type === 'lunar_rate') && (
+            <SalaryTableTypeC
+              entries={entries}
+              rates={rates}
+              allowances={allowances}
+              offDays={selectedPeriod.off_days || []}
+              hourlyRate={profile.hourly_rate}
+              periodStart={selectedPeriod.start_date}
+              periodEnd={selectedPeriod.end_date}
+              customStartDate={null}
+              customEndDate={null}
+              defaultClockIn={globalClockIn}
+              defaultClockOut={globalClockOut}
+              onDefaultClockInChange={handleDefaultClockInChange}
+              onDefaultClockOutChange={handleDefaultClockOutChange}
+              onEntryUpdate={updateEntry}
+              onEntryDateChange={moveEntryToDate}
+              onAddRowAtDate={addRowAtDate}
+              onAllowanceToggle={toggleAllowance}
+              onAllowanceUpdate={updateAllowance}
+              onAddAllowance={addAllowance}
+              onHourlyRateChange={noop}
+              onCustomDateChange={() => {}}
+              onRemoveEntry={removeEntry}
+              breakdown={breakdown}
+              editMode={isPublished ? 'preview' : 'employee'}
+              currentUserId={userId}
+              shiftType={profile.shift_type}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Inventory tracking bar at bottom */}
+      <div className="px-4 mt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <button
+          onClick={() => navigate('/stock-alert')}
+          className="w-full glass-card border border-emerald-500/20 bg-emerald-500/5 rounded-2xl px-4 py-3.5 flex items-center gap-3"
+        >
+          <Package size={20} className="text-emerald-500" />
+          <span className="flex-1 text-left">
+            <span className="text-[13px] font-semibold">Kiểm kho</span>
+            <span className="text-[11px] text-muted-foreground block">Báo cáo nguyên liệu tồn kho</span>
+          </span>
+          <ChevronRight size={16} className="text-muted-foreground" />
+        </button>
       </div>
-      <DockedStockReport />
     </div>
   );
 }
