@@ -376,7 +376,7 @@ export default function EmployeeShiftRegister() {
 
                   return (
                     <tr key={dateStr} className="border-b border-border/30 last:border-0">
-                      <td className="bg-muted/30 px-1 py-2 border-r border-border text-center">
+                      <td className="bg-muted/30 px-1 py-2 border-r border-border text-center select-none">
                         <div className="flex flex-wrap items-baseline justify-center gap-x-1">
                           <span className={`text-base font-bold leading-none ${isWeekend ? 'text-accent' : 'text-foreground'}`}>{DAY_NAMES[dayIndex]}</span>
                           <span className="text-sm font-semibold text-foreground/50">{format(date, 'dd')}</span>
@@ -464,8 +464,30 @@ export default function EmployeeShiftRegister() {
   );
 }
 
+const PERSON_COLORS = [
+  "175 70% 45%",
+  "280 60% 55%",
+  "42 90% 55%",
+  "195 85% 50%",
+  "340 70% 55%",
+  "155 70% 45%",
+  "25 85% 55%",
+  "210 70% 55%",
+  "60 75% 50%",
+  "0 65% 55%",
+  "320 70% 50%",
+  "120 65% 45%",
+];
+const personColorMap = new Map<string, string>();
+function getPersonColor(userId: string): string {
+  if (!personColorMap.has(userId)) {
+    personColorMap.set(userId, PERSON_COLORS[personColorMap.size % PERSON_COLORS.length]);
+  }
+  return personColorMap.get(userId)!;
+}
+
 function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; periodId: string | null }) {
-  const [shifts, setShifts] = useState<Record<string, { morning: string[]; afternoon: string[] }>>({});
+  const [shifts, setShifts] = useState<Record<string, { morning: { name: string; userId: string }[]; afternoon: { name: string; userId: string }[] }>>({});
 
   useEffect(() => {
     if (!periodId) return;
@@ -484,15 +506,15 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
         nameMap.set(p.user_id, p.full_name);
       }
 
-      const byDate: Record<string, { morning: string[]; afternoon: string[] }> = {};
+      const byDate: Record<string, { morning: { name: string; userId: string }[]; afternoon: { name: string; userId: string }[] }> = {};
       for (const s of (allShifts || [])) {
         const d = s.shift_date;
         if (!byDate[d]) byDate[d] = { morning: [], afternoon: [] };
-        const name = nameMap.get(s.user_id) || "?";
+        const info = { name: nameMap.get(s.user_id) || "?", userId: s.user_id };
         if (s.shift_slot === "afternoon") {
-          byDate[d].afternoon.push(name);
+          byDate[d].afternoon.push(info);
         } else {
-          byDate[d].morning.push(name);
+          byDate[d].morning.push(info);
         }
       }
       setShifts(byDate);
@@ -531,20 +553,26 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
                   </div>
                 </td>
                 <td className="px-2 py-2 border-r border-border/30 h-[80px] align-middle">
-                  <div className="flex flex-wrap justify-center gap-1">
+                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
                     {day.morning.length === 0 ? (
                       <span className="text-[10px] text-muted-foreground/50">—</span>
-                    ) : day.morning.map((name, i) => (
-                      <span key={i} className="px-1.5 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-medium">{shortName(name)}</span>
+                    ) : day.morning.map((info, i) => (
+                      <span key={i} className="text-xs font-bold"
+                        style={{ color: `hsl(${getPersonColor(info.userId)})` }}>
+                        {shortName(info.name)}
+                      </span>
                     ))}
                   </div>
                 </td>
                 <td className="px-2 py-2 h-[80px] align-middle">
-                  <div className="flex flex-wrap justify-center gap-1">
+                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
                     {day.afternoon.length === 0 ? (
                       <span className="text-[10px] text-muted-foreground/50">—</span>
-                    ) : day.afternoon.map((name, i) => (
-                      <span key={i} className="px-1.5 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-medium">{shortName(name)}</span>
+                    ) : day.afternoon.map((info, i) => (
+                      <span key={i} className="text-xs font-bold"
+                        style={{ color: `hsl(${getPersonColor(info.userId)})` }}>
+                        {shortName(info.name)}
+                      </span>
                     ))}
                   </div>
                 </td>

@@ -14,7 +14,7 @@ interface ShiftSlot {
   clock_out: string | null;
 }
 
-const DEPT_COLORS = [
+const PERSON_COLORS = [
   "175 70% 45%",
   "280 60% 55%",
   "42 90% 55%",
@@ -23,13 +23,17 @@ const DEPT_COLORS = [
   "155 70% 45%",
   "25 85% 55%",
   "210 70% 55%",
+  "60 75% 50%",
+  "0 65% 55%",
+  "320 70% 50%",
+  "120 65% 45%",
 ];
-const deptColorMap = new Map<string, string>();
-function getDeptColor(dept: string): string {
-  if (!deptColorMap.has(dept)) {
-    deptColorMap.set(dept, DEPT_COLORS[deptColorMap.size % DEPT_COLORS.length]);
+const personColorMap = new Map<string, string>();
+function getPersonColor(userId: string): string {
+  if (!personColorMap.has(userId)) {
+    personColorMap.set(userId, PERSON_COLORS[personColorMap.size % PERSON_COLORS.length]);
   }
-  return deptColorMap.get(dept)!;
+  return personColorMap.get(userId)!;
 }
 
 interface DayShifts {
@@ -500,6 +504,18 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     });
   };
 
+  const activeEmpName = activeEmployee
+    ? serviceEmployees.find(e => e.user_id === activeEmployee)?.full_name
+    : null;
+
+  const colorByUser = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const emp of serviceEmployees) {
+      map.set(emp.user_id, getPersonColor(emp.user_id));
+    }
+    return map;
+  }, [serviceEmployees]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -507,18 +523,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
       </div>
     );
   }
-
-  const activeEmpName = activeEmployee
-    ? serviceEmployees.find(e => e.user_id === activeEmployee)?.full_name
-    : null;
-
-  const deptByUser = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const emp of serviceEmployees) {
-      map.set(emp.user_id, getDeptColor(emp.department_name));
-    }
-    return map;
-  }, [serviceEmployees]);
 
   return (
     <div className="space-y-3">
@@ -541,7 +545,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         {serviceEmployees.map(emp => {
           const isActive = activeEmployee === emp.user_id;
           const count = pendingCounts[emp.user_id] || 0;
-          const deptColor = getDeptColor(emp.department_name);
+          const color = getPersonColor(emp.user_id);
           return (
             <motion.button
               key={emp.user_id}
@@ -553,9 +557,9 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
                   : ''
               }`}
               style={!isActive ? {
-                backgroundColor: `hsl(${deptColor} / 0.15)`,
-                color: `hsl(${deptColor})`,
-                borderColor: `hsl(${deptColor} / 0.3)`,
+                backgroundColor: `hsl(${color} / 0.15)`,
+                color: `hsl(${color})`,
+                borderColor: `hsl(${color} / 0.3)`,
               } : undefined}
             >
               {shortName(emp.full_name)}
@@ -617,7 +621,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
 
             return (
               <tr key={dateStr} className="border-b border-border/30">
-                <td className="sticky left-0 z-10 bg-card px-1 py-2 border-r border-border text-center">
+                <td className="sticky left-0 z-10 bg-card px-1 py-2 border-r border-border text-center select-none">
                   <div className="flex flex-wrap items-baseline justify-center gap-x-1">
                     <span className={`text-base font-bold leading-none ${
                       isWeekend ? 'text-accent' : 'text-foreground'
@@ -644,7 +648,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
                     activeEmpName={activeEmpName}
                     onToggle={toggleEmployeeShift}
                     onPick={() => setPickerOpen({ date: dateStr, shift: 'morning' })}
-                    deptByUser={deptByUser}
+                    colorByUser={colorByUser}
                   />
                 </td>
 
@@ -658,7 +662,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
                     activeEmpName={activeEmpName}
                     onToggle={toggleEmployeeShift}
                     onPick={() => setPickerOpen({ date: dateStr, shift: 'afternoon' })}
-                    deptByUser={deptByUser}
+                    colorByUser={colorByUser}
                   />
                 </td>
               </tr>
@@ -825,10 +829,10 @@ interface ShiftCellProps {
   activeEmpName: string | null;
   onToggle: (dateStr: string, shiftKey: string) => void;
   onPick: () => void;
-  deptByUser: Map<string, string>;
+  colorByUser: Map<string, string>;
 }
 
-function ShiftCell({ dateStr, shiftKey, section, slots, activeEmployee, activeEmpName, onToggle, onPick, deptByUser }: ShiftCellProps) {
+function ShiftCell({ dateStr, shiftKey, section, slots, activeEmployee, activeEmpName, onToggle, onPick, colorByUser }: ShiftCellProps) {
   const handleClick = () => {
     if (activeEmployee) {
       onToggle(dateStr, shiftKey);
@@ -852,14 +856,12 @@ function ShiftCell({ dateStr, shiftKey, section, slots, activeEmployee, activeEm
       whileTap={{ scale: 0.97 }}
       type="button"
       onClick={handleClick}
-      className={`w-full rounded-xl border-2 transition-colors p-1.5 ${
+      className={`w-full h-full transition-colors ${
         activeEmployee
           ? activeOn
-            ? 'border-success/40 bg-success/5'
-            : 'border-dashed border-border/30 hover:border-border/60'
-          : !isEmpty
-            ? 'border-border/30 hover:border-primary/40'
-            : 'border-dashed border-border/30 hover:border-primary/40'
+            ? 'bg-success/5'
+            : ''
+          : ''
       }`}
     >
       {isEmpty ? (
@@ -868,25 +870,21 @@ function ShiftCell({ dateStr, shiftKey, section, slots, activeEmployee, activeEm
           <span>Thêm người</span>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-1 items-center">
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5 items-center">
           {displaySlots.map((slot: any) => {
             const isActiveChip = activeEmployee && slot.user_id === activeEmployee;
-            const deptColor = deptByUser.get(slot.user_id) || '';
+            const color = colorByUser.get(slot.user_id) || '';
             return (
               <span
                 key={slot.user_id + (slot.ghost ? '-g' : '')}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                className={`text-xs font-bold ${
                   isActiveChip
                     ? slot.ghost
                       ? 'invisible'
-                      : 'gradient-gold text-primary-foreground'
+                      : 'gradient-gold text-transparent bg-clip-text'
                     : ''
                 }`}
-                style={!isActiveChip && deptColor ? {
-                  backgroundColor: `hsl(${deptColor} / 0.15)`,
-                  color: `hsl(${deptColor})`,
-                  border: `1px solid hsl(${deptColor} / 0.3)`,
-                } : undefined}
+                style={!isActiveChip && color ? { color: `hsl(${color})` } : undefined}
               >
                 {shortName(slot.full_name)}
               </span>

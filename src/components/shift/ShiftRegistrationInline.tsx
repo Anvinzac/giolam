@@ -12,25 +12,27 @@ const SHORT_NAMES: Record<string, string> = {
 };
 function shortName(full: string): string { return SHORT_NAMES[full] || full; }
 
-const CHIP_COLORS = [
-  { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6' },   // blue
-  { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },    // amber
-  { bg: 'rgba(168,85,247,0.15)', text: '#a855f7' },    // violet
-  { bg: 'rgba(16,185,129,0.15)', text: '#10b981' },    // emerald
-  { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },     // red
-  { bg: 'rgba(6,182,212,0.15)', text: '#06b6d4' },     // cyan
-  { bg: 'rgba(236,72,153,0.15)', text: '#ec4899' },    // pink
-  { bg: 'rgba(132,204,22,0.15)', text: '#84cc16' },    // lime
-  { bg: 'rgba(99,102,241,0.15)', text: '#6366f1' },    // indigo
-  { bg: 'rgba(249,115,22,0.15)', text: '#f97316' },    // orange
-  { bg: 'rgba(217,70,239,0.15)', text: '#d946ef' },    // fuchsia
-  { bg: 'rgba(20,184,166,0.15)', text: '#14b8a6' },    // teal
-  { bg: 'rgba(244,63,94,0.15)', text: '#f43f5e' },     // rose
-  { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },     // green
-  { bg: 'rgba(139,92,246,0.15)', text: '#8b5cf6' },    // purple
-  { bg: 'rgba(14,165,233,0.15)', text: '#0ea5e9' },    // sky
-  { bg: 'rgba(234,88,12,0.15)', text: '#ea580c' },     // warm brown
+const PERSON_COLORS = [
+  "175 70% 45%",
+  "280 60% 55%",
+  "42 90% 55%",
+  "195 85% 50%",
+  "340 70% 55%",
+  "155 70% 45%",
+  "25 85% 55%",
+  "210 70% 55%",
+  "60 75% 50%",
+  "0 65% 55%",
+  "320 70% 50%",
+  "120 65% 45%",
 ];
+const personColorMap = new Map<string, string>();
+function getPersonColor(userId: string): string {
+  if (!personColorMap.has(userId)) {
+    personColorMap.set(userId, PERSON_COLORS[personColorMap.size % PERSON_COLORS.length]);
+  }
+  return personColorMap.get(userId)!;
+}
 
 interface ShiftRegistrationInlineProps {
   userId: string;
@@ -44,8 +46,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
   const [registrationStatus, setRegistrationStatus] = useState<Record<string, string>>({});
   const [pendingDetails, setPendingDetails] = useState<Record<string, { clockIn: string; clockOut: string; note: string }>>({});
   const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
-  const [slotNames, setSlotNames] = useState<Record<string, string[]>>({});
-  const [colorMap, setColorMap] = useState<Record<string, { bg: string; text: string }>>({});
+  const [slotNames, setSlotNames] = useState<Record<string, { name: string; userId: string }[]>>({});
   const [showApproved, setShowApproved] = useState(false);
   const slideDir = useRef(0);
 
@@ -124,22 +125,16 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
         nameMap.set(p.user_id, p.full_name);
       }
 
-      // Assign unique colors sequentially from deduped employee list
-      const allNames = [...new Set((empProfiles || []).map((p: any) => p.full_name))].sort();
-      const cmap: Record<string, { bg: string; text: string }> = {};
-      allNames.forEach((name, i) => {
-        cmap[name] = CHIP_COLORS[i % CHIP_COLORS.length];
-      });
-      setColorMap(cmap);
-
       const counts: Record<string, number> = {};
-      const names: Record<string, string[]> = {};
+      const names: Record<string, { name: string; userId: string }[]> = {};
       for (const s of (allShifts || [])) {
         const k = `${s.shift_date}|${s.shift_slot}`;
         counts[k] = (counts[k] || 0) + 1;
         const name = nameMap.get(s.user_id) || "?";
         if (!names[k]) names[k] = [];
-        if (!names[k].includes(name)) names[k].push(name);
+        if (!names[k].some(n => n.userId === s.user_id)) {
+          names[k].push({ name, userId: s.user_id });
+        }
       }
       setSlotCounts(counts);
       setSlotNames(names);
@@ -304,50 +299,50 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                       const dateStr = date.toISOString().split('T')[0];
                       const dayIndex = (date.getDay() + 6) % 7;
                       const isWeekend = dayIndex >= 5;
-                      const morningNames = slotNames[`${dateStr}|morning`] || [];
-                      const afternoonNames = slotNames[`${dateStr}|afternoon`] || [];
+                      const morningSlots = slotNames[`${dateStr}|morning`] || [];
+                      const afternoonSlots = slotNames[`${dateStr}|afternoon`] || [];
 
                       return (
                         <tr key={dateStr} className="border-b border-border/30 last:border-0">
-                          <td className="bg-muted/30 px-1 py-2 border-r border-border text-center">
+                          <td className="bg-muted/30 px-1 py-2 border-r border-border text-center select-none">
                             <div className="flex flex-wrap items-baseline justify-center gap-x-1">
                               <span className={`text-base font-bold leading-none ${isWeekend ? 'text-accent' : 'text-foreground'}`}>{DAY_NAMES[dayIndex]}</span>
                               <span className="text-sm font-semibold text-foreground/50">{format(date, 'dd')}</span>
                             </div>
                           </td>
                           <td className="px-2 py-2 border-r border-border/30 h-[80px] align-middle">
-                            <div className="flex flex-wrap justify-center gap-1">
-                              {morningNames.length === 0 ? (
+                            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
+                              {morningSlots.length === 0 ? (
                                 <span className="text-[10px] text-muted-foreground/50">—</span>
-                              ) : morningNames.map((name, i) => {
-                                const isMe = name === fullName;
-                                const color = colorMap[name];
+                              ) : morningSlots.map((info, i) => {
+                                const isMe = info.userId === userId;
+                                const c = getPersonColor(info.userId);
                                 return (
                                   <span
                                     key={i}
-                                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isMe ? 'ring-1 ring-offset-1 ring-offset-background' : ''}`}
-                                    style={color ? { backgroundColor: color.bg, color: color.text } : undefined}
+                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : ''}`}
+                                    style={{ color: `hsl(${c})` }}
                                   >
-                                    {shortName(name)}
+                                    {shortName(info.name)}
                                   </span>
                                 );
                               })}
                             </div>
                           </td>
                           <td className="px-2 py-2 h-[80px] align-middle">
-                            <div className="flex flex-wrap justify-center gap-1">
-                              {afternoonNames.length === 0 ? (
+                            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
+                              {afternoonSlots.length === 0 ? (
                                 <span className="text-[10px] text-muted-foreground/50">—</span>
-                              ) : afternoonNames.map((name, i) => {
-                                const isMe = name === fullName;
-                                const color = colorMap[name];
+                              ) : afternoonSlots.map((info, i) => {
+                                const isMe = info.userId === userId;
+                                const c = getPersonColor(info.userId);
                                 return (
                                   <span
                                     key={i}
-                                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isMe ? 'ring-1 ring-offset-1 ring-offset-background' : ''}`}
-                                    style={color ? { backgroundColor: color.bg, color: color.text } : undefined}
+                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : ''}`}
+                                    style={{ color: `hsl(${c})` }}
                                   >
-                                    {shortName(name)}
+                                    {shortName(info.name)}
                                   </span>
                                 );
                               })}
@@ -398,12 +393,12 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                         const afternoonDetail = pendingDetails[`${dateStr}|afternoon`];
                         const morningCount = slotCounts[`${dateStr}|morning`] || 0;
                         const afternoonCount = slotCounts[`${dateStr}|afternoon`] || 0;
-                        const morningNames = slotNames[`${dateStr}|morning`] || [];
-                        const afternoonNames = slotNames[`${dateStr}|afternoon`] || [];
+                        const morningNames = (slotNames[`${dateStr}|morning`] || []).map(s => s.name);
+                        const afternoonNames = (slotNames[`${dateStr}|afternoon`] || []).map(s => s.name);
 
                         return (
                           <tr key={dateStr} className="border-b border-border/30 last:border-0">
-                            <td className="bg-muted/30 px-1 py-2 border-r border-border text-center">
+                            <td className="bg-muted/30 px-1 py-2 border-r border-border text-center select-none">
                               <div className="flex flex-wrap items-baseline justify-center gap-x-1">
                                 <span className={`text-base font-bold leading-none ${isWeekend ? 'text-accent' : 'text-foreground'}`}>{DAY_NAMES[dayIndex]}</span>
                                 <span className="text-sm font-semibold text-foreground/50">{format(date, 'dd')}</span>

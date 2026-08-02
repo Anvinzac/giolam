@@ -512,7 +512,7 @@ export default function EmployeeSalaryEntry() {
             }
           }}
         >
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence initial={false}>
             {activeTab === 'salary' ? (
               <motion.div
                 key="salary"
