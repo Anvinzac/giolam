@@ -551,16 +551,16 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
               key={emp.user_id}
               whileTap={{ scale: 0.95 }}
               onClick={() => setActiveEmployee(isActive ? null : emp.user_id)}
-              className={`relative shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+              className={`relative shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                 isActive
-                  ? 'gradient-gold text-primary-foreground border-transparent'
+                  ? 'ring-2 ring-offset-1 ring-offset-background'
                   : ''
               }`}
-              style={!isActive ? {
+              style={{
                 backgroundColor: `hsl(${color} / 0.15)`,
                 color: `hsl(${color})`,
-                borderColor: `hsl(${color} / 0.3)`,
-              } : undefined}
+                borderColor: isActive ? `hsl(${color})` : `hsl(${color} / 0.3)`,
+              }}
             >
               {shortName(emp.full_name)}
               {count > 0 && (
@@ -856,13 +856,7 @@ function ShiftCell({ dateStr, shiftKey, section, slots, activeEmployee, activeEm
       whileTap={{ scale: 0.97 }}
       type="button"
       onClick={handleClick}
-      className={`w-full h-full transition-colors ${
-        activeEmployee
-          ? activeOn
-            ? 'bg-success/5'
-            : ''
-          : ''
-      }`}
+      className={`w-full h-full transition-colors`}
     >
       {isEmpty ? (
         <div className="flex items-center justify-center gap-1 py-2 text-[10px] text-muted-foreground">
@@ -877,14 +871,19 @@ function ShiftCell({ dateStr, shiftKey, section, slots, activeEmployee, activeEm
             return (
               <span
                 key={slot.user_id + (slot.ghost ? '-g' : '')}
-                className={`text-xs font-bold ${
+                className={`text-xs font-bold transition-all ${
                   isActiveChip
                     ? slot.ghost
                       ? 'invisible'
-                      : 'gradient-gold text-transparent bg-clip-text'
-                    : ''
+                      : 'px-2 py-0.5 rounded-full'
+                    : activeEmployee ? 'opacity-30' : ''
                 }`}
-                style={!isActiveChip && color ? { color: `hsl(${color})` } : undefined}
+                style={color ? {
+                  color: `hsl(${color})`,
+                  ...(isActiveChip && !slot.ghost ? {
+                    border: `1px solid hsl(${color})`,
+                  } : {}),
+                } : undefined}
               >
                 {shortName(slot.full_name)}
               </span>
