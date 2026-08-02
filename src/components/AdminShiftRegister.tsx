@@ -541,7 +541,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
       </div>
 
       {/* Employee chip bar */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex gap-1.5 overflow-x-auto overflow-y-visible py-1.5 -mx-1 px-1">
         {serviceEmployees.map(emp => {
           const isActive = activeEmployee === emp.user_id;
           const count = pendingCounts[emp.user_id] || 0;
@@ -551,7 +551,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
               key={emp.user_id}
               whileTap={{ scale: 0.95 }}
               onClick={() => setActiveEmployee(isActive ? null : emp.user_id)}
-              className={`relative shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+              className={`relative shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border overflow-visible ${
                 isActive
                   ? 'ring-2 ring-offset-1 ring-offset-background'
                   : ''
