@@ -9,8 +9,9 @@
 # communication
 - Prefer direct action over excessive clarification questions. Confidence: 0.70
 - Be honest about limitations rather than guessing at solutions. Confidence: 0.70
-- Make only the specific changes requested — do not over-engineer, rewrite unrelated code, or add unrequested features. When corrected, revert to original behavior and apply only the minimal change needed. Confidence: 0.90
+- Make only the specific changes requested — do not over-engineer, rewrite unrelated code, or add unrequested features. When corrected, revert to original behavior and apply only the minimal change needed. Confidence: 0.98
 - Do not deflect blame to external factors (e.g., RLS, database defaults, library limitations) when a fix is requested — just fix it without excuses. Confidence: 0.75
+- When creating entities (employees, accounts, etc.), do not fabricate or assume default values for unspecified attributes (shift_type, clock_in/out times, salary, hourly rate, etc.) — only use attributes explicitly provided by the user. If critical fields are missing, ask or leave them unset. Confidence: 0.85
 
 # timezone
 - Handle dates in Vietnamese local time (UTC+7), not UTC. Avoid timezone workarounds like appending 'Z' to date strings. Confidence: 0.90
