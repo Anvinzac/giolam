@@ -590,17 +590,28 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
   status: string; detail?: { clockIn: string; clockOut: string; note: string }; count: number; names: string[];
   onTap: () => void; onEdit: () => void;
 }) {
-  const [editHint, setEditHint] = useState(false);
-  const hintTimer = useRef<ReturnType<typeof setTimeout>>();
+  const flashRef = useRef<HTMLButtonElement>(null);
+  const [editReady, setEditReady] = useState(true);
+  const cooldownRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleEditTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!editReady) return;
+    setEditReady(false);
+    clearTimeout(cooldownRef.current);
+    cooldownRef.current = setTimeout(() => setEditReady(true), 500);
+    if (flashRef.current) {
+      flashRef.current.classList.add('bg-foreground/10');
+      setTimeout(() => flashRef.current?.classList.remove('bg-foreground/10'), 200);
+    }
+    onEdit();
+  };
 
   useEffect(() => {
-    if (status && status !== 'assigned') {
-      setEditHint(true);
-      clearTimeout(hintTimer.current);
-      hintTimer.current = setTimeout(() => setEditHint(false), 2000);
-    }
-    return () => clearTimeout(hintTimer.current);
-  }, [status]);
+    return () => clearTimeout(cooldownRef.current);
+  }, []);
+
   const STATUS_STYLES: Record<string, { bg: string; text: string; icon: string; label: string }> = {
     pending:  { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-amber-400/35 to-transparent', text: 'text-amber-500', icon: 'text-amber-400', label: 'Chờ duyệt' },
     approved: { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-emerald-500/30 to-transparent', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Đã duyệt' },
@@ -637,62 +648,54 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
 
     return (
       <div className={`w-full ${s.bg} min-h-[72px] flex flex-col relative`}>
-        {/* Top third: person count at right */}
-        <div className="h-1/3 flex items-start justify-end pt-0.5 px-1">
-          {count > 1 && (
-            <span className="text-[8px] opacity-40 flex items-center gap-0.5">
-              <User size={8} />{count}
-            </span>
-          )}
-          {count <= 1 && <span className="h-4" />}
-        </div>
-        {/* Middle third: status text + optional custom sub-text */}
-        <button type="button"
-          onClick={status === 'pending' ? onTap : (status === 'assigned' ? undefined : () => onEdit())}
-          className={`h-1/3 flex flex-col items-center gap-0.5 appearance-none outline-none border-0 bg-transparent ${hasCustom || status === 'modified' ? 'justify-start pt-0.5' : 'justify-center'}`}>
-          <div className="flex items-center gap-1.5">
-            {status === 'pending' ? (
-              <>
-                <HelpCircle size={14} className={s.icon} />
-                <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
-              </>
-            ) : status === 'approved' ? (
-              <>
-                <Check size={14} className={s.icon} />
-                <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
-              </>
-            ) : status === 'assigned' ? (
-              <User size={14} className={s.text} />
-            ) : (
-              <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
+        {/* Top half: count + status */}
+        <div className="h-1/2 flex flex-col">
+          <div className="flex items-start justify-end pt-0.5 px-1">
+            {count > 1 && (
+              <span className="text-[8px] opacity-40 flex items-center gap-0.5">
+                <User size={8} />{count}
+              </span>
             )}
+            {count <= 1 && <span className="h-4" />}
           </div>
-          {(hasCustom || status === 'modified') && (
-            <span className={`text-[10px] ${s.text}/60`}>
-              {detail!.clockIn !== defaults.in && detail!.clockOut !== defaults.out
-                ? `Vào ${detail!.clockIn} – Ra ${detail!.clockOut}`
-                : detail!.clockIn !== defaults.in
-                  ? `Vào ${detail!.clockIn}`
-                  : detail!.clockOut !== defaults.out
-                    ? `Ra ${detail!.clockOut}`
-                    : detail!.note || ''}
-            </span>
-          )}
+          <button type="button"
+            onClick={status === 'pending' ? onTap : (status === 'assigned' ? undefined : () => onEdit())}
+            className={`flex-1 flex flex-col items-center gap-0.5 appearance-none outline-none border-0 bg-transparent ${hasCustom || status === 'modified' ? 'justify-start pt-0.5' : 'justify-center'}`}>
+            <div className="flex items-center gap-1.5">
+              {status === 'pending' ? (
+                <>
+                  <HelpCircle size={14} className={s.icon} />
+                  <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
+                </>
+              ) : status === 'approved' ? (
+                <>
+                  <Check size={14} className={s.icon} />
+                  <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
+                </>
+              ) : status === 'assigned' ? (
+                <User size={14} className={s.text} />
+              ) : (
+                <span className={`text-[11px] font-semibold ${s.text}`}>{s.label}</span>
+              )}
+            </div>
+            {(hasCustom || status === 'modified') && (
+              <span className={`text-[10px] ${s.text}/60`}>
+                {detail!.clockIn !== defaults.in && detail!.clockOut !== defaults.out
+                  ? `Vào ${detail!.clockIn} – Ra ${detail!.clockOut}`
+                  : detail!.clockIn !== defaults.in
+                    ? `Vào ${detail!.clockIn}`
+                    : detail!.clockOut !== defaults.out
+                      ? `Ra ${detail!.clockOut}`
+                      : detail!.note || ''}
+              </span>
+            )}
+          </button>
+        </div>
+        {/* Bottom half: Yêu cầu thêm */}
+        <button ref={flashRef} type="button" onClick={handleEditTap}
+          className="w-full h-1/2 flex items-start justify-center pt-3 appearance-none outline-none border-0 bg-transparent">
+          <span className="text-[10px] text-foreground/60 font-medium">Yêu cầu thêm</span>
         </button>
-        {/* Bottom third: extra notice at top */}
-        {editHint && (
-          <motion.button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="h-1/3 flex items-start justify-center pt-3 hover:bg-foreground/5 transition-colors appearance-none outline-none border-0 bg-transparent"
-          >
-            <span className="text-[10px] text-foreground/60 font-medium">Yêu cầu thêm</span>
-          </motion.button>
-        )}
       </div>
     );
   }

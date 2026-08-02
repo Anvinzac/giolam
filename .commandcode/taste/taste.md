@@ -9,7 +9,7 @@
 # communication
 - Prefer direct action over excessive clarification questions. Confidence: 0.70
 - Be honest about limitations rather than guessing at solutions. Confidence: 0.70
-- Make only the specific changes requested — do not over-engineer, rewrite unrelated code, or add unrequested features. When corrected, revert to original behavior and apply only the minimal change needed. Confidence: 0.85
+- Make only the specific changes requested — do not over-engineer, rewrite unrelated code, or add unrequested features. When corrected, revert to original behavior and apply only the minimal change needed. Confidence: 0.90
 - Do not deflect blame to external factors (e.g., RLS, database defaults, library limitations) when a fix is requested — just fix it without excuses. Confidence: 0.75
 
 # timezone
