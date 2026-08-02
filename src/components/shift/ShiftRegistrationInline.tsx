@@ -490,6 +490,18 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
   status: string; detail?: { clockIn: string; clockOut: string; note: string }; count: number; names: string[];
   onTap: () => void; onEdit: () => void;
 }) {
+  const [editHint, setEditHint] = useState(false);
+  const hintTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (status && status !== 'assigned') {
+      setEditHint(true);
+      clearTimeout(hintTimer.current);
+      hintTimer.current = setTimeout(() => setEditHint(false), 2000);
+    }
+    return () => clearTimeout(hintTimer.current);
+  }, [status]);
+
   const STATUS_STYLES: Record<string, { bg: string; text: string; icon: string; label: string }> = {
     pending:  { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-amber-400/35 to-transparent', text: 'text-amber-500', icon: 'text-amber-400', label: 'Chờ duyệt' },
     approved: { bg: 'bg-[length:100%_54px] bg-bottom bg-no-repeat bg-gradient-to-t from-emerald-500/30 to-transparent', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Đã duyệt' },
@@ -566,10 +578,19 @@ function ToggleCell({ dateStr, shiftKey, isAdminRegistered, status, detail, coun
             </span>
           )}
         </button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="h-1/3 flex items-start justify-center pt-3 hover:bg-foreground/5 transition-colors appearance-none outline-none border-0 bg-transparent">
-          <span className="text-[10px] text-foreground/60 font-medium">Yêu cầu thêm</span>
-        </button>
+        {editHint && (
+          <motion.button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="h-1/3 flex items-start justify-center pt-3 hover:bg-foreground/5 transition-colors appearance-none outline-none border-0 bg-transparent"
+          >
+            <span className="text-[10px] text-foreground/60 font-medium">Yêu cầu thêm</span>
+          </motion.button>
+        )}
       </div>
     );
   }
