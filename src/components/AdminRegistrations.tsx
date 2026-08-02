@@ -66,19 +66,10 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
     const profileMap = new Map((pro || []).map(p => [p.user_id, p.full_name]));
     setProfiles(profileMap);
 
-    const testUsernames = new Set(['N. Viên C', 'N. Viên D']);
-    const testIds = [...profileMap.entries()]
-      .filter(([_, name]) => testUsernames.has(name))
-      .map(([id]) => id);
-
     const { data: allRegs } = await supabase.from('shift_registrations').select('*').order('created_at', { ascending: false });
 
-    const regs = ((allRegs as Registration[]) || []).filter(r =>
-      testIds.includes(r.user_id) || r.status === 'assigned'
-    );
-
-    setRegistrations(regs);
-    onBadgeCount?.(regs.filter(r => r.status === 'pending').length);
+    setRegistrations((allRegs as Registration[]) || []);
+    onBadgeCount?.(((allRegs as Registration[]) || []).filter(r => r.status === 'pending').length);
     setLoading(false);
   };
 
