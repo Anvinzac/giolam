@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -10,7 +11,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.4"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -29,6 +55,48 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      custom_depletion_notices: {
+        Row: {
+          dismissed_at: string | null
+          dismissed_by: string | null
+          id: string
+          ingredient_name: string
+          needs_purchase: boolean
+          note: string | null
+          quantity: string | null
+          reported_at: string
+          reported_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          ingredient_name: string
+          needs_purchase?: boolean
+          note?: string | null
+          quantity?: string | null
+          reported_at?: string
+          reported_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          ingredient_name?: string
+          needs_purchase?: boolean
+          note?: string | null
+          quantity?: string | null
+          reported_at?: string
+          reported_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
         }
         Relationships: []
       }
@@ -61,6 +129,39 @@ export type Database = {
           },
         ]
       }
+      employee_allowance_defaults: {
+        Row: {
+          allowance_key: string
+          amount: number
+          created_at: string
+          id: string
+          is_enabled: boolean
+          label: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowance_key: string
+          amount?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowance_key?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       employee_allowances: {
         Row: {
           allowance_key: string
@@ -70,6 +171,7 @@ export type Database = {
           is_enabled: boolean
           label: string
           period_id: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -80,6 +182,7 @@ export type Database = {
           is_enabled?: boolean
           label?: string
           period_id: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -90,6 +193,7 @@ export type Database = {
           is_enabled?: boolean
           label?: string
           period_id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -102,51 +206,131 @@ export type Database = {
           },
         ]
       }
+      employee_ingredients: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          ingredient_id: string
+          report_weekdays: number[] | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          ingredient_id: string
+          report_weekdays?: number[] | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          ingredient_id?: string
+          report_weekdays?: number[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingredients: {
+        Row: {
+          category: string
+          created_at: string
+          emoji: string
+          id: string
+          name: string
+          reference_price: number | null
+          subcategory: string | null
+          supplier: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          emoji: string
+          id: string
+          name: string
+          reference_price?: number | null
+          subcategory?: string | null
+          supplier?: string | null
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          name?: string
+          reference_price?: number | null
+          subcategory?: string | null
+          supplier?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          base_salary: number | null
           created_at: string
           default_clock_in: string | null
           default_clock_out: string | null
           department_id: string | null
           full_name: string
+          hourly_rate: number | null
           id: string
           must_change_password: boolean
           shift_type: Database["public"]["Enums"]["shift_type"]
           updated_at: string
           user_id: string
           username: string | null
-          work_shift: Database["public"]["Enums"]["work_shift"]
+          work_shift: Database["public"]["Enums"]["work_shift"] | null
         }
         Insert: {
           avatar_url?: string | null
+          base_salary?: number | null
           created_at?: string
           default_clock_in?: string | null
           default_clock_out?: string | null
           department_id?: string | null
           full_name?: string
+          hourly_rate?: number | null
           id?: string
           must_change_password?: boolean
           shift_type?: Database["public"]["Enums"]["shift_type"]
           updated_at?: string
           user_id: string
           username?: string | null
-          work_shift?: Database["public"]["Enums"]["work_shift"]
+          work_shift?: Database["public"]["Enums"]["work_shift"] | null
         }
         Update: {
           avatar_url?: string | null
+          base_salary?: number | null
           created_at?: string
           default_clock_in?: string | null
           default_clock_out?: string | null
           department_id?: string | null
           full_name?: string
+          hourly_rate?: number | null
           id?: string
           must_change_password?: boolean
           shift_type?: Database["public"]["Enums"]["shift_type"]
           updated_at?: string
           user_id?: string
           username?: string | null
-          work_shift?: Database["public"]["Enums"]["work_shift"]
+          work_shift?: Database["public"]["Enums"]["work_shift"] | null
         }
         Relationships: [
           {
@@ -160,60 +344,72 @@ export type Database = {
       }
       salary_entries: {
         Row: {
-          allowance_amount: number
+          allowance_amount: number | null
           allowance_rate_override: number | null
-          base_daily_wage: number
+          base_daily_wage: number | null
           clock_in: string | null
           clock_out: string | null
           created_at: string
           entry_date: string
-          extra_wage: number
+          extra_wage: number | null
           id: string
+          is_admin_reviewed: boolean
           is_day_off: boolean
+          last_employee_edit_at: string | null
           note: string | null
-          off_percent: number
+          off_percent: number | null
           period_id: string
           sort_order: number
-          total_daily_wage: number
+          submitted_by: string | null
+          total_daily_wage: number | null
           total_hours: number | null
+          updated_at: string
           user_id: string
         }
         Insert: {
-          allowance_amount?: number
+          allowance_amount?: number | null
           allowance_rate_override?: number | null
-          base_daily_wage?: number
+          base_daily_wage?: number | null
           clock_in?: string | null
           clock_out?: string | null
           created_at?: string
           entry_date: string
-          extra_wage?: number
+          extra_wage?: number | null
           id?: string
+          is_admin_reviewed?: boolean
           is_day_off?: boolean
+          last_employee_edit_at?: string | null
           note?: string | null
-          off_percent?: number
+          off_percent?: number | null
           period_id: string
           sort_order?: number
-          total_daily_wage?: number
+          submitted_by?: string | null
+          total_daily_wage?: number | null
           total_hours?: number | null
+          updated_at?: string
           user_id: string
         }
         Update: {
-          allowance_amount?: number
+          allowance_amount?: number | null
           allowance_rate_override?: number | null
-          base_daily_wage?: number
+          base_daily_wage?: number | null
           clock_in?: string | null
           clock_out?: string | null
           created_at?: string
           entry_date?: string
-          extra_wage?: number
+          extra_wage?: number | null
           id?: string
+          is_admin_reviewed?: boolean
           is_day_off?: boolean
+          last_employee_edit_at?: string | null
           note?: string | null
-          off_percent?: number
+          off_percent?: number | null
           period_id?: string
           sort_order?: number
-          total_daily_wage?: number
+          submitted_by?: string | null
+          total_daily_wage?: number | null
           total_hours?: number | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -222,6 +418,72 @@ export type Database = {
             columns: ["period_id"]
             isOneToOne: false
             referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_published_snapshots: {
+        Row: {
+          allowances: Json
+          breakdown: Json | null
+          created_at: string
+          entries: Json
+          id: string
+          period_id: string
+          period_info: Json | null
+          profile_info: Json | null
+          published_at: string
+          rates: Json
+          salary_record_id: string
+          total_salary: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowances?: Json
+          breakdown?: Json | null
+          created_at?: string
+          entries?: Json
+          id?: string
+          period_id: string
+          period_info?: Json | null
+          profile_info?: Json | null
+          published_at?: string
+          rates?: Json
+          salary_record_id: string
+          total_salary?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowances?: Json
+          breakdown?: Json | null
+          created_at?: string
+          entries?: Json
+          id?: string
+          period_id?: string
+          period_info?: Json | null
+          profile_info?: Json | null
+          published_at?: string
+          rates?: Json
+          salary_record_id?: string
+          total_salary?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_published_snapshots_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_published_snapshots_salary_record_id_fkey"
+            columns: ["salary_record_id"]
+            isOneToOne: false
+            referencedRelation: "salary_records"
             referencedColumns: ["id"]
           },
         ]
@@ -235,6 +497,7 @@ export type Database = {
           salary_breakdown: Json | null
           status: string
           total_salary: number
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -245,6 +508,7 @@ export type Database = {
           salary_breakdown?: Json | null
           status?: string
           total_salary?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -255,6 +519,7 @@ export type Database = {
           salary_breakdown?: Json | null
           status?: string
           total_salary?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -279,6 +544,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           shift_date: string
+          shift_slot: string
           status: Database["public"]["Enums"]["registration_status"]
           updated_at: string
           user_id: string
@@ -294,6 +560,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           shift_date: string
+          shift_slot?: string
           status?: Database["public"]["Enums"]["registration_status"]
           updated_at?: string
           user_id: string
@@ -309,6 +576,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           shift_date?: string
+          shift_slot?: string
           status?: Database["public"]["Enums"]["registration_status"]
           updated_at?: string
           user_id?: string
@@ -329,6 +597,7 @@ export type Database = {
           overtime_clock_out: string | null
           period_id: string
           shift_date: string
+          shift_slot: string
           updated_at: string
           user_id: string
         }
@@ -345,6 +614,7 @@ export type Database = {
           overtime_clock_out?: string | null
           period_id: string
           shift_date: string
+          shift_slot?: string
           updated_at?: string
           user_id: string
         }
@@ -361,6 +631,7 @@ export type Database = {
           overtime_clock_out?: string | null
           period_id?: string
           shift_date?: string
+          shift_slot?: string
           updated_at?: string
           user_id?: string
         }
@@ -384,6 +655,7 @@ export type Database = {
           rate_percent: number
           sort_order: number
           special_date: string
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -394,6 +666,7 @@ export type Database = {
           rate_percent?: number
           sort_order?: number
           special_date: string
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -404,6 +677,7 @@ export type Database = {
           rate_percent?: number
           sort_order?: number
           special_date?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -411,6 +685,50 @@ export type Database = {
             columns: ["period_id"]
             isOneToOne: false
             referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_reports: {
+        Row: {
+          id: string
+          ingredient_id: string
+          is_low_stock: boolean
+          remaining_quantity: number | null
+          reported_at: string
+          reported_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+          warning_message: string | null
+        }
+        Insert: {
+          id?: string
+          ingredient_id: string
+          is_low_stock?: boolean
+          remaining_quantity?: number | null
+          reported_at?: string
+          reported_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          warning_message?: string | null
+        }
+        Update: {
+          id?: string
+          ingredient_id?: string
+          is_low_stock?: boolean
+          remaining_quantity?: number | null
+          reported_at?: string
+          reported_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          warning_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reports_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
             referencedColumns: ["id"]
           },
         ]
@@ -439,6 +757,7 @@ export type Database = {
           created_by: string | null
           end_date: string
           id: string
+          is_archived: boolean
           off_days: string[]
           start_date: string
         }
@@ -447,6 +766,7 @@ export type Database = {
           created_by?: string | null
           end_date: string
           id?: string
+          is_archived?: boolean
           off_days?: string[]
           start_date: string
         }
@@ -455,6 +775,7 @@ export type Database = {
           created_by?: string | null
           end_date?: string
           id?: string
+          is_archived?: boolean
           off_days?: string[]
           start_date?: string
         }
@@ -482,7 +803,14 @@ export type Database = {
         | "rejected"
         | "modified"
         | "unapproved"
-      shift_type: "basic" | "overtime" | "notice_only" | "lunar_rate"
+        | "assigned"
+      shift_type:
+        | "basic"
+        | "overtime"
+        | "notice_only"
+        | "lunar_rate"
+        | "daily"
+        | "other"
       work_shift: "morning" | "evening"
     }
     CompositeTypes: {
@@ -609,6 +937,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "employee"],
@@ -618,8 +949,19 @@ export const Constants = {
         "rejected",
         "modified",
         "unapproved",
+        "assigned",
       ],
-      shift_type: ["basic", "overtime", "notice_only"],
+      shift_type: [
+        "basic",
+        "overtime",
+        "notice_only",
+        "lunar_rate",
+        "daily",
+        "other",
+      ],
+      work_shift: ["morning", "evening"],
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.111.0 (currently installed v2.84.4)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

@@ -184,7 +184,7 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border overflow-hidden">
+      <div className="rounded-xl border border-border overflow-x-auto max-w-full">
         <table className="table-fixed w-full text-xs border-collapse">
           <colgroup>
             <col className="w-[18%]" />

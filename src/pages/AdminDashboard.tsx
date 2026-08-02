@@ -282,13 +282,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-center justify-between gap-0">
           <button
             onClick={() => navigate('/admin/salary')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all"
+            className="flex flex-col items-center justify-center gap-0.5 h-11 rounded-lg transition-all text-amber-400 hover:text-amber-300"
+            style={{ width: `${100 / 9}%` }}
+            title="Lương"
           >
-            <DollarSign size={16} />
-            Lương
+            <DollarSign size={18} />
           </button>
 {[
              { key: 'shifts' as const, label: 'Bảng công', icon: Table2, badge: 0 },
@@ -303,14 +304,15 @@ export default function AdminDashboard() {
             <button
               key={key}
               onClick={() => key === 'salary' ? navigate('/admin/salary') : setTab(key)}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                tab === key ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+              className={`relative flex flex-col items-center justify-center gap-0.5 h-11 rounded-lg transition-all ${
+                tab === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
+              style={{ width: `${100 / 9}%` }}
+              title={label}
             >
-              <Icon size={16} />
-              {label}
+              <Icon size={18} />
               {badge > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold px-0.5">
                   {badge}
                 </span>
               )}

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const SHORT_NAMES: Record<string, string> = {
-  'Minh Vũ': 'M.Vũ', 'Minh Anh': 'M.Anh', 'Hữu Khang': 'H.Khang',
+  'Minh Vũ': 'M.Vũ', 'Minh Anh': 'M.Anh', 'Hữu Khang': 'H.Khang', 'Hoàng Ngân': 'H.Ngân',
 };
 function shortName(full: string): string { return SHORT_NAMES[full] || full; }
 

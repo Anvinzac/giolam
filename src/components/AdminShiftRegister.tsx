@@ -52,6 +52,7 @@ const SHORT_NAMES: Record<string, string> = {
   'Minh Vũ': 'M.Vũ',
   'Minh Anh': 'M.Anh',
   'Hữu Khang': 'H.Khang',
+  'Hoàng Ngân': 'H.Ngân',
 };
 
 function shortName(full: string): string {
@@ -217,6 +218,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     const key = `${dateStr}|${shiftKey}`;
     const defaults = SHIFT_DEFAULTS[shiftKey];
     const emp = serviceEmployees.find(e => e.user_id === activeEmployee);
+    const prevDayShifts = dayShifts;
 
     // Optimistic local update — instant
     setDayShifts(prev => ({
@@ -234,7 +236,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
       },
     }));
 
-    // Fire-and-forget sync to server
     setPendingToggles(prev => {
       const next = new Set(prev);
       next.add(key);
@@ -242,45 +243,56 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     });
 
     (async () => {
-      if (existingSlot) {
-        await supabase.from('shifts')
-          .delete()
-          .eq('period_id', periodId)
-          .eq('user_id', activeEmployee)
-          .eq('shift_date', dateStr)
-          .eq('shift_slot', shiftKey);
-        await supabase.from('shift_registrations')
-          .delete()
-          .eq('user_id', activeEmployee)
-          .eq('shift_date', dateStr)
-          .eq('shift_slot', shiftKey)
-          .eq('status', 'assigned');
-      } else {
-        await supabase.from('shifts').upsert({
-          period_id: periodId,
-          user_id: activeEmployee,
-          shift_date: dateStr,
-          shift_slot: shiftKey,
-          is_active: true,
-          clock_in: defaults.clock_in,
-          clock_out: defaults.clock_out,
-          notice: null,
-        } as any, { onConflict: 'user_id,shift_date,shift_slot' });
-        await supabase.from('shift_registrations').upsert({
-          user_id: activeEmployee,
-          shift_date: dateStr,
-          shift_slot: shiftKey,
-          status: 'assigned',
-          clock_in: defaults.clock_in,
-          clock_out: defaults.clock_out,
-        } as any, { onConflict: 'user_id,shift_date,shift_slot' });
-      }
+      try {
+        if (existingSlot) {
+          const { error: shiftErr } = await supabase.from('shifts')
+            .delete()
+            .eq('period_id', periodId)
+            .eq('user_id', activeEmployee)
+            .eq('shift_date', dateStr)
+            .eq('shift_slot', shiftKey);
+          if (shiftErr) throw shiftErr;
 
-      setPendingToggles(prev => {
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
+          const { error: regErr } = await supabase.from('shift_registrations')
+            .delete()
+            .eq('user_id', activeEmployee)
+            .eq('shift_date', dateStr)
+            .eq('shift_slot', shiftKey)
+            .eq('status', 'assigned');
+          if (regErr) throw regErr;
+        } else {
+          const { error: shiftErr } = await supabase.from('shifts').upsert({
+            period_id: periodId,
+            user_id: activeEmployee,
+            shift_date: dateStr,
+            shift_slot: shiftKey,
+            is_active: true,
+            clock_in: defaults.clock_in,
+            clock_out: defaults.clock_out,
+            notice: null,
+          }, { onConflict: 'user_id,shift_date,shift_slot' });
+          if (shiftErr) throw shiftErr;
+
+          const { error: regErr } = await supabase.from('shift_registrations').upsert({
+            user_id: activeEmployee,
+            shift_date: dateStr,
+            shift_slot: shiftKey,
+            status: 'assigned',
+            clock_in: defaults.clock_in,
+            clock_out: defaults.clock_out,
+          }, { onConflict: 'user_id,shift_date,shift_slot' });
+          if (regErr) throw regErr;
+        }
+      } catch (err: any) {
+        setDayShifts(prevDayShifts);
+        toast.error(`Không thể cập nhật: ${err.message || 'Lỗi kết nối'}`);
+      } finally {
+        setPendingToggles(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
     })();
   }, [activeEmployee, dayShifts, periodId, serviceEmployees]);
 
@@ -291,7 +303,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     }
 
     const defaults = SHIFT_DEFAULTS[pickerOpen.shift];
-    const { data: { user } } = await supabase.auth.getUser();
     const currentSlots = dayShifts[pickerOpen.date]?.[pickerOpen.shift] || [];
     const previousIds = new Set(currentSlots.map(s => s.user_id));
 
@@ -314,17 +325,17 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         clock_in: defaults.clock_in,
         clock_out: defaults.clock_out,
         notice: null,
-        updated_by: user?.id,
-      } as any, { onConflict: 'user_id,shift_date,shift_slot' });
+      }, { onConflict: 'user_id,shift_date,shift_slot' });
       if (error) { errors++; continue; }
-      await supabase.from('shift_registrations').upsert({
+      const { error: regError } = await supabase.from('shift_registrations').upsert({
         user_id: userId,
         shift_date: pickerOpen.date,
         shift_slot: pickerOpen.shift,
         status: 'assigned',
         clock_in: defaults.clock_in,
         clock_out: defaults.clock_out,
-      } as any, { onConflict: 'user_id,shift_date,shift_slot' });
+      }, { onConflict: 'user_id,shift_date,shift_slot' });
+      if (regError) { errors++; continue; }
     }
 
     // Remove deselected employees
@@ -336,12 +347,13 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         .eq('shift_date', pickerOpen.date)
         .eq('shift_slot', pickerOpen.shift);
       if (error) { errors++; continue; }
-      await supabase.from('shift_registrations')
+      const { error: regError } = await supabase.from('shift_registrations')
         .delete()
         .eq('user_id', userId)
         .eq('shift_date', pickerOpen.date)
         .eq('shift_slot', pickerOpen.shift)
         .eq('status', 'assigned');
+      if (regError) { errors++; continue; }
     }
 
     if (errors > 0) {
@@ -375,7 +387,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
   const handleSaveEdit = async () => {
     if (!editSlot) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from('shifts').upsert({
       period_id: periodId,
       user_id: editSlot.userId,
@@ -385,8 +396,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
       clock_in: editClockIn || null,
       clock_out: editClockOut || null,
       notice: null,
-      updated_by: user?.id,
-    } as any, {
+    }, {
       onConflict: 'user_id,shift_date,shift_slot',
     });
 
@@ -415,14 +425,17 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     setEditSlot(null);
 
     // Mirror to registrations
-    await supabase.from('shift_registrations').upsert({
+    const { error: regError } = await supabase.from('shift_registrations').upsert({
       user_id: editSlot.userId,
       shift_date: editSlot.date,
       shift_slot: editSlot.shift,
       status: 'assigned',
       clock_in: editClockIn || null,
       clock_out: editClockOut || null,
-    } as any, { onConflict: 'user_id,shift_date,shift_slot' });
+    }, { onConflict: 'user_id,shift_date,shift_slot' });
+    if (regError) {
+      toast.error(`Lỗi đồng bộ đăng ký: ${regError.message}`);
+    }
   };
 
   const handleDeleteSlot = async () => {
@@ -451,12 +464,15 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     toast.success("Đã xóa đăng ký");
     setEditSlot(null);
 
-    await supabase.from('shift_registrations')
+    const { error: regError } = await supabase.from('shift_registrations')
       .delete()
       .eq('user_id', editSlot.userId)
       .eq('shift_date', editSlot.date)
       .eq('shift_slot', editSlot.shift)
       .eq('status', 'assigned');
+    if (regError) {
+      toast.error(`Lỗi xóa đăng ký: ${regError.message}`);
+    }
   };
 
   const handleRemoveSlot = async (date: string, shift: string, userId: string) => {
@@ -484,12 +500,15 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     });
 
     toast.success("Đã xóa đăng ký");
-    await supabase.from('shift_registrations')
+    const { error: regError } = await supabase.from('shift_registrations')
       .delete()
       .eq('user_id', userId)
       .eq('shift_date', date)
       .eq('shift_slot', shift)
       .eq('status', 'assigned');
+    if (regError) {
+      toast.error(`Lỗi xóa đăng ký: ${regError.message}`);
+    }
   };
 
   const toggleEmployee = (userId: string) => {
