@@ -32,6 +32,7 @@ export default function EmployeeShiftRegister() {
   const [slotNames, setSlotNames] = useState<Record<string, string[]>>({});
   const [showApproved, setShowApproved] = useState(false);
   const slideDir = useRef(0);
+  const tabDir = useRef(0);
 
   const [editOpen, setEditOpen] = useState<{ dateStr: string; shiftKey: string } | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
@@ -314,7 +315,10 @@ export default function EmployeeShiftRegister() {
             </button>
           </div>
           <button
-            onClick={() => setShowApproved(!showApproved)}
+            onClick={() => {
+              tabDir.current = showApproved ? -1 : 1;
+              setShowApproved(!showApproved);
+            }}
             className="ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-muted"
           >
             {showApproved ? 'Lịch ca' : 'Đăng ký'}
@@ -334,13 +338,13 @@ export default function EmployeeShiftRegister() {
           }
         }}
       >
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="popLayout" initial={false} custom={tabDir.current}>
         <motion.div
-          key={weekLabel}
-          initial={{ x: slideDir.current * 50, opacity: 0 }}
+          key={`${weekLabel}-${showApproved}`}
+          initial={{ x: tabDir.current * 120, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -slideDir.current * 50, opacity: 0 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+          exit={{ x: -tabDir.current * 120, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         >
       {showApproved ? (
         <ApprovedShiftTable weekDates={weekDates} periodId={periodId} />

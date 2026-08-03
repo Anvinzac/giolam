@@ -80,7 +80,8 @@
       "Shell(curl -s http://localhost:5199/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=de70251c 2 >& 1)",
       "Shell(NODE_ENV=development npx vite --host --force)",
       "Shell(curl -s http://localhost:5199/src/main.tsx 2>&1 | grep -o \"/node_modules/.vite/deps/react_jsx-dev-runtime.js[^\\\"]*\" | head -1 | xargs -I {} curl -s http://localhost:5199{} 2>&1 | grep \"jsxDEV\")",
-      "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Refine shift register header: inline toggle next to week nav Removed redundant sub-tab row, moved the \"Đăng ký\"/\"Lịch ca\" toggle inline with the week navigator with proper spacing to prevent accidental taps. Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)"
+      "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Refine shift register header: inline toggle next to week nav Removed redundant sub-tab row, moved the \"Đăng ký\"/\"Lịch ca\" toggle inline with the week navigator with proper spacing to prevent accidental taps. Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)",
+      "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Add smooth slide animation when switching between shift table views Tab switches now slide the old table out and the new one in with a cubic-bezier easing curve for a seamless transition. Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)"
     ],
     "deny": [],
     "defaultMode": "default"
