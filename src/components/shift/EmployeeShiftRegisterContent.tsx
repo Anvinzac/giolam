@@ -27,6 +27,15 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   const [showApproved, setShowApproved] = useState(false);
   const tabDir = useRef(0);
 
+  const [weekStart, setWeekStart] = useState(() => {
+    const now = getVietnamToday();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    return monday;
+  });
+
   // Default to schedule for current/past weeks, registration for future
   useEffect(() => {
     const today = getVietnamToday();
@@ -53,19 +62,12 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
     }
     setShowApproved(!showApproved);
   };
+
+  const [editOpen, setEditOpen] = useState<{ dateStr: string; shiftKey: string } | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
   const [editNote, setEditNote] = useState("");
   const editRef = useRef<HTMLDivElement>(null);
-
-  const [weekStart, setWeekStart] = useState(() => {
-    const now = getVietnamToday();
-    const day = now.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diff);
-    return monday;
-  });
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 

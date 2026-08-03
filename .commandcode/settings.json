@@ -89,7 +89,8 @@
       "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Slide between salary and shift views side-by-side, no remounting Both views are always mounted in a horizontal flex container. Tab switching slides the container with a 0.3s ease animation, no remounting or re-fetching ever happens. Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)",
       "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Default shift view to schedule for current week, registration for future Current and past weeks show the approved shift schedule by default. Tapping \"Đăng ký\" on the current week auto-jumps to next week. Future weeks default to the registration view. Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)",
       "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Smoother table transition with overlap and delayed entry Exit animation is 0.35s (fade + slide out), entry waits 0.15s then slides in over 0.5s. Both tables overlap during transition. Uses absolute positioning so they occupy the same space. Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)",
-      "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Fix missing closing div tag in shift register content Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)"
+      "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Fix missing closing div tag in shift register content Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)",
+      "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Fix weekStart initialization order in shift content Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)"
     ],
     "deny": [],
     "defaultMode": "default"
