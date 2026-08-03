@@ -354,8 +354,10 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
   }, [periodId]);
 
   return (
-    <div className="border border-border overflow-hidden">
-      <table className="table-fixed w-full text-xs border-collapse">
+    <>
+      <div className="h-[27px]" />
+      <div className="border border-border overflow-hidden">
+        <table className="table-fixed w-full text-xs border-collapse">
         <colgroup><col className="w-[24%]" /><col className="w-[38%]" /><col className="w-[38%]" /></colgroup>
         <thead><tr><th className="bg-muted/50 px-2 py-2 font-semibold text-foreground border-b border-border">Ngày</th><th className="px-2 py-2 text-center border-b border-border text-success"><Clock size={12} className="inline mr-1" />Sáng</th><th className="px-2 py-2 text-center border-b border-border text-accent"><Clock size={12} className="inline mr-1" />Chiều</th></tr></thead>
         <tbody>
@@ -384,9 +386,10 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
               </tr>
             );
           })}
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

@@ -190,7 +190,7 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
                   </div>
                 );
               })()}
-            </div>
+            </motion.button>
             );
           })}
         </motion.div>
@@ -396,19 +396,6 @@ export default function SalaryAdmin() {
     selectedPeriod?.end_date,
     selectedPeriod?.off_days || []
   );
-  
-  const seedAllPeriodDays = useMemo(
-    () => selectedEmployee?.shift_type === 'overtime' && selectedPeriod
-      ? {
-          periodStart: selectedPeriod.start_date,
-          periodEnd: selectedPeriod.end_date,
-          defaultClockIn: selectedEmployee.default_clock_in || '08:00',
-          defaultClockOut: selectedEmployee.default_clock_out || '17:30',
-          offDays: selectedPeriod.off_days || [],
-        }
-      : undefined,
-    [selectedEmployee?.shift_type, selectedEmployee?.default_clock_in, selectedEmployee?.default_clock_out, selectedPeriod?.start_date, selectedPeriod?.end_date, selectedPeriod?.off_days],
-  );
 
   const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, acceptEntry, isSaving } = useSalaryEntries(
     selectedEmployee?.user_id || null,
@@ -417,10 +404,9 @@ export default function SalaryAdmin() {
       editorMode: 'admin',
       enableRealtime: true,
       seedAllDays: selectedEmployee?.shift_type === 'basic',
-      seedAllPeriodDays,
     }
   );
-  
+
   // Calculate working days count for gui_xe
   const workingDaysCount = useMemo(() => {
     return entries.filter(e => !e.is_day_off && (e.clock_in || e.clock_out)).length;

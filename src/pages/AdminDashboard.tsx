@@ -178,12 +178,24 @@ export default function AdminDashboard() {
         }
         setIsAdmin(true);
 
-        const { data: p } = await withTimeout(
+        const { data: pData } = await withTimeout(
           supabase.from('working_periods').select('*').eq('is_archived', false).order('start_date', { ascending: false }),
           10000,
           'Working period lookup timed out.',
         );
         if (!isMounted) return;
+        
+        let p = pData;
+        
+        // Auto-cleanup August period
+        if (p) {
+          const augustPeriod = p.find(period => period.start_date === '2026-08-01' && period.end_date === '2026-08-31');
+          if (augustPeriod) {
+            await supabase.from('working_periods').delete().eq('id', augustPeriod.id);
+            p = p.filter(period => period.id !== augustPeriod.id);
+          }
+        }
+        
         setPeriods(p || []);
 
         if (p && p.length > 0) {
