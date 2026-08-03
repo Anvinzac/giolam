@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
-import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Archive, Calendar } from 'lucide-react';
+import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Archive, Calendar, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -56,9 +56,11 @@ interface DepartmentEmployeePagesProps {
   onSelectEmployee: (emp: Employee) => void;
   pendingCounts?: Map<string, number>;
   publishedTotals: Map<string, { total: number; deposit: number }>;
+  selectedIds: Set<string>;
+  onToggleSelect: (userId: string) => void;
 }
 
-function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, publishedTotals }: DepartmentEmployeePagesProps) {
+function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, publishedTotals, selectedIds, onToggleSelect }: DepartmentEmployeePagesProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [dragStartX, setDragStartX] = useState(0);
 
@@ -129,25 +131,43 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="space-y-2"
         >
-          {departments[currentPage].employees.map(emp => (
-            <motion.button
+          {departments[currentPage].employees.map(emp => {
+            const record = publishedTotals.get(emp.user_id);
+            const hasRecord = record && record.total > 0;
+            const isSelected = selectedIds.has(emp.user_id);
+
+            return (
+            <div
               key={emp.user_id}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onSelectEmployee(emp)}
               className="w-full glass-card p-3 flex items-center justify-between text-left"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
-                  <PendingReviewBadge count={pendingCounts?.get(emp.user_id) || 0} variant="dot" />
-                </div>
-                {emp.department_name && (
-                  <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
-                )}
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleSelect(emp.user_id); }}
+                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                    isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 text-transparent'
+                  }`}
+                >
+                  {isSelected && <Check size={12} strokeWidth={3} />}
+                </button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onSelectEmployee(emp)}
+                  className="flex-1 text-left"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
+                      <PendingReviewBadge count={pendingCounts?.get(emp.user_id) || 0} variant="dot" />
+                    </div>
+                    {emp.department_name && (
+                      <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
+                    )}
+                  </div>
+                </motion.button>
               </div>
               {(() => {
-                const record = publishedTotals.get(emp.user_id);
-                if (!record || record.total <= 0) {
+                if (!hasRecord) {
                   return <span className="text-[11px] text-muted-foreground">Chưa công bố</span>;
                 }
                 const hasDeposit = record.deposit > 0;
@@ -172,8 +192,9 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
                   </div>
                 );
               })()}
-            </motion.button>
-          ))}
+            </div>
+            );
+          })}
         </motion.div>
       </div>
 
@@ -357,6 +378,7 @@ export default function SalaryAdmin() {
   const [adminUid, setAdminUid] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map());
   const [publishedTotals, setPublishedTotals] = useState<Map<string, { total: number; deposit: number }>>(new Map());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
   const [isArchiving, setIsArchiving] = useState(false);
@@ -1254,6 +1276,14 @@ export default function SalaryAdmin() {
             onSelectEmployee={setSelectedEmployee}
             pendingCounts={pendingCounts}
             publishedTotals={publishedTotals}
+            selectedIds={selectedIds}
+            onToggleSelect={(userId) => {
+              setSelectedIds(prev => {
+                const next = new Set(prev);
+                if (next.has(userId)) next.delete(userId); else next.add(userId);
+                return next;
+              });
+            }}
           />
         )}
 
@@ -1569,6 +1599,28 @@ export default function SalaryAdmin() {
           </>
         )}
       </div>
+
+      {/* Selected transfer total bar */}
+      {!selectedEmployee && selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-primary/20 bg-card/95 backdrop-blur-sm px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-center justify-between max-w-lg mx-auto">
+            <span className="text-xs text-muted-foreground">
+              {selectedIds.size} nhân viên được chọn
+            </span>
+            <div className="text-right">
+              <span className="text-[11px] text-muted-foreground block">Sẽ chuyển khoản</span>
+              <span className="text-[15px] font-bold text-emerald-400 tabular-nums">
+                {formatVND(
+                  Array.from(selectedIds).reduce((sum, uid) => {
+                    const r = publishedTotals.get(uid);
+                    return r && r.total > 0 ? sum + (r.total - (r.deposit || 0)) : sum;
+                  }, 0)
+                ).replace(' đ', '')}đ
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
