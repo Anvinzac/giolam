@@ -20,6 +20,12 @@ export default function EmployeeDashboard() {
   const [tab, setTab] = useState<'salary' | 'shifts'>(() => tabFromPath(location.pathname));
   const tabDir = useRef(0);
 
+  // Sync tab with URL
+  useEffect(() => {
+    const newTab = tabFromPath(location.pathname);
+    if (newTab !== tab) setTab(newTab);
+  }, [location.pathname]);
+
   useEffect(() => {
     let isMounted = true;
 
