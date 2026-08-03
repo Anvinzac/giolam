@@ -48,17 +48,22 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
 
   const handleToggle = () => {
     tabDir.current = showApproved ? 1 : -1;
+    const today = getVietnamToday();
+    const day = today.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const currentMonday = new Date(today);
+    currentMonday.setDate(today.getDate() + diff);
+
     if (showApproved) {
-      const today = getVietnamToday();
-      const day = today.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      const currentMonday = new Date(today);
-      currentMonday.setDate(today.getDate() + diff);
+      // Switching to registration — jump to next week if on current or past
       if (weekStart.getTime() <= currentMonday.getTime()) {
         const nextMonday = new Date(currentMonday);
         nextMonday.setDate(nextMonday.getDate() + 7);
         setWeekStart(nextMonday);
       }
+    } else {
+      // Switching to schedule — always reset to current week
+      setWeekStart(currentMonday);
     }
     setShowApproved(!showApproved);
   };
