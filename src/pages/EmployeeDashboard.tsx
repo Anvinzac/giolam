@@ -18,13 +18,6 @@ export default function EmployeeDashboard() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [tab, setTab] = useState<'salary' | 'shifts'>(() => tabFromPath(location.pathname));
-  const tabDir = useRef(0);
-
-  // Sync tab with URL
-  useEffect(() => {
-    const newTab = tabFromPath(location.pathname);
-    if (newTab !== tab) setTab(newTab);
-  }, [location.pathname]);
 
   useEffect(() => {
     let isMounted = true;
@@ -82,8 +75,6 @@ export default function EmployeeDashboard() {
   }, [navigate, retryKey]);
 
   const switchTab = (newTab: 'salary' | 'shifts') => {
-    if (tab === newTab) return;
-    tabDir.current = tab === 'shifts' ? -1 : 1;
     setTab(newTab);
     navigate(newTab === 'shifts' ? '/shift-register' : '/salary', { replace: true });
   };
@@ -128,16 +119,20 @@ export default function EmployeeDashboard() {
         </div>
       </header>
 
-      {/* Both views always mounted — just toggle display */}
-      <div className={tab !== 'salary' ? 'hidden' : ''}>
-        <div className="px-4 pt-4">
-          <EmployeeSalaryView userId={userId} />
-        </div>
-      </div>
-      <div className={tab !== 'shifts' ? 'hidden' : ''}>
-        <div className="px-4 pt-2">
-          <EmployeeShiftRegisterContent userId={userId} />
-        </div>
+      {/* Both views mounted side-by-side, slide the container */}
+      <div className="overflow-hidden">
+        <motion.div
+          className="flex w-[200%]"
+          animate={{ x: tab === 'salary' ? '0%' : '-50%' }}
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          <div className="w-1/2 flex-shrink-0 px-4 pt-4">
+            <EmployeeSalaryView userId={userId} />
+          </div>
+          <div className="w-1/2 flex-shrink-0 px-4 pt-2">
+            <EmployeeShiftRegisterContent userId={userId} />
+          </div>
+        </motion.div>
       </div>
     </div>
   );
