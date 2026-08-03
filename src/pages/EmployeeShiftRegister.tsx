@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Calendar, Clock, Check, ChevronLeft, ChevronRight, X, User, Edit3, HelpCircle } from "lucide-react";
+import { Calendar, CalendarClock, Clock, Check, ChevronLeft, ChevronRight, X, User, Edit3, HelpCircle, LogOut } from "lucide-react";
 import { getWeekDates, getMoonLabel, getVietnamToday } from "@/lib/lunarUtils";
 import { formatLocalDate } from "@/lib/utils";
 import { format } from "date-fns";
@@ -272,15 +272,40 @@ export default function EmployeeShiftRegister() {
     <div className="min-h-screen bg-background pb-4 overflow-hidden">
       {/* Tab bar */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 mb-3">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate("/dashboard")}
-            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft size={18} />
-          </motion.button>
+        {/* Row 1: page-level tabs + logout */}
+        <div className="flex items-center gap-2 mb-2">
           <div className="flex-1 flex bg-muted rounded-xl p-0.5">
             <button
+              onClick={() => navigate('/salary')}
+              className="flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 text-muted-foreground"
+            >
+              <Package size={13} />
+              Bảng lương
+            </button>
+            <button
+              onClick={() => navigate('/shift-register')}
+              className="flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 bg-card text-foreground shadow-sm"
+            >
+              <CalendarClock size={13} />
+              Đăng ký ca
+            </button>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
+            aria-label="Đăng xuất"
+            className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <LogOut size={18} />
+          </motion.button>
+        </div>
+
+        {/* Row 2: sub-tabs + week nav */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex bg-muted/50 rounded-lg p-0.5">
+            <button
               onClick={() => setShowApproved(false)}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              className={`flex-1 py-1 text-[11px] font-medium rounded-md transition-colors ${
                 !showApproved ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
               }`}
             >
@@ -288,7 +313,7 @@ export default function EmployeeShiftRegister() {
             </button>
             <button
               onClick={() => setShowApproved(true)}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              className={`flex-1 py-1 text-[11px] font-medium rounded-md transition-colors ${
                 showApproved ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
               }`}
             >
@@ -298,7 +323,7 @@ export default function EmployeeShiftRegister() {
         </div>
 
         {/* Week nav */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-2">
           <button onClick={() => { slideDir.current = -1; setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; }); }} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
             <ChevronLeft size={16} />
           </button>
