@@ -10,6 +10,15 @@ function roundToThousand(n: number): number {
   return Math.round(n / 1000) * 1000;
 }
 
+// Format a Date as YYYY-MM-DD using LOCAL time (not UTC).
+// Using toISOString() here would shift dates by one day in UTC+7 (Vietnam).
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function randomTime(minH: number, maxH: number): string {
   const h = minH + Math.floor(Math.random() * (maxH - minH));
   const m = Math.random() > 0.5 ? 30 : 0;
@@ -228,7 +237,7 @@ serve(async (req) => {
       const entriesB = [];
 
       for (let d_it = new Date("2026-02-25T00:00:00"); d_it <= new Date("2026-03-25T00:00:00"); d_it.setDate(d_it.getDate() + 1)) {
-        const date = d_it.toISOString().split('T')[0];
+        const date = localDateStr(d_it);
         const dow = d_it.getDay();
         const isOff = date === "2026-03-23";
         const isWeekend = dow === 0 || dow === 6;
@@ -310,7 +319,7 @@ serve(async (req) => {
       const offDaysC = new Set(["2026-03-23"]);
 
       for (let d_it = new Date("2026-02-25T00:00:00"); d_it <= new Date("2026-03-15T00:00:00"); d_it.setDate(d_it.getDate() + 1)) {
-        const date = d_it.toISOString().split('T')[0];
+        const date = localDateStr(d_it);
         const isOff = offDaysC.has(date);
         const rate = getRate(date);
         const clockIn = isOff ? null : randomTime(8, 10);

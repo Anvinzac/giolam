@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Check, Pen, X, Undo, Clock, Calendar, ChevronLeft, ChevronRight, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { getWeekDates } from "@/lib/lunarUtils";
+import { formatLocalDate } from "@/lib/utils";
 import { format } from "date-fns";
 
 interface Registration {
@@ -200,7 +201,7 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
           </thead>
           <tbody>
             {weekDates.map(date => {
-              const dateStr = date.toISOString().split('T')[0];
+              const dateStr = formatLocalDate(date);
               const dayIndex = (date.getDay() + 6) % 7;
               const isWeekend = dayIndex >= 5;
               const morningRegs = cellMap[`${dateStr}|morning`] || [];

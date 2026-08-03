@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Format a Date as YYYY-MM-DD using LOCAL time (not UTC).
+// Using toISOString() here would shift dates by one day in UTC+7 (Vietnam).
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -38,7 +47,7 @@ serve(async (req) => {
     const current = new Date(startDate);
 
     while (current <= endDate) {
-      const dateStr = current.toISOString().split("T")[0];
+      const dateStr = localDateStr(current);
       const isOff = offDays.includes(dateStr);
       const dayOfWeek = current.getDay(); // 0=Sun, 6=Sat
 

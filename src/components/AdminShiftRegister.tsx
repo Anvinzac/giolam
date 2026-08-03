@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Calendar, Clock, ChevronLeft, ChevronRight, Check, X, Trash2, Plus } from "lucide-react";
-import { getWeekDates, getMoonLabel } from "@/lib/lunarUtils";
+import { getWeekDates, getMoonLabel, getVietnamToday } from "@/lib/lunarUtils";
+import { formatLocalDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface ShiftSlot {
@@ -49,14 +50,23 @@ interface Props {
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const SHORT_NAMES: Record<string, string> = {
-  'Minh Vũ': 'M.Vũ',
-  'Minh Anh': 'M.Anh',
-  'Hữu Khang': 'H.Khang',
-  'Hoàng Ngân': 'H.Ngân',
+  'Minh Vũ': 'M. Vũ',
+  'Minh Anh': 'M. Anh',
+  'Hữu Khang': 'H. Khang',
+  'Hoàng Khang': 'H. Khang',
+  'Hoàng Ngân': 'H. Ngân',
 };
 
 function shortName(full: string): string {
-  return SHORT_NAMES[full] || full;
+  let name = SHORT_NAMES[full] || full;
+  
+  // Format missing spaces after dots: 'M.Anh' -> 'M. Anh'
+  name = name.replace(/\.([^ ])/g, '. $1');
+  
+  // Format missing dots after single initial letters: 'Q Lam' -> 'Q. Lam'
+  name = name.replace(/^([A-Z]) ([A-Z][a-zà-ỹ]+)/i, '$1. $2');
+  
+  return name;
 }
 const SHIFT_DEFAULTS: Record<string, { clock_in: string; clock_out: string; label: string; color: string; bg: string; border: string }> = {
   morning: { clock_in: '08:00', clock_out: '15:00', label: 'Sáng', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' },
@@ -66,7 +76,7 @@ const SHIFT_DEFAULTS: Record<string, { clock_in: string; clock_out: string; labe
 export default function AdminShiftRegister({ periodId, periodStart, periodEnd }: Props) {
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState(() => {
-    const now = new Date();
+    const now = getVietnamToday();
     const day = now.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     const monday = new Date(now);
@@ -131,7 +141,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
 
       const shiftsByDate: Record<string, DayShifts> = {};
       for (const d of weekDates) {
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = formatLocalDate(d);
         shiftsByDate[dateStr] = { morning: [], afternoon: [] };
       }
 
@@ -632,11 +642,12 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         </thead>
         <tbody>
           {weekDates.map((date, idx) => {
-            const dateStr = date.toISOString().split('T')[0];
+            const dateStr = formatLocalDate(date);
+            const lookupDate = dateStr;
             const dayIndex = (date.getDay() + 6) % 7;
             const isWeekend = dayIndex >= 5;
             const moonLabel = getMoonLabel(date);
-            const dayShiftsForDay = dayShifts[dateStr] || { morning: [], afternoon: [] };
+            const dayShiftsForDay = dayShifts[lookupDate] || { morning: [], afternoon: [] };
 
             return (
               <tr key={dateStr} className="border-b border-border/30">

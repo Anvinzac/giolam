@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Settings2, CalendarPlus, CalendarOff, Check, X, Clock, Pencil } from "lucide-react";
 import { getWeekDates } from "@/lib/lunarUtils";
+import { formatLocalDate } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import DayCard from "./DayCard";
@@ -88,8 +89,8 @@ export default function WeekView({
     thisMonday.setDate(now.getDate() + diff);
     const nextMonday = new Date(thisMonday);
     nextMonday.setDate(thisMonday.getDate() + 7);
-    const weekStartStr = currentWeekStart.toISOString().split('T')[0];
-    const nextMondayStr = nextMonday.toISOString().split('T')[0];
+    const weekStartStr = formatLocalDate(currentWeekStart);
+    const nextMondayStr = formatLocalDate(nextMonday);
     return weekStartStr === nextMondayStr;
   }, [currentWeekStart]);
 
@@ -99,7 +100,7 @@ export default function WeekView({
       setExistingRegs([]);
       return;
     }
-    const dates = weekDates.map(d => d.toISOString().split('T')[0]);
+    const dates = weekDates.map(d => formatLocalDate(d));
     supabase.from('shift_registrations')
       .select('shift_date,status,clock_in,clock_out,admin_clock_in,admin_clock_out,admin_note')
       .eq('user_id', userId)
@@ -120,22 +121,22 @@ export default function WeekView({
   };
 
   const getShiftForDate = useCallback((date: Date): ShiftData | undefined => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     return shifts.find(s => s.shift_date === dateStr);
   }, [shifts]);
 
   const isOffDay = useCallback((date: Date): boolean => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     return offDays.includes(dateStr);
   }, [offDays]);
 
   const isInPeriod = useCallback((date: Date): boolean => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     return dateStr >= periodStart && dateStr <= periodEnd;
   }, [periodStart, periodEnd]);
 
   const handleToggle = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     const existing = getShiftForDate(date);
     const newActive = !existing?.is_active;
     if (newActive) {
@@ -232,7 +233,7 @@ export default function WeekView({
       toast.success(`Đã đăng ký ${submittable.length} ngày${skipped > 0 ? ` (${skipped} ngày đã xử lý, bỏ qua)` : ''}`);
       setRegDays([]);
       // Refresh existing regs
-      const dates = weekDates.map(d => d.toISOString().split('T')[0]);
+      const dates = weekDates.map(d => formatLocalDate(d));
       const { data } = await supabase.from('shift_registrations')
         .select('shift_date,status,clock_in,clock_out,admin_clock_in,admin_clock_out,admin_note')
         .eq('user_id', userId)
@@ -288,7 +289,7 @@ export default function WeekView({
       <div className="space-y-2">
         {weekDates.map((date, i) => {
           const shift = getShiftForDate(date);
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = formatLocalDate(date);
           const dayIndex = (date.getDay() + 6) % 7;
 
           if (isNextWeek) {

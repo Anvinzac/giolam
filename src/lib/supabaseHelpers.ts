@@ -1,5 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Format a Date as YYYY-MM-DD using LOCAL time (not UTC).
+// Using toISOString() here would shift dates by one day in UTC+7 (Vietnam).
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, '0');
+  const day = `${d.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export async function getCurrentProfile() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -25,7 +34,7 @@ export async function getUserRole() {
 }
 
 export async function getCurrentPeriod() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr(new Date());
   const { data } = await supabase
     .from('working_periods')
     .select('*')

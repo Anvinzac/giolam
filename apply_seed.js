@@ -6,6 +6,15 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Format a Date as YYYY-MM-DD using LOCAL time (not UTC).
+// Using toISOString() here would shift dates by one day in UTC+7 (Vietnam).
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, '0');
+  const day = `${d.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 async function seed() {
   console.log("Starting manual seed for Feb 25 - Mar 25...");
 
@@ -107,7 +116,7 @@ async function seed() {
   let d_it = new Date(startDate + "T00:00:00");
   const end = new Date(endDate + "T00:00:00");
   while (d_it <= end) {
-    const date = d_it.toISOString().split('T')[0];
+    const date = localDateStr(d_it);
     const isOff = date === offDay;
     const rate = getRate(date);
     const allowance = roundToThousand(dailyBaseB * rate / 100);

@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Format a Date as YYYY-MM-DD using LOCAL time (not UTC).
+// Using toISOString() here would shift dates by one day in UTC+7 (Vietnam).
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -16,7 +25,7 @@ serve(async (req) => {
   const results: string[] = [];
 
   // Get the active period (contains today), or fall back to most recent
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateStr(new Date());
   const { data: periods } = await supabase
     .from("working_periods")
     .select("*")

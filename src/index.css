@@ -73,20 +73,20 @@
   }
 
   html.light {
-    /* Light mode - Pastel orange + brown + dark red palette */
+    /* Light mode - Warm cream + brown + dark red palette */
 
-    /* Core backgrounds - soft pastel blue */
-    --background: 210 55% 94%;
-    --foreground: 215 35% 20%;
+    /* Core backgrounds - soft warm cream */
+    --background: 38 50% 94%;
+    --foreground: 30 40% 20%;
 
-    /* Card surfaces - slightly brighter pastel blue */
-    --card: 210 60% 98%;
-    --card-foreground: 215 35% 20%;
+    /* Card surfaces - slightly brighter warm cream */
+    --card: 40 60% 98%;
+    --card-foreground: 30 40% 20%;
 
-    --popover: 210 60% 98%;
-    --popover-foreground: 215 35% 20%;
+    --popover: 40 60% 98%;
+    --popover-foreground: 30 40% 20%;
 
-    /* Primary - Pastel orange */
+    /* Primary - Warm amber */
     --primary: 25 85% 65%;
     --primary-foreground: 22 50% 15%;
 
@@ -95,8 +95,8 @@
     --secondary-foreground: 30 45% 96%;
 
     /* Muted - Warm beige for secondary text */
-    --muted: 210 30% 88%;
-    --muted-foreground: 215 20% 40%;
+    --muted: 38 35% 88%;
+    --muted-foreground: 30 20% 40%;
 
     /* Accent - Dark red / wine */
     --accent: 355 62% 44%;
@@ -106,11 +106,11 @@
     --destructive: 0 72% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 35% 85%;
-    --input: 210 35% 92%;
+    --border: 35 35% 85%;
+    --input: 35 35% 92%;
     --ring: 25 85% 60%;
 
-    /* Custom LunarFlow tokens for light — tuned to pastel orange / brown / dark red */
+    /* Custom LunarFlow tokens for light — tuned to warm cream / brown / dark red */
     --lunar-gold: 28 85% 58%;
     --lunar-gold-glow: 30 90% 75%;
     --lunar-navy: 22 35% 25%;
@@ -123,18 +123,18 @@
     --newmoon-glow: 355 65% 52%;
     --off-day: 0 55% 78%;
     --off-day-foreground: 355 65% 32%;
-    --glass: 210 60% 98%;
-    --glass-border: 210 35% 85%;
+    --glass: 40 60% 98%;
+    --glass-border: 35 35% 85%;
     --success: 140 45% 42%;
     --success-foreground: 140 45% 8%;
 
-    --sidebar-background: 210 55% 96%;
-    --sidebar-foreground: 215 35% 20%;
+    --sidebar-background: 38 50% 96%;
+    --sidebar-foreground: 30 40% 20%;
     --sidebar-primary: 25 85% 65%;
     --sidebar-primary-foreground: 22 50% 15%;
     --sidebar-accent: 355 62% 44%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 35% 85%;
+    --sidebar-border: 35 35% 85%;
     --sidebar-ring: 25 85% 60%;
   }
 }
@@ -160,9 +160,9 @@
   }
 
   html.light .glass-card {
-    background: hsl(210 60% 98%);
-    border: 1px solid hsl(210 35% 85%);
-    box-shadow: 0 1px 3px hsl(215 35% 20% / 0.08);
+    background: hsl(40 60% 98%);
+    border: 1px solid hsl(35 35% 85%);
+    box-shadow: 0 1px 3px hsl(30 40% 20% / 0.08);
     border-radius: 1rem;
     transition-property: all;
     transition-duration: 300ms;
@@ -173,16 +173,16 @@
   }
 
   html.light .glass-card-hover {
-    background: hsl(210 60% 98%);
-    border: 1px solid hsl(210 35% 85%);
-    box-shadow: 0 1px 3px hsl(215 35% 20% / 0.08);
+    background: hsl(40 60% 98%);
+    border: 1px solid hsl(35 35% 85%);
+    box-shadow: 0 1px 3px hsl(30 40% 20% / 0.08);
     border-radius: 1rem;
     transition-property: all;
     transition-duration: 300ms;
   }
 
   html.light .glass-card-hover:hover {
-    background: hsl(210 65% 96%);
+    background: hsl(38 55% 96%);
     border-color: hsl(25 85% 58% / 0.35);
     box-shadow: 0 4px 12px hsl(25 85% 58% / 0.18);
   }
@@ -222,14 +222,14 @@
   }
 
   /* Clock-in (orange) and clock-out (accent) cell text needs heavier
-     weight under the pastel-blue light theme for readability. */
+     weight under the warm-cream light theme for readability. */
   html.light .font-medium.text-orange-400,
   html.light .font-medium.text-accent {
     font-weight: 600;
   }
 
   /* Allowance amount — dark navy blue under light theme for readability
-     against the pastel-blue background. Retains emerald in dark mode. */
+     against the warm-cream background. Retains emerald in dark mode. */
   .allowance-amt {
     color: hsl(142 71% 55%); /* emerald-400 equivalent, default dark */
   }
@@ -305,9 +305,9 @@ html.light .week-separator {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    hsl(215 80% 55% / 0.45) 20%,
-    hsl(270 70% 60% / 0.65) 50%,
-    hsl(215 80% 55% / 0.45) 80%,
+    hsl(30 80% 55% / 0.45) 20%,
+    hsl(355 65% 55% / 0.65) 50%,
+    hsl(30 80% 55% / 0.45) 80%,
     transparent 100%
   );
 }

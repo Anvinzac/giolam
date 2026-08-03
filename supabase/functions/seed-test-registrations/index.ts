@@ -7,6 +7,15 @@ const corsHeaders = {
 };
 
 const RECEPTION_ID = "d0000000-0000-0000-0000-000000000002";
+
+// Format a Date as YYYY-MM-DD using LOCAL time (not UTC).
+// Using toISOString() here would shift dates by one day in UTC+7 (Vietnam).
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 const TEST_ACCOUNTS = [
   { username: "nvienc", full_name: "N. Viên C", password: "ab12nv03", default_clock_in: "08:00", default_clock_out: "15:00" },
   { username: "nviend", full_name: "N. Viên D", password: "ab12nv04", default_clock_in: "15:00", default_clock_out: "22:00" },
@@ -30,7 +39,7 @@ function getWeekDates(monday: Date): Date[] {
 }
 
 function dateStr(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return localDateStr(d);
 }
 
 serve(async (req) => {

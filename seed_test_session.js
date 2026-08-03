@@ -31,6 +31,15 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Format a Date as YYYY-MM-DD using LOCAL time (not UTC).
+// Using toISOString() here would shift dates by one day in UTC+7 (Vietnam).
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, '0');
+  const day = `${d.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Test accounts
 const TEST_ACCOUNTS = [
   {
@@ -120,7 +129,7 @@ async function seedTestData() {
   console.log('🌱 Seeding test data...\n');
 
   // Check if working period exists
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr(new Date());
   let { data: periods } = await supabase
     .from('working_periods')
     .select('*')
@@ -139,8 +148,8 @@ async function seedTestData() {
     const { data: newPeriod, error } = await supabase
       .from('working_periods')
       .insert({
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0],
+        start_date: localDateStr(start),
+        end_date: localDateStr(end),
         off_days: [],
       })
       .select()

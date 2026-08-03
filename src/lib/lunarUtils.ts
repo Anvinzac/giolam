@@ -53,6 +53,26 @@ export function getMoonLabel(date: Date): string | null {
   return null;
 }
 
+/**
+ * Get today's date in Vietnam timezone (UTC+7) as a local Date object.
+ * The app stores shift dates using Vietnam local dates, so we must
+ * generate week dates in the same timezone regardless of the browser's
+ * local timezone.
+ */
+export function getVietnamToday(): Date {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(new Date());
+  const year = Number(parts.find(p => p.type === 'year')?.value);
+  const month = Number(parts.find(p => p.type === 'month')?.value);
+  const day = Number(parts.find(p => p.type === 'day')?.value);
+  return new Date(year, month - 1, day);
+}
+
 export function getWeekDates(weekStartDate: Date): Date[] {
   const dates: Date[] = [];
   const start = new Date(weekStartDate);

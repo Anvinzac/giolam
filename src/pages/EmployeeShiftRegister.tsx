@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Calendar, Clock, Check, ChevronLeft, ChevronRight, X, User, Edit3, HelpCircle } from "lucide-react";
-import { getWeekDates, getMoonLabel } from "@/lib/lunarUtils";
+import { getWeekDates, getMoonLabel, getVietnamToday } from "@/lib/lunarUtils";
+import { formatLocalDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import AppBootState from "@/components/AppBootState";
@@ -39,7 +40,7 @@ export default function EmployeeShiftRegister() {
   const touchX = useRef(0);
 
   const [weekStart, setWeekStart] = useState(() => {
-    const now = new Date();
+    const now = getVietnamToday();
     const day = now.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     const monday = new Date(now);
@@ -64,8 +65,8 @@ export default function EmployeeShiftRegister() {
 
       const { data: periods } = await supabase.from("working_periods")
         .select("*")
-        .lte("start_date", new Date().toISOString().split("T")[0])
-        .gte("end_date", new Date().toISOString().split("T")[0])
+        .lte("start_date", formatLocalDate(new Date()))
+        .gte("end_date", formatLocalDate(new Date()))
         .order("start_date", { ascending: false })
         .limit(1);
 
@@ -359,20 +360,21 @@ export default function EmployeeShiftRegister() {
               </thead>
               <tbody>
                 {weekDates.map(date => {
-                  const dateStr = date.toISOString().split('T')[0];
+                  const dateStr = formatLocalDate(date);
+                  const lookupDate = dateStr;
                   const dayIndex = (date.getDay() + 6) % 7;
                   const isWeekend = dayIndex >= 5;
                   const moonLabel = getMoonLabel(date);
-                  const hasMorning = registered.has(`${dateStr}|morning`);
-                  const hasAfternoon = registered.has(`${dateStr}|afternoon`);
-                  const morningStatus = registrationStatus[`${dateStr}|morning`] || '';
-                  const afternoonStatus = registrationStatus[`${dateStr}|afternoon`] || '';
-                  const morningDetail = pendingDetails[`${dateStr}|morning`];
-                  const afternoonDetail = pendingDetails[`${dateStr}|afternoon`];
-                  const morningCount = slotCounts[`${dateStr}|morning`] || 0;
-                  const afternoonCount = slotCounts[`${dateStr}|afternoon`] || 0;
-                  const morningNames = slotNames[`${dateStr}|morning`] || [];
-                  const afternoonNames = slotNames[`${dateStr}|afternoon`] || [];
+                  const hasMorning = registered.has(`${lookupDate}|morning`);
+                  const hasAfternoon = registered.has(`${lookupDate}|afternoon`);
+                  const morningStatus = registrationStatus[`${lookupDate}|morning`] || '';
+                  const afternoonStatus = registrationStatus[`${lookupDate}|afternoon`] || '';
+                  const morningDetail = pendingDetails[`${lookupDate}|morning`];
+                  const afternoonDetail = pendingDetails[`${lookupDate}|afternoon`];
+                  const morningCount = slotCounts[`${lookupDate}|morning`] || 0;
+                  const afternoonCount = slotCounts[`${lookupDate}|afternoon`] || 0;
+                  const morningNames = slotNames[`${lookupDate}|morning`] || [];
+                  const afternoonNames = slotNames[`${lookupDate}|afternoon`] || [];
 
                   return (
                     <tr key={dateStr} className="border-b border-border/30 last:border-0">
@@ -539,10 +541,11 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
         </thead>
         <tbody>
           {weekDates.map(date => {
-            const dateStr = date.toISOString().split("T")[0];
+            const dateStr = formatLocalDate(date);
+            const lookupDate = dateStr;
             const dayIndex = (date.getDay() + 6) % 7;
             const isWeekend = dayIndex >= 5;
-            const day = shifts[dateStr] || { morning: [], afternoon: [] };
+            const day = shifts[lookupDate] || { morning: [], afternoon: [] };
 
             return (
               <tr key={dateStr} className="border-b border-border/30 last:border-0">

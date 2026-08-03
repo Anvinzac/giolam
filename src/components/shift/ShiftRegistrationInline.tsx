@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Calendar, Clock, Check, ChevronLeft, ChevronRight, X, User, HelpCircle, LayoutList } from "lucide-react";
-import { getWeekDates, getMoonLabel } from "@/lib/lunarUtils";
+import { getWeekDates, getMoonLabel, getVietnamToday } from "@/lib/lunarUtils";
+import { formatLocalDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -57,7 +58,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
   const editRef = useRef<HTMLDivElement>(null);
 
   const [weekStart, setWeekStart] = useState(() => {
-    const now = new Date();
+    const now = getVietnamToday();
     const day = now.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     const monday = new Date(now);
@@ -296,11 +297,12 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                   </thead>
                   <tbody>
                     {weekDates.map(date => {
-                      const dateStr = date.toISOString().split('T')[0];
+                      const dateStr = formatLocalDate(date);
+                      const lookupDate = dateStr;
                       const dayIndex = (date.getDay() + 6) % 7;
                       const isWeekend = dayIndex >= 5;
-                      const morningSlots = slotNames[`${dateStr}|morning`] || [];
-                      const afternoonSlots = slotNames[`${dateStr}|afternoon`] || [];
+                      const morningSlots = slotNames[`${lookupDate}|morning`] || [];
+                      const afternoonSlots = slotNames[`${lookupDate}|afternoon`] || [];
 
                       return (
                         <tr key={dateStr} className="border-b border-border/30 last:border-0">
@@ -381,20 +383,21 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                     </thead>
                     <tbody>
                       {weekDates.map(date => {
-                        const dateStr = date.toISOString().split('T')[0];
+                        const dateStr = formatLocalDate(date);
+                        const lookupDate = dateStr;
                         const dayIndex = (date.getDay() + 6) % 7;
                         const isWeekend = dayIndex >= 5;
                         const moonLabel = getMoonLabel(date);
-                        const hasMorning = registered.has(`${dateStr}|morning`);
-                        const hasAfternoon = registered.has(`${dateStr}|afternoon`);
-                        const morningStatus = registrationStatus[`${dateStr}|morning`] || '';
-                        const afternoonStatus = registrationStatus[`${dateStr}|afternoon`] || '';
-                        const morningDetail = pendingDetails[`${dateStr}|morning`];
-                        const afternoonDetail = pendingDetails[`${dateStr}|afternoon`];
-                        const morningCount = slotCounts[`${dateStr}|morning`] || 0;
-                        const afternoonCount = slotCounts[`${dateStr}|afternoon`] || 0;
-                        const morningNames = (slotNames[`${dateStr}|morning`] || []).map(s => s.name);
-                        const afternoonNames = (slotNames[`${dateStr}|afternoon`] || []).map(s => s.name);
+                        const hasMorning = registered.has(`${lookupDate}|morning`);
+                        const hasAfternoon = registered.has(`${lookupDate}|afternoon`);
+                        const morningStatus = registrationStatus[`${lookupDate}|morning`] || '';
+                        const afternoonStatus = registrationStatus[`${lookupDate}|afternoon`] || '';
+                        const morningDetail = pendingDetails[`${lookupDate}|morning`];
+                        const afternoonDetail = pendingDetails[`${lookupDate}|afternoon`];
+                        const morningCount = slotCounts[`${lookupDate}|morning`] || 0;
+                        const afternoonCount = slotCounts[`${lookupDate}|afternoon`] || 0;
+                        const morningNames = (slotNames[`${lookupDate}|morning`] || []).map(s => s.name);
+                        const afternoonNames = (slotNames[`${lookupDate}|afternoon`] || []).map(s => s.name);
 
                         return (
                           <tr key={dateStr} className="border-b border-border/30 last:border-0">
