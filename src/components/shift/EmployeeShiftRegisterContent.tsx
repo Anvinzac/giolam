@@ -288,6 +288,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
           )}
         </motion.div>
       </AnimatePresence>
+      </div>
 
       {editOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
