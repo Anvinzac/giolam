@@ -113,15 +113,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
-      {/* Theme toggle */}
-      <button
-        onClick={toggleTheme}
-        className="absolute top-4 right-4 p-2.5 rounded-xl bg-muted border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all duration-200"
-        aria-label={theme === "light" ? "Chuyển sang dark mode" : "Chuyển sang light mode"}
-      >
-        {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-      </button>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -132,7 +123,16 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-gold mb-4">
             <Moon className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="font-display text-3xl font-bold text-gradient-gold">LunarFlow</h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="font-display text-3xl font-bold text-gradient-gold">LunarFlow</h1>
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200"
+              aria-label={theme === "light" ? "Chuyển sang dark mode" : "Chuyển sang light mode"}
+            >
+              {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+          </div>
           <p className="text-sm text-muted-foreground">
             {mustChangePassword ? "Đổi mật khẩu lần đầu" : "Đăng nhập bằng tên tài khoản"}
           </p>

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, CalendarClock, Clock, Check, ChevronLeft, ChevronRight, X, User, Edit3, HelpCircle, LogOut } from "lucide-react";
+import { CalendarClock, Clock, Check, ChevronLeft, ChevronRight, X, User, Edit3, HelpCircle, LogOut, Package } from "lucide-react";
 import { getWeekDates, getMoonLabel, getVietnamToday } from "@/lib/lunarUtils";
 import { formatLocalDate } from "@/lib/utils";
 import { format } from "date-fns";
@@ -300,39 +300,24 @@ export default function EmployeeShiftRegister() {
           </motion.button>
         </div>
 
-        {/* Row 2: sub-tabs + week nav */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex bg-muted/50 rounded-lg p-0.5">
-            <button
-              onClick={() => setShowApproved(false)}
-              className={`flex-1 py-1 text-[11px] font-medium rounded-md transition-colors ${
-                !showApproved ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              Đăng ký
+        {/* Week nav with toggle */}
+        <div className="flex items-center">
+          <div className="flex-[6] flex items-center justify-between bg-muted/50 rounded-lg px-1.5 py-1">
+            <button onClick={() => { slideDir.current = -1; setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; }); }} className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronLeft size={14} />
             </button>
-            <button
-              onClick={() => setShowApproved(true)}
-              className={`flex-1 py-1 text-[11px] font-medium rounded-md transition-colors ${
-                showApproved ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              Đã xếp ca
+            <h2 className="font-display font-semibold text-xs text-foreground">
+              {weekLabel}
+            </h2>
+            <button onClick={() => { slideDir.current = 1; setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; }); }} className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronRight size={14} />
             </button>
           </div>
-        </div>
-
-        {/* Week nav */}
-        <div className="flex items-center justify-between mt-2">
-          <button onClick={() => { slideDir.current = -1; setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; }); }} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
-            <ChevronLeft size={16} />
-          </button>
-          <h2 className="font-display font-semibold text-xs flex items-center gap-1.5">
-            <Calendar size={14} className="text-primary" />
-            {weekLabel}
-          </h2>
-          <button onClick={() => { slideDir.current = 1; setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; }); }} className="p-1.5 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground">
-            <ChevronRight size={16} />
+          <button
+            onClick={() => setShowApproved(!showApproved)}
+            className="ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-muted"
+          >
+            {showApproved ? 'Lịch ca' : 'Đăng ký'}
           </button>
         </div>
       </div>

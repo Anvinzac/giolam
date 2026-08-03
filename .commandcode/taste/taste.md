@@ -5,12 +5,7 @@
 # workflow
 See [workflow/taste.md](workflow/taste.md)
 # communication
-- Prefer direct action over excessive clarification questions. Confidence: 0.70
-- Be honest about limitations rather than guessing at solutions. Confidence: 0.75
-- Make only the specific changes requested — do not over-engineer, rewrite unrelated code, or add unrequested features. When corrected, revert to original behavior and apply only the minimal change needed. Confidence: 0.95
-- Do not deflect blame to external factors (e.g., RLS, database defaults, library limitations) when a fix is requested — just fix it without excuses. Confidence: 0.75
-- Fix root causes directly rather than building workaround ecosystems. When a bug exists (e.g., a one-day date offset), fix the actual date handling — do not create compensating utility functions, shifted lookup logic, or seed scripts that encode the offset. The user will reject workaround layers and demand they be removed entirely. Confidence: 0.85
-
+See [communication/taste.md](communication/taste.md)
 # timezone
 - Handle dates in Vietnamese local time (UTC+7), not UTC. Avoid timezone workarounds like appending 'Z' to date strings. Confidence: 0.90
 
