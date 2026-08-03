@@ -1,4 +1,5 @@
 # ui
+- When two sibling views share a tab/navigation bar, keep both mounted simultaneously and toggle visibility via state rather than using route-based navigation that unmounts/remounts each view. Unmounting causes unnecessary data refetches and a jarring flash/blink even when the data was already loaded moments before — the user expects instant, seamless switching with no reload. Confidence: 0.80
 - When assigning per-entity colors (e.g., employee chips), ensure truly unique colors rather than hash-based distribution from a limited palette, which can cause collisions. Use a deterministic method that guarantees distinct colors for each entity (e.g., index-based assignment from a larger or dynamically generated palette). Confidence: 0.70
 - For date range forms with exclusion dates, offer a visual calendar picker with multi-select instead of text input. Confidence: 0.70
 - Prefer inline popup editing on list items over extra UI attributes — users can tap an item to edit it. Confidence: 0.70

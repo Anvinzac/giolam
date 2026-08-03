@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, Package, CalendarClock } from 'lucide-react';
+import { ArrowLeft, LogOut, Package, CalendarClock } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 
 export default function SalaryEmployee() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -34,7 +33,6 @@ export default function SalaryEmployee() {
           return;
         }
         setUserId(user.id);
-
         setLoading(false);
       } catch (error) {
         console.error('Failed to initialize salary employee page:', error);
@@ -45,9 +43,7 @@ export default function SalaryEmployee() {
     };
 
     init();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [navigate, retryKey]);
 
   if (loading || bootError) {
@@ -55,30 +51,28 @@ export default function SalaryEmployee() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header with tab bar */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 flex bg-muted rounded-xl p-0.5">
-            <button
-              onClick={() => navigate('/salary')}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                location.pathname === '/salary' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              <Package size={13} />
-              Bảng lương
-            </button>
-            <button
-              onClick={() => navigate('/shift-register')}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                location.pathname === '/shift-register' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
-              }`}
-            >
-              <CalendarClock size={13} />
-              Đăng ký ca
-            </button>
-          </div>
+    <div className="min-h-screen bg-background pb-32">
+      {/* Header */}
+      <header className="px-6 pt-12 pb-6">
+        <div className="flex items-center gap-3">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/')}
+            className="p-2 rounded-xl bg-muted text-muted-foreground"
+          >
+            <ArrowLeft size={18} />
+          </motion.button>
+          <h1 className="font-display text-xl font-bold text-gradient-gold flex-1 truncate">
+            Bảng lương
+          </h1>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/shift-register')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/50 text-muted-foreground hover:text-foreground transition-colors text-xs"
+          >
+            <CalendarClock size={14} />
+            Đăng ký ca
+          </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
@@ -90,7 +84,7 @@ export default function SalaryEmployee() {
         </div>
       </header>
 
-      <div className="px-4 pt-4">
+      <div className="px-4">
         {userId && <EmployeeSalaryView userId={userId} />}
       </div>
     </div>
