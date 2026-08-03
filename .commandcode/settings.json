@@ -68,7 +68,8 @@
       "Shell(curl -s \"https://rrjmkqpexcjsqkxenpet.supabase.co/functions/v1/seed-test-registrations\" \\ -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyam1rcXBleGNqc3FreGVucGV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjEyMTUsImV4cCI6MjA5MDMzNzIxNX0.UQRi9s3MQt-Gpj3uYzW6ghoKZo608d6r0KEnPcKIgeo\" \\ -H \"Content-Type: application/json\" 2>&1)",
       "Shell(npx supabase functions deploy seed-aug-week --no-verify-jwt 2 >& 1)",
       "Shell(curl -s \"https://rrjmkqpexcjsqkxenpet.supabase.co/functions/v1/seed-aug-week\" \\ -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyam1rcXBleGNqc3FreGVucGV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjEyMTUsImV4cCI6MjA5MDMzNzIxNX0.UQRi9s3MQt-Gpj3uYzW6ghoKZo608d6r0KEnPcKIgeo\" 2>&1)",
-      "Shell(curl -s https://rrjmkqpexcjsqkxenpet.supabase.co/rest/v1/shift_registrations?shift_date=gte.2026-08-02&shift_date=lte.2026-08-08&order=shift_date.asc&limit=5  -H apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyam1rcXBleGNqc3FreGVucGV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjEyMTUsImV4cCI6MjA5MDMzNzIxNX0.UQRi9s3MQt-Gpj3uYzW6ghoKZo608d6r0KEnPcKIgeo)"
+      "Shell(curl -s https://rrjmkqpexcjsqkxenpet.supabase.co/rest/v1/shift_registrations?shift_date=gte.2026-08-02&shift_date=lte.2026-08-08&order=shift_date.asc&limit=5  -H apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyam1rcXBleGNqc3FreGVucGV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NjEyMTUsImV4cCI6MjA5MDMzNzIxNX0.UQRi9s3MQt-Gpj3uYzW6ghoKZo608d6r0KEnPcKIgeo)",
+      "Shell(cd /Users/dongm1/Documents/New\\ project/giolam && git add -A && git commit -F - <<'EOF' Add light/dark theme toggle to login page Co-authored-by: CommandCodeBot <noreply@commandcode.ai> EOF)"
     ],
     "deny": [],
     "defaultMode": "default"
