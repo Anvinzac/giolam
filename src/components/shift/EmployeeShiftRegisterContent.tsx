@@ -27,7 +27,32 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   const [showApproved, setShowApproved] = useState(false);
   const tabDir = useRef(0);
 
-  const [editOpen, setEditOpen] = useState<{ dateStr: string; shiftKey: string } | null>(null);
+  // Default to schedule for current/past weeks, registration for future
+  useEffect(() => {
+    const today = getVietnamToday();
+    const day = today.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const currentMonday = new Date(today);
+    currentMonday.setDate(today.getDate() + diff);
+    setShowApproved(weekStart.getTime() <= currentMonday.getTime());
+  }, [weekStart]);
+
+  const handleToggle = () => {
+    tabDir.current = showApproved ? -1 : 1;
+    if (showApproved) {
+      const today = getVietnamToday();
+      const day = today.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const currentMonday = new Date(today);
+      currentMonday.setDate(today.getDate() + diff);
+      if (weekStart.getTime() <= currentMonday.getTime()) {
+        const nextMonday = new Date(currentMonday);
+        nextMonday.setDate(nextMonday.getDate() + 7);
+        setWeekStart(nextMonday);
+      }
+    }
+    setShowApproved(!showApproved);
+  };
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
   const [editNote, setEditNote] = useState("");
@@ -205,7 +230,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
           </button>
         </div>
         <button
-          onClick={() => { tabDir.current = showApproved ? -1 : 1; setShowApproved(!showApproved); }}
+          onClick={handleToggle}
           className="ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-muted"
         >
           {showApproved ? 'Lịch ca' : 'Đăng ký'}
