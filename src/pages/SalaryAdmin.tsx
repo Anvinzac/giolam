@@ -137,34 +137,32 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
             const isSelected = selectedIds.has(emp.user_id);
 
             return (
-            <div
+            <motion.button
               key={emp.user_id}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onSelectEmployee(emp)}
               className="w-full glass-card p-3 flex items-center justify-between text-left"
             >
-              <div className="flex items-center gap-2.5">
-                <button
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <span
                   onClick={(e) => { e.stopPropagation(); onToggleSelect(emp.user_id); }}
-                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                    isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 text-transparent'
+                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors ${
+                    isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30'
                   }`}
                 >
                   {isSelected && <Check size={12} strokeWidth={3} />}
-                </button>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onSelectEmployee(emp)}
-                  className="flex-1 text-left"
-                >
+                </span>
+                <span className="min-w-0">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">{emp.full_name}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{emp.full_name}</p>
                       <PendingReviewBadge count={pendingCounts?.get(emp.user_id) || 0} variant="dot" />
                     </div>
                     {emp.department_name && (
-                      <p className="text-[10px] text-muted-foreground">{emp.department_name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{emp.department_name}</p>
                     )}
                   </div>
-                </motion.button>
+                </span>
               </div>
               {(() => {
                 if (!hasRecord) {
