@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { LogOut, Package, CalendarClock } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
@@ -8,13 +8,17 @@ import EmployeeShiftRegisterContent from '@/components/shift/EmployeeShiftRegist
 import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 
+function tabFromPath(path: string) { return path === '/shift-register' ? 'shifts' : 'salary'; }
+
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
-  const [tab, setTab] = useState<'salary' | 'shifts'>('salary');
+  const [tab, setTab] = useState<'salary' | 'shifts'>(() => tabFromPath(location.pathname));
+  const tabDir = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -36,7 +40,6 @@ export default function EmployeeDashboard() {
         }
         setUserId(user.id);
 
-        // Check if salary is editable — if so, redirect to /salary/edit
         const today = new Date().toISOString().split('T')[0];
         const { data: periods } = await supabase.from('working_periods')
           .select('id')
@@ -72,6 +75,13 @@ export default function EmployeeDashboard() {
     return () => { isMounted = false; };
   }, [navigate, retryKey]);
 
+  const switchTab = (newTab: 'salary' | 'shifts') => {
+    if (tab === newTab) return;
+    tabDir.current = tab === 'shifts' ? -1 : 1;
+    setTab(newTab);
+    navigate(newTab === 'shifts' ? '/shift-register' : '/salary', { replace: true });
+  };
+
   if (loading || bootError) {
     return <AppBootState error={bootError} onRetry={() => setRetryKey(k => k + 1)} />;
   }
@@ -83,7 +93,7 @@ export default function EmployeeDashboard() {
         <div className="flex items-center gap-2">
           <div className="flex-1 flex bg-muted rounded-xl p-0.5">
             <button
-              onClick={() => setTab('salary')}
+              onClick={() => switchTab('salary')}
               className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                 tab === 'salary' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
               }`}
@@ -92,7 +102,7 @@ export default function EmployeeDashboard() {
               Bảng lương
             </button>
             <button
-              onClick={() => setTab('shifts')}
+              onClick={() => switchTab('shifts')}
               className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                 tab === 'shifts' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
               }`}
