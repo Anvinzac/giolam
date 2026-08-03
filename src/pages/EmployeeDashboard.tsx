@@ -120,7 +120,7 @@ export default function EmployeeDashboard() {
       </header>
 
       {/* Both views mounted side-by-side, slide the container */}
-      <div className="overflow-hidden">
+      <div className="overflow-x-hidden">
         <motion.div
           className="flex w-[200%]"
           animate={{ x: tab === 'salary' ? '0%' : '-50%' }}

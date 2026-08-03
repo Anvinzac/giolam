@@ -47,7 +47,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   }, [weekStart]);
 
   const handleToggle = () => {
-    tabDir.current = showApproved ? -1 : 1;
+    tabDir.current = showApproved ? 1 : -1;
     if (showApproved) {
       const today = getVietnamToday();
       const day = today.getDay();
@@ -219,7 +219,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   };
 
   return (
-    <div className="pb-4 overflow-hidden">
+    <div className="pb-4">
       {/* Week nav with toggle */}
       <div className="flex items-center mb-3">
         <div className="flex-[6] flex items-center justify-between bg-muted/50 rounded-lg px-1.5 py-1">
@@ -239,14 +239,14 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
         </button>
       </div>
 
-      <div className="relative min-h-[300px]">
+      <div className="relative" style={{ minHeight: 400 }}>
       <AnimatePresence initial={false}>
         <motion.div
           key={`${weekLabel}-${showApproved}`}
           className="absolute inset-x-0 top-0"
-          initial={{ x: tabDir.current * 120, opacity: 0 }}
+          initial={{ x: -tabDir.current * 120, opacity: 0 }}
           animate={{ x: 0, opacity: 1, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1], delay: 0.15 } }}
-          exit={{ x: -tabDir.current * 120, opacity: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
+          exit={{ x: tabDir.current * 120, opacity: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
         >
           {showApproved ? (
             <ApprovedShiftTable weekDates={weekDates} periodId={periodId} />
