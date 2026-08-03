@@ -38,15 +38,28 @@ export default function AdminStockReports() {
       .select(`
         id, ingredient_id, reported_by, remaining_quantity, warning_message,
         is_low_stock, reported_at, resolved_at,
-        profiles!stock_reports_reported_by_fkey(full_name, username),
         ingredients(name, emoji, unit, category)
       `)
       .order('reported_at', { ascending: false });
     if (error) {
       toast.error(error.message);
-    } else {
-      setReports((data as unknown as StockReport[]) || []);
+      setLoading(false);
+      return;
     }
+    const raw = (data as any[]) || [];
+
+    // Separate query for profiles since reported_by references auth.users, not profiles
+    const userIds = [...new Set(raw.map((r: any) => r.reported_by))];
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name, username')
+      .in('id', userIds);
+    const profileMap = new Map((profilesData || []).map((p: any) => [p.id, p]));
+
+    setReports(raw.map((r: any) => ({
+      ...r,
+      profiles: profileMap.get(r.reported_by) || null,
+    })) as unknown as StockReport[]);
     setLoading(false);
   };
 

@@ -55,7 +55,7 @@ interface DepartmentEmployeePagesProps {
   employees: Employee[];
   onSelectEmployee: (emp: Employee) => void;
   pendingCounts?: Map<string, number>;
-  publishedTotals: Map<string, number>;
+  publishedTotals: Map<string, { total: number; deposit: number }>;
 }
 
 function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, publishedTotals }: DepartmentEmployeePagesProps) {
@@ -146,14 +146,30 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
                 )}
               </div>
               {(() => {
-                const total = publishedTotals.get(emp.user_id);
-                if (!total || total <= 0) {
+                const record = publishedTotals.get(emp.user_id);
+                if (!record || record.total <= 0) {
                   return <span className="text-[11px] text-muted-foreground">Chưa công bố</span>;
                 }
+                const hasDeposit = record.deposit > 0;
+                const transfer = record.total - record.deposit;
                 return (
-                  <span className="text-[13px] font-bold text-emerald-400 tabular-nums">
-                    {formatVND(total).replace(' đ', '')}đ
-                  </span>
+                  <div className="text-right">
+                    {hasDeposit ? (
+                      <>
+                        <span className="text-[11px] font-semibold text-emerald-400 tabular-nums leading-none">
+                          {formatVND(transfer).replace(' đ', '')}đ
+                        </span>
+                        <br />
+                        <span className="text-[9px] text-muted-foreground">
+                          {formatVND(record.total)} − {formatVND(record.deposit)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[13px] font-bold text-emerald-400 tabular-nums">
+                        {formatVND(record.total).replace(' đ', '')}đ
+                      </span>
+                    )}
+                  </div>
                 );
               })()}
             </motion.button>
@@ -179,19 +195,28 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
       {/* Payroll totals: main sum (excluded users in a separate "phụ" sum) */}
       {(() => {
         let mainTotal = 0;
+        let mainDeposit = 0;
         let secondaryTotal = 0;
+        let secondaryDeposit = 0;
         let secondaryCount = 0;
         for (const emp of employees) {
-          const t = publishedTotals.get(emp.user_id) || 0;
-          if (t <= 0) continue;
+          const record = publishedTotals.get(emp.user_id);
+          if (!record || record.total <= 0) continue;
+          const t = record.total;
+          const d = record.deposit || 0;
           if (SECONDARY_TOTAL_USERNAMES.has((emp.username || '').toLowerCase())) {
             secondaryTotal += t;
+            secondaryDeposit += d;
             secondaryCount += 1;
           } else {
             mainTotal += t;
+            mainDeposit += d;
           }
         }
         if (mainTotal === 0 && secondaryTotal === 0) return null;
+        const mainTransfer = mainTotal - mainDeposit;
+        const secondaryTransfer = secondaryTotal - secondaryDeposit;
+        const hasAnyDeposit = mainDeposit > 0 || secondaryDeposit > 0;
         return (
           <div className="glass-card p-3 mt-2 space-y-1.5">
             <div className="flex items-center justify-between">
@@ -200,6 +225,14 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
                 {formatVND(mainTotal).replace(' đ', '')}đ
               </span>
             </div>
+            {hasAnyDeposit && (
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-muted-foreground">Sẽ chuyển khoản</span>
+                <span className="text-[15px] font-bold text-emerald-400 tabular-nums">
+                  {formatVND(mainTransfer).replace(' đ', '')}đ
+                </span>
+              </div>
+            )}
             {secondaryCount > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground">
@@ -207,6 +240,16 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
                 </span>
                 <span className="text-[13px] font-semibold text-accent tabular-nums">
                   {formatVND(secondaryTotal).replace(' đ', '')}đ
+                </span>
+              </div>
+            )}
+            {secondaryDeposit > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">
+                  Phụ chuyển khoản
+                </span>
+                <span className="text-[13px] font-semibold text-emerald-400/70 tabular-nums">
+                  {formatVND(secondaryTransfer).replace(' đ', '')}đ
                 </span>
               </div>
             )}
@@ -313,7 +356,7 @@ export default function SalaryAdmin() {
   const [salaryColumnsAvailable, setSalaryColumnsAvailable] = useState(true);
   const [adminUid, setAdminUid] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map());
-  const [publishedTotals, setPublishedTotals] = useState<Map<string, number>>(new Map());
+  const [publishedTotals, setPublishedTotals] = useState<Map<string, { total: number; deposit: number }>>(new Map());
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
   const [isArchiving, setIsArchiving] = useState(false);
@@ -417,13 +460,14 @@ export default function SalaryAdmin() {
     if (!selectedPeriodId) { setPublishedTotals(new Map()); return; }
     const { data, error } = await supabase
       .from('salary_records')
-      .select('user_id, total_salary, status')
+      .select('user_id, total_salary, salary_breakdown, status')
       .eq('period_id', selectedPeriodId)
       .eq('status', 'published');
     if (error) { console.error('Published totals fetch failed:', error); return; }
-    const map = new Map<string, number>();
-    for (const row of (data || []) as { user_id: string; total_salary: number }[]) {
-      map.set(row.user_id, row.total_salary);
+    const map = new Map<string, { total: number; deposit: number }>();
+    for (const row of (data || []) as any[]) {
+      const deposit = (row.salary_breakdown as any)?.deposit || 0;
+      map.set(row.user_id, { total: row.total_salary, deposit });
     }
     setPublishedTotals(map);
   }, [selectedPeriodId]);
@@ -709,7 +753,7 @@ export default function SalaryAdmin() {
       await publish(breakdown.total, breakdown);
       setPublishedTotals(prev => {
         const next = new Map(prev);
-        next.set(selectedEmployee.user_id, breakdown.total);
+        next.set(selectedEmployee.user_id, { total: breakdown.total, deposit: breakdown.deposit || 0 });
         return next;
       });
       await refreshPublishedTotals();

@@ -17,8 +17,8 @@ serve(async (req) => {
   const KITCHEN_ID = "d0000000-0000-0000-0000-000000000001";
 
   const updates = [
-    { username: "ntruong", department_id: KITCHEN_ID },
-    { username: "tphi", department_id: KITCHEN_ID },
+    { username: "codung", department_id: KITCHEN_ID },
+    { username: "maiyen", department_id: KITCHEN_ID },
   ];
 
   const results: string[] = [];
