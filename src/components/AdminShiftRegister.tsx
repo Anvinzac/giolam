@@ -49,24 +49,11 @@ interface Props {
 }
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const SHORT_NAMES: Record<string, string> = {
-  'Minh Vũ': 'M. Vũ',
-  'Minh Anh': 'M. Anh',
-  'Hữu Khang': 'H. Khang',
-  'Hoàng Khang': 'H. Khang',
-  'Hoàng Ngân': 'H. Ngân',
-};
 
 function shortName(full: string): string {
-  let name = SHORT_NAMES[full] || full;
-  
-  // Format missing spaces after dots: 'M.Anh' -> 'M. Anh'
-  name = name.replace(/\.([^ ])/g, '. $1');
-  
-  // Format missing dots after single initial letters: 'Q Lam' -> 'Q. Lam'
-  name = name.replace(/^([A-Z]) ([A-Z][a-zà-ỹ]+)/i, '$1. $2');
-  
-  return name;
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 1) return full;
+  return `${parts[0][0]}. ${parts[parts.length - 1]}`;
 }
 const SHIFT_DEFAULTS: Record<string, { clock_in: string; clock_out: string; label: string; color: string; bg: string; border: string }> = {
   morning: { clock_in: '08:00', clock_out: '15:00', label: 'Sáng', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' },

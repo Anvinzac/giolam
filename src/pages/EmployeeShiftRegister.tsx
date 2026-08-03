@@ -10,10 +10,11 @@ import { toast } from "sonner";
 import AppBootState from "@/components/AppBootState";
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const SHORT_NAMES: Record<string, string> = {
-  'Minh Vũ': 'M.Vũ', 'Minh Anh': 'M.Anh', 'Hữu Khang': 'H.Khang', 'Hoàng Ngân': 'H.Ngân',
-};
-function shortName(full: string): string { return SHORT_NAMES[full] || full; }
+function shortName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 1) return full;
+  return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+}
 
 export default function EmployeeShiftRegister() {
   const navigate = useNavigate();
