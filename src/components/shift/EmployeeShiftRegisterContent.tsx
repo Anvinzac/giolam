@@ -47,7 +47,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   }, [weekStart]);
 
   const handleToggle = () => {
-    tabDir.current = showApproved ? 1 : -1;
+    tabDir.current = showApproved ? -1 : 1;
     const today = getVietnamToday();
     const day = today.getDay();
     const diff = day === 0 ? -6 : 1 - day;
@@ -79,8 +79,8 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   const weekLabel = useMemo(() => {
     const start = weekDates[0];
     const end = weekDates[6];
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${monthNames[start.getMonth()]} ${start.getDate()} – ${monthNames[end.getMonth()]} ${end.getDate()}`;
+    const vnDay = (d: Date) => `${d.getDate()} Th ${d.getMonth() + 1}`;
+    return `${vnDay(start)} – ${vnDay(end)}`;
   }, [weekDates]);
 
   useEffect(() => {

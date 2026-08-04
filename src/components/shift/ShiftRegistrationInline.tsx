@@ -72,8 +72,8 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
   const weekLabel = useMemo(() => {
     const start = weekDates[0];
     const end = weekDates[6];
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${monthNames[start.getMonth()]} ${start.getDate()} – ${monthNames[end.getMonth()]} ${end.getDate()}`;
+    const vnDay = (d: Date) => `${d.getDate()} Th ${d.getMonth() + 1}`;
+    return `${vnDay(start)} – ${vnDay(end)}`;
   }, [weekDates]);
 
   useEffect(() => {

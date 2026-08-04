@@ -71,6 +71,8 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
   // one is on screen — lets them browse past payslips, not just the latest.
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editablePeriodId, setEditablePeriodId] = useState<string | null>(null);
+  const [periods, setPeriods] = useState<PeriodInfo[]>([]);
 
   // Hydrate the visible record/period/profile/etc. from one snapshot.
   const applySnapshot = useCallback((snap: Snapshot) => {
@@ -139,11 +141,9 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
         currentPeriod = ((fallback || []) as PeriodInfo[])[0];
       }
 
-      // Only bounce to the editor when there is genuinely nothing to show
-      // here — i.e. no published payslip exists yet AND the current period
-      // is still editable. If the employee has any published history, this
-      // page shows it (with the period picker) instead of redirecting, so
-      // past payslips stay reachable during an open period.
+      // Track whether there's an editable period. When there is, we show a
+      // link to the editor instead of redirecting — the employee stays on
+      // this page to browse history, then clicks through to input when ready.
       if (currentPeriod && list.length === 0) {
         const { data: myRec } = await supabase
           .from('salary_records')
@@ -153,15 +153,13 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           .maybeSingle();
 
         if (!myRec || (myRec as any)?.status === 'draft') {
-          setLoading(false);
-          navigate('/salary/edit', { replace: true });
-          return;
+          setEditablePeriodId(currentPeriod.id);
+          setPeriods([currentPeriod]);
         }
       }
 
       if (list.length === 0) {
         setLoading(false);
-        // No snapshot and no editable period — show empty state
         return;
       }
 
@@ -226,9 +224,24 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
   if (!record || !period || !profile) {
     return (
       <div className="glass-card p-8 text-center space-y-2">
-        <Calendar className="w-10 h-10 text-muted-foreground mx-auto" />
-        <p className="text-muted-foreground text-sm">Chưa có bảng lương nào</p>
-        <p className="text-muted-foreground text-xs">Bảng lương sẽ hiển thị sau khi quản lý công bố.</p>
+        {editablePeriodId ? (
+          <>
+            <Calendar className="w-10 h-10 text-green-500 mx-auto" />
+            <p className="text-muted-foreground text-sm">Kỳ lương hiện tại đang mở</p>
+            <button
+              onClick={() => navigate('/salary/edit')}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl gradient-gold text-primary-foreground text-sm font-medium"
+            >
+              Nhập công kỳ này
+            </button>
+          </>
+        ) : (
+          <>
+            <Calendar className="w-10 h-10 text-muted-foreground mx-auto" />
+            <p className="text-muted-foreground text-sm">Chưa có bảng lương nào</p>
+            <p className="text-muted-foreground text-xs">Bảng lương sẽ hiển thị sau khi quản lý công bố.</p>
+          </>
+        )}
       </div>
     );
   }
@@ -247,12 +260,23 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
   return (
     <div className="space-y-3">
       {/* Period history picker — only when there's more than one payslip */}
-      {snapshots.length > 1 && (
+      {(snapshots.length > 1 || editablePeriodId) && (
         <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 px-1 text-muted-foreground">
-            <History size={12} />
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Kỳ lương</span>
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <History size={12} />
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Kỳ lương</span>
+            </div>
+            {editablePeriodId && (
+              <button
+                onClick={() => navigate('/salary/edit')}
+                className="text-[11px] font-medium text-green-500 bg-green-500/10 px-2 py-0.5 rounded-lg hover:bg-green-500/20 transition-colors"
+              >
+                Kỳ hiện tại
+              </button>
+            )}
           </div>
+          {snapshots.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
             {snapshots.map(s => {
               const active = s.salary_record_id === selectedId;
@@ -277,6 +301,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
               );
             })}
           </div>
+          )}
         </div>
       )}
 

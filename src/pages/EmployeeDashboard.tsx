@@ -39,29 +39,6 @@ export default function EmployeeDashboard() {
         }
         setUserId(user.id);
 
-        const today = new Date().toISOString().split('T')[0];
-        const { data: periods } = await supabase.from('working_periods')
-          .select('id')
-          .eq('is_archived', false)
-          .lte('start_date', today)
-          .gte('end_date', today)
-          .limit(1);
-
-        const currentPeriod = (periods || [])[0];
-        if (currentPeriod) {
-          const { data: rec } = await supabase.from('salary_records')
-            .select('status')
-            .eq('user_id', user.id)
-            .eq('period_id', currentPeriod.id)
-            .maybeSingle();
-
-          if (!rec || rec.status === 'draft') {
-            if (!isMounted) return;
-            navigate('/salary/edit', { replace: true });
-            return;
-          }
-        }
-
         setLoading(false);
       } catch (error) {
         console.error('Failed to initialize dashboard:', error);

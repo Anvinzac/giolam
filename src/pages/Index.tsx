@@ -48,7 +48,7 @@ export default function Index() {
 
       if (userIsAdmin) {
         setLoading(false);
-        navigate("/admin/salary");
+        navigate("/admin");
         return;
       }
 
