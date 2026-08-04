@@ -77,13 +77,14 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
   }, [weekDates]);
 
   useEffect(() => {
-    if (!userId || !periodId) return;
+    if (!userId) return;
 
     const fetchShifts = async () => {
-      const { data: shiftsData } = await supabase.from("shifts")
+      let shiftsQuery = supabase.from("shifts")
         .select("shift_date, shift_slot")
-        .eq("user_id", userId)
-        .eq("period_id", periodId);
+        .eq("user_id", userId);
+      if (periodId) shiftsQuery = shiftsQuery.eq("period_id", periodId);
+      const { data: shiftsData } = await shiftsQuery;
 
       const reg = new Set<string>();
       for (const s of (shiftsData || [])) {
@@ -113,9 +114,10 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
       setRegistrationStatus(statusMap);
       setPendingDetails(details);
 
-      const { data: allShifts } = await supabase.from("shifts")
-        .select("shift_date, shift_slot, user_id")
-        .eq("period_id", periodId);
+      let allShiftsQuery = supabase.from("shifts")
+        .select("shift_date, shift_slot, user_id");
+      if (periodId) allShiftsQuery = allShiftsQuery.eq("period_id", periodId);
+      const { data: allShifts } = await allShiftsQuery;
 
       const userIds = [...new Set((allShifts || []).map((s: any) => s.user_id))];
       const { data: empProfiles } = await supabase.from("profiles")
@@ -263,12 +265,12 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
           onClick={() => setShowApproved(prev => !prev)}
           className={`w-[30%] inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium transition-colors ${
             showApproved
-              ? 'bg-emerald-500/15 text-emerald-500'
-              : 'bg-muted text-muted-foreground hover:text-foreground'
+              ? 'bg-muted text-muted-foreground hover:text-foreground'
+              : 'bg-emerald-500/15 text-emerald-500'
           }`}
         >
           <LayoutList size={12} />
-          Lịch chung
+          Đăng ký
         </button>
       </div>
 

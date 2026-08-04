@@ -104,13 +104,12 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!periodId) return;
-
     const fetchShifts = async () => {
-      const { data: shiftsData } = await supabase.from("shifts")
+      let shiftsQuery = supabase.from("shifts")
         .select("shift_date, shift_slot")
-        .eq("user_id", userId)
-        .eq("period_id", periodId);
+        .eq("user_id", userId);
+      if (periodId) shiftsQuery = shiftsQuery.eq("period_id", periodId);
+      const { data: shiftsData } = await shiftsQuery;
 
       const reg = new Set<string>();
       for (const s of (shiftsData || [])) reg.add(`${s.shift_date}|${s.shift_slot}`);
@@ -138,9 +137,10 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
       setRegistrationStatus(statusMap);
       setPendingDetails(details);
 
-      const { data: allShifts } = await supabase.from("shifts")
-        .select("shift_date, shift_slot, user_id")
-        .eq("period_id", periodId);
+      let allShiftsQuery = supabase.from("shifts")
+        .select("shift_date, shift_slot, user_id");
+      if (periodId) allShiftsQuery = allShiftsQuery.eq("period_id", periodId);
+      const { data: allShifts } = await allShiftsQuery;
 
       const userIds = [...new Set((allShifts || []).map((s: any) => s.user_id))];
       const { data: empProfiles } = await supabase.from("profiles")
@@ -176,7 +176,6 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   }, [editOpen]);
 
   const quickRegister = async (dateStr: string, shiftKey: string) => {
-    if (!periodId) return;
     if (registered.has(`${dateStr}|${shiftKey}`)) { toast.info("Ca này đã được admin đăng ký"); return; }
     const key = `${dateStr}|${shiftKey}`;
     const isPending = pending.has(key);
@@ -212,7 +211,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   };
 
   const saveEdit = async () => {
-    if (!editOpen || !periodId) return;
+    if (!editOpen) return;
     const { dateStr, shiftKey } = editOpen;
     await supabase.from("shift_registrations").upsert({ user_id: userId, shift_date: dateStr, shift_slot: shiftKey, status: "pending", clock_in: editClockIn || null, clock_out: editClockOut || null, admin_note: editNote || null } as any, { onConflict: "user_id,shift_date,shift_slot" });
     const key = `${dateStr}|${shiftKey}`;
@@ -238,9 +237,13 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
         </div>
         <button
           onClick={handleToggle}
-          className="ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-muted"
+          className={`ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center ${
+            showApproved
+              ? 'bg-muted/50 text-muted-foreground hover:bg-muted'
+              : 'bg-emerald-500/15 text-emerald-500'
+          }`}
         >
-          {showApproved ? 'Lịch ca' : 'Đăng ký'}
+          Đăng ký
         </button>
       </div>
 
@@ -251,7 +254,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
           className="absolute inset-x-0 top-0"
           initial={{ x: -tabDir.current * 120, opacity: 0 }}
           animate={{ x: 0, opacity: 1, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1], delay: 0.15 } }}
-          exit={{ x: tabDir.current * 120, opacity: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
+          exit={{ x: -tabDir.current * 120, opacity: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
         >
           {showApproved ? (
             <ApprovedShiftTable weekDates={weekDates} periodId={periodId} />
@@ -332,9 +335,10 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
   const [shifts, setShifts] = useState<Record<string, { morning: { name: string; userId: string }[]; afternoon: { name: string; userId: string }[] }>>({});
 
   useEffect(() => {
-    if (!periodId) return;
     const fetch = async () => {
-      const { data: allShifts } = await supabase.from("shifts").select("shift_date, shift_slot, user_id").eq("period_id", periodId);
+      let query = supabase.from("shifts").select("shift_date, shift_slot, user_id");
+      if (periodId) query = query.eq("period_id", periodId);
+      const { data: allShifts } = await query;
       const userIds = [...new Set((allShifts || []).map((s: any) => s.user_id))];
       const { data: empProfiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
       const nameMap = new Map<string, string>();

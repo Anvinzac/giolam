@@ -96,13 +96,14 @@ export default function EmployeeShiftRegister() {
   }, [navigate]);
 
   useEffect(() => {
-    if (!userId || !periodId) return;
+    if (!userId) return;
 
     const fetchShifts = async () => {
-      const { data: shiftsData } = await supabase.from("shifts")
+      let shiftsQuery = supabase.from("shifts")
         .select("shift_date, shift_slot")
-        .eq("user_id", userId)
-        .eq("period_id", periodId);
+        .eq("user_id", userId);
+      if (periodId) shiftsQuery = shiftsQuery.eq("period_id", periodId);
+      const { data: shiftsData } = await shiftsQuery;
 
       const reg = new Set<string>();
       for (const s of (shiftsData || [])) {
@@ -133,9 +134,10 @@ export default function EmployeeShiftRegister() {
       setPendingDetails(details);
 
       // Count people + names per slot
-      const { data: allShifts } = await supabase.from("shifts")
-        .select("shift_date, shift_slot, user_id")
-        .eq("period_id", periodId);
+      let allShiftsQuery = supabase.from("shifts")
+        .select("shift_date, shift_slot, user_id");
+      if (periodId) allShiftsQuery = allShiftsQuery.eq("period_id", periodId);
+      const { data: allShifts } = await allShiftsQuery;
 
       const userIds = [...new Set((allShifts || []).map((s: any) => s.user_id))];
       const { data: empProfiles } = await supabase.from("profiles")
@@ -175,7 +177,7 @@ export default function EmployeeShiftRegister() {
   }, [editOpen]);
 
   const quickRegister = async (dateStr: string, shiftKey: string) => {
-    if (!userId || !periodId) return;
+    if (!userId) return;
     if (registered.has(`${dateStr}|${shiftKey}`)) {
       toast.info("Ca này đã được admin đăng ký, không thể thay đổi");
       return;
@@ -234,7 +236,7 @@ export default function EmployeeShiftRegister() {
   };
 
   const saveEdit = async () => {
-    if (!editOpen || !userId || !periodId) return;
+    if (!editOpen || !userId) return;
     const { dateStr, shiftKey } = editOpen;
 
     await supabase.from("shift_registrations").upsert({
@@ -319,9 +321,13 @@ export default function EmployeeShiftRegister() {
               tabDir.current = showApproved ? -1 : 1;
               setShowApproved(!showApproved);
             }}
-            className="ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-muted"
+            className={`ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center ${
+              showApproved
+                ? 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                : 'bg-emerald-500/15 text-emerald-500'
+            }`}
           >
-            {showApproved ? 'Lịch ca' : 'Đăng ký'}
+            Đăng ký
           </button>
         </div>
       </div>
@@ -343,7 +349,7 @@ export default function EmployeeShiftRegister() {
           key={`${weekLabel}-${showApproved}`}
           initial={{ x: tabDir.current * 120, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -tabDir.current * 120, opacity: 0 }}
+          exit={{ x: tabDir.current * 120, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         >
       {showApproved ? (
@@ -507,11 +513,10 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
   const [shifts, setShifts] = useState<Record<string, { morning: { name: string; userId: string }[]; afternoon: { name: string; userId: string }[] }>>({});
 
   useEffect(() => {
-    if (!periodId) return;
     const fetch = async () => {
-      const { data: allShifts } = await supabase.from("shifts")
-        .select("shift_date, shift_slot, user_id")
-        .eq("period_id", periodId);
+      let query = supabase.from("shifts").select("shift_date, shift_slot, user_id");
+      if (periodId) query = query.eq("period_id", periodId);
+      const { data: allShifts } = await query;
 
       const userIds = [...new Set((allShifts || []).map((s: any) => s.user_id))];
       const { data: empProfiles } = await supabase.from("profiles")
