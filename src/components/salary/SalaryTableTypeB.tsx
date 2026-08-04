@@ -115,7 +115,7 @@ export default function SalaryTableTypeB({
 
     return e.is_admin_reviewed === false || isOwnDuplicateRow;
   };
-  const tableGridClass = 'sm:grid-cols-[70px_minmax(120px,1fr)_50px_40px_55px_60px_75px]';
+  const tableGridClass = 'sm:grid-cols-[60px_minmax(100px,1fr)_40px_35px_50px_70px_60px]';
   const tableGapClass = 'sm:gap-1.5 sm:px-1';
   const [currentPage, setCurrentPage] = useState(0);
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -595,7 +595,7 @@ export default function SalaryTableTypeB({
           <span className="w-[38px]">Ra</span>
           <span className="w-[24px]">Giờ</span>
           <span className="w-[34px]">Lương</span>
-          <span className="w-[30px]">PC</span>
+          <span className="w-[72px]">PC</span>
           <span className="w-[40px]">Tổng</span>
         </div>
       </div>
@@ -756,7 +756,7 @@ export default function SalaryTableTypeB({
                       <FormulaTooltip formula={formulaWage(hours)} className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
                         {extraWage > 0 ? formatCompact(extraWage) : '—'}
                       </FormulaTooltip>
-                      <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="w-[30px] text-right allowance-amt font-semibold text-[12px]">
+                      <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="w-[70px] text-right allowance-amt font-semibold text-[12px]">
                         {allowance !== 0 ? formatCompact(allowance) : ''}
                       </FormulaTooltip>
                       <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
@@ -1008,9 +1008,6 @@ export default function SalaryTableTypeB({
             </span>
           </div>
           <div className="flex items-end justify-between gap-3">
-            <p className="text-[11px] text-muted-foreground">
-              Tính theo công thức cố định (cập nhật theo ngày nghỉ).
-            </p>
             <div className="text-sm font-semibold text-foreground">
               {formatVND(guiXeSummary.amount)}
             </div>

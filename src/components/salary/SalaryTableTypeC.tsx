@@ -89,8 +89,8 @@ export default function SalaryTableTypeC({
   const [chipBaseByRowKey, setChipBaseByRowKey] = useState<Record<string, string>>({});
   const chipAutoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tableGridClass = separateClockColumns 
-    ? 'sm:grid-cols-[75px_minmax(170px,1fr)_74px_50px_40px_55px_55px_70px]'
-    : 'sm:grid-cols-[75px_minmax(110px,1fr)_84px_40px_55px_55px_70px]';
+    ? 'sm:grid-cols-[65px_minmax(150px,1fr)_60px_40px_35px_45px_72px_55px]'
+    : 'sm:grid-cols-[65px_minmax(90px,1fr)_70px_35px_45px_72px_55px]';
   const tableGapClass = 'sm:gap-1.5 sm:px-2';
   const [currentPage, setCurrentPage] = useState(0);
   const [editingHourly, setEditingHourly] = useState(false);

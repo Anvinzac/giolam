@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, Package, CalendarClock } from 'lucide-react';
+import { LogOut, Package, CalendarClock, ChevronRight } from 'lucide-react';
 import EmployeeSalaryView from '@/components/salary/EmployeeSalaryView';
 import EmployeeShiftRegisterContent from '@/components/shift/EmployeeShiftRegisterContent';
 import AppBootState from '@/components/AppBootState';
@@ -110,6 +110,20 @@ export default function EmployeeDashboard() {
             <EmployeeShiftRegisterContent userId={userId} />
           </div>
         </motion.div>
+      </div>
+
+      <div className="px-4 mt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <button
+          onClick={() => navigate('/stock-alert')}
+          className="w-full glass-card border border-emerald-500/20 bg-emerald-500/5 rounded-2xl px-4 py-3.5 flex items-center gap-3"
+        >
+          <Package size={20} className="text-emerald-500" />
+          <span className="flex-1 text-left">
+            <span className="text-[13px] font-semibold">Kiểm kho</span>
+            <span className="text-[11px] text-muted-foreground block">Báo cáo nguyên liệu tồn kho</span>
+          </span>
+          <ChevronRight size={16} className="text-muted-foreground" />
+        </button>
       </div>
     </div>
   );

@@ -337,7 +337,7 @@ export default function SalaryTableTypeA({
               </span>
               <span className="flex-1 text-center">Ghi chú</span>
               <span className="w-[46px] text-center">Tỷ lệ</span>
-              <span className="w-[50px] text-right">Phụ cấp</span>
+              <span className="w-[72px] text-right">Phụ cấp</span>
             </div>
 
         {addingDate && !readOnly && onAddRowAtDate && (
@@ -475,7 +475,7 @@ export default function SalaryTableTypeA({
                           ? `${formatK(extraWage)} + ${formatK(allowance)}`
                           : null)
                       : formulaAllowance(rate)}
-                    className={`w-[50px] text-right text-[14px] font-semibold ${
+                    className={`w-[72px] text-right text-[14px] font-semibold ${
                     isOff ? 'text-destructive' : 'text-foreground'
                   }`}
                   >
@@ -677,9 +677,6 @@ export default function SalaryTableTypeA({
             </span>
           </div>
           <div className="flex items-end justify-between gap-3">
-            <p className="text-[11px] text-muted-foreground">
-              Tính theo công thức cố định (cập nhật theo ngày nghỉ).
-            </p>
             <div className="text-sm font-semibold text-foreground">
               {formatVND(guiXeSummary.amount)}
             </div>

@@ -72,7 +72,6 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editablePeriodId, setEditablePeriodId] = useState<string | null>(null);
-  const [periods, setPeriods] = useState<PeriodInfo[]>([]);
 
   // Hydrate the visible record/period/profile/etc. from one snapshot.
   const applySnapshot = useCallback((snap: Snapshot) => {
@@ -144,7 +143,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
       // Track whether there's an editable period. When there is, we show a
       // link to the editor instead of redirecting — the employee stays on
       // this page to browse history, then clicks through to input when ready.
-      if (currentPeriod && list.length === 0) {
+      if (currentPeriod) {
         const { data: myRec } = await supabase
           .from('salary_records')
           .select('status')
@@ -154,7 +153,6 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
 
         if (!myRec || (myRec as any)?.status === 'draft') {
           setEditablePeriodId(currentPeriod.id);
-          setPeriods([currentPeriod]);
         }
       }
 
@@ -225,16 +223,12 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
     return (
       <div className="glass-card p-8 text-center space-y-2">
         {editablePeriodId ? (
-          <>
-            <Calendar className="w-10 h-10 text-green-500 mx-auto" />
-            <p className="text-muted-foreground text-sm">Kỳ lương hiện tại đang mở</p>
-            <button
-              onClick={() => navigate('/salary/edit')}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl gradient-gold text-primary-foreground text-sm font-medium"
-            >
-              Nhập công kỳ này
-            </button>
-          </>
+          <button
+            onClick={() => navigate('/salary/edit')}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl gradient-gold text-primary-foreground text-sm font-medium"
+          >
+            Nhập công kỳ này
+          </button>
         ) : (
           <>
             <Calendar className="w-10 h-10 text-muted-foreground mx-auto" />

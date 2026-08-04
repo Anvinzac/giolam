@@ -262,7 +262,24 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
         </div>
         <div className="w-[10%]" />
         <button
-          onClick={() => setShowApproved(prev => !prev)}
+          onClick={() => {
+            const today = getVietnamToday();
+            const day = today.getDay();
+            const diff = day === 0 ? -6 : 1 - day;
+            const currentMonday = new Date(today);
+            currentMonday.setDate(today.getDate() + diff);
+            if (showApproved) {
+              if (weekStart.getTime() <= currentMonday.getTime()) {
+                const nextMonday = new Date(currentMonday);
+                nextMonday.setDate(nextMonday.getDate() + 7);
+                setWeekStart(nextMonday);
+              }
+            } else {
+              setWeekStart(currentMonday);
+            }
+            slideDir.current = showApproved ? 1 : -1;
+            setShowApproved(prev => !prev);
+          }}
           className={`w-[30%] inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-full text-[10px] font-medium transition-colors ${
             showApproved
               ? 'bg-muted text-muted-foreground hover:text-foreground'
@@ -276,8 +293,8 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
 
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          key={weekLabel}
-          initial={{ x: slideDir.current * 50, opacity: 0 }}
+          key={`${weekLabel}-${showApproved}`}
+          initial={{ x: slideDir.current * 80, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -slideDir.current * 50, opacity: 0 }}
           transition={{ duration: 0.2, ease: "easeOut" }}

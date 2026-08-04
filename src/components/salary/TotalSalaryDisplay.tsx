@@ -219,8 +219,6 @@ export default function TotalSalaryDisplay({
           + {depositLabel}
         </button>
       )}
-
-      <p className="text-[10px] text-muted-foreground">Nhấn để xem chi tiết</p>
     </motion.div>
   );
 }
