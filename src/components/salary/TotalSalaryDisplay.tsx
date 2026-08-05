@@ -202,7 +202,9 @@ export default function TotalSalaryDisplay({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <p className="text-[10px] text-muted-foreground mb-0.5">Sẽ chuyển khoản</p>
+            <p className="text-[10px] text-muted-foreground mb-0.5">
+              {isAdmin ? 'Sẽ chuyển khoản' : 'Sẽ nhận'}
+            </p>
             <p key={transferAmount} className="font-display font-extrabold text-2xl text-gradient-gold">
               {formatVND(transferAmount)}
             </p>

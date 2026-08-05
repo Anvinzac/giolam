@@ -225,19 +225,19 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
   return (
     <div className="pb-4">
       {/* Week nav with toggle */}
-      <div className="flex items-center mb-3">
-        <div className="flex-[6] flex items-center justify-between bg-muted/50 rounded-lg px-1.5 py-1">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="min-w-0 flex-[3] flex items-center justify-between bg-muted/50 rounded-lg px-1.5 py-1">
           <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <ChevronLeft size={14} />
           </button>
-          <h2 className="font-display font-semibold text-xs text-foreground">{weekLabel}</h2>
+          <h2 className="font-display font-semibold text-xs text-foreground truncate px-1">{weekLabel}</h2>
           <button onClick={() => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <ChevronRight size={14} />
           </button>
         </div>
         <button
           onClick={handleToggle}
-          className={`ml-3 flex-[1] py-1.5 text-[11px] font-medium rounded-lg transition-colors flex items-center justify-center ${
+          className={`shrink-0 flex-[2] min-w-[5.75rem] px-3 py-2 text-xs font-semibold rounded-xl transition-colors flex items-center justify-center ${
             showApproved
               ? 'bg-muted/50 text-muted-foreground hover:bg-muted'
               : 'bg-emerald-500/15 text-emerald-500'

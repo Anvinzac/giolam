@@ -184,30 +184,53 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
   }, [profile?.default_clock_out]);
 
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
-    if (!profile || entries.length === 0) return record?.salary_breakdown as SalaryBreakdown | null;
-    switch (profile.shift_type) {
-      case 'basic':
-        return computeTotalSalaryTypeA(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
-      case 'daily':
-        return computeTotalSalaryTypeE(entries, allowances, profile.base_salary, profile.hourly_rate, rates, period?.end_date);
-      case 'overtime':
-        return computeTotalSalaryTypeB(
-          entries,
-          allowances,
-          profile.base_salary,
-          profile.hourly_rate,
-          rates,
-          globalClockIn,
-          period?.off_days || []
-        );
-      case 'notice_only':
-        return computeTotalSalaryTypeC(entries, allowances, profile.hourly_rate, rates);
-      case 'lunar_rate':
-        return computeTotalSalaryTypeD(entries, allowances, 27000, 35000, rates);
-      default:
-        return null;
+    const frozen = record?.salary_breakdown as SalaryBreakdown | null;
+    let computed: SalaryBreakdown | null = null;
+    if (!profile || entries.length === 0) {
+      computed = frozen;
+    } else {
+      switch (profile.shift_type) {
+        case 'basic':
+          computed = computeTotalSalaryTypeA(entries, allowances, profile.base_salary, profile.hourly_rate, rates);
+          break;
+        case 'daily':
+          computed = computeTotalSalaryTypeE(entries, allowances, profile.base_salary, profile.hourly_rate, rates, period?.end_date);
+          break;
+        case 'overtime':
+          computed = computeTotalSalaryTypeB(
+            entries,
+            allowances,
+            profile.base_salary,
+            profile.hourly_rate,
+            rates,
+            globalClockIn,
+            period?.off_days || []
+          );
+          break;
+        case 'notice_only':
+          computed = computeTotalSalaryTypeC(entries, allowances, profile.hourly_rate, rates);
+          break;
+        case 'lunar_rate':
+          computed = computeTotalSalaryTypeD(entries, allowances, 27000, 35000, rates);
+          break;
+        default:
+          computed = null;
+      }
     }
-  }, [entries, allowances, profile, rates, globalClockIn, record]);
+    // Deposit is frozen on publish and never recomputed from entries —
+    // merge it back so the employee footer/popup show the same transfer.
+    if (!computed) return frozen;
+    return {
+      ...computed,
+      deposit: frozen?.deposit ?? 0,
+      deposit_label: frozen?.deposit_label ?? 'Tạm ứng',
+    };
+  }, [entries, allowances, profile, rates, globalClockIn, record, period?.end_date, period?.off_days]);
+
+  const deposit = record?.salary_breakdown?.deposit ?? 0;
+  const depositLabel = record?.salary_breakdown?.deposit_label ?? 'Tạm ứng';
+  const receiveAmount = (record?.total_salary ?? 0) - deposit;
+  const hasDeposit = deposit > 0;
 
   const noop = () => {};
 
@@ -289,7 +312,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
                     {chipRange(s)}
                   </span>
                   <span className={`block text-[11px] leading-tight whitespace-nowrap ${active ? 'opacity-90' : 'opacity-70'}`}>
-                    {formatVND(s.total_salary).replace(' đ', '')}đ
+                    {formatVND(s.total_salary - (s.breakdown?.deposit ?? 0)).replace(' đ', '')}đ
                   </span>
                 </button>
               );
@@ -299,7 +322,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
         </div>
       )}
 
-      {/* Period label + total */}
+      {/* Period label + total → deposit → amount about to receive */}
       <motion.div
         key={selectedId || 'period'}
         initial={{ opacity: 0, y: 6 }}
@@ -310,11 +333,44 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
         <p className="text-xs text-muted-foreground">
           {formatDateViet(period.start_date)} – {formatDateViet(period.end_date)}
         </p>
-        <p className="font-display font-bold text-xl text-foreground mt-1">
-          {formatVND(record.total_salary)}
-        </p>
+
+        {hasDeposit ? (
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[12px] text-muted-foreground">Tổng lương</span>
+              <span className="text-[15px] font-semibold text-foreground tabular-nums">
+                {formatVND(record.total_salary)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-destructive/8 border border-destructive/15 px-2.5 py-1.5">
+              <span className="text-[12px] text-destructive/80 font-medium">{depositLabel}</span>
+              <span className="text-[13px] font-bold text-destructive tabular-nums">
+                −{formatVND(deposit)}
+              </span>
+            </div>
+            <div className="pt-1.5 border-t border-border/40 text-center">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                Sẽ nhận
+              </p>
+              <p
+                key={receiveAmount}
+                className="font-display font-extrabold text-2xl text-gradient-gold tabular-nums"
+              >
+                {formatVND(receiveAmount)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p
+            key={record.total_salary}
+            className="font-display font-bold text-xl text-gradient-gold mt-1 tabular-nums"
+          >
+            {formatVND(record.total_salary)}
+          </p>
+        )}
+
         {record.published_at && (
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          <p className="text-[10px] text-muted-foreground mt-1.5">
             Công bố: {new Date(record.published_at).toLocaleDateString('vi-VN')}
           </p>
         )}
@@ -362,6 +418,8 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           editMode="preview"
           shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
           coveragePeriodEnd={period.end_date}
+          deposit={deposit}
+          depositLabel={depositLabel}
         />
       )}
 
@@ -385,6 +443,8 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           breakdown={breakdown}
           editMode="preview"
           offDays={period.off_days || []}
+          deposit={deposit}
+          depositLabel={depositLabel}
         />
       )}
 
@@ -411,6 +471,8 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           breakdown={breakdown}
           editMode="preview"
           shiftType={profile.shift_type}
+          deposit={deposit}
+          depositLabel={depositLabel}
         />
       )}
     </div>
