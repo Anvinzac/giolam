@@ -187,15 +187,7 @@ export default function AdminDashboard() {
         
         let p = pData;
         
-        // Auto-cleanup August period
-        if (p) {
-          const augustPeriod = p.find(period => period.start_date === '2026-08-01' && period.end_date === '2026-08-31');
-          if (augustPeriod) {
-            await supabase.from('working_periods').delete().eq('id', augustPeriod.id);
-            p = p.filter(period => period.id !== augustPeriod.id);
-          }
-        }
-        
+
         setPeriods(p || []);
 
         if (p && p.length > 0) {
