@@ -1393,7 +1393,16 @@ export default function SalaryAdmin() {
                 rates={rates}
                 allowances={allowances}
                 hourlyRate={selectedEmployee.hourly_rate}
-                periodStart={selectedPeriod.start_date}
+                // Account-specific extra range: maiyen needs the prior
+                // May 25 – June 23 stretch (esp. June 18–23) editable on
+                // her June 24 – July 25 period so those days can be
+                // filled and published. Other Type C / D employees keep
+                // the real period start; working_periods is untouched.
+                periodStart={
+                  selectedEmployee.username === 'maiyen' && selectedPeriod.start_date === '2026-06-24'
+                    ? '2026-05-25'
+                    : selectedPeriod.start_date
+                }
                 // Account-specific extra range: ttu logs hours past the
                 // Apr 25 – May 24 period boundary all the way to May 31.
                 // Overriding the table's periodEnd (not just customEndDate)
