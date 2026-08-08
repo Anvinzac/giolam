@@ -618,7 +618,7 @@ export default function SalaryTableTypeA({
 
                 {/* Rate snapper — admin can adjust allowance rate */}
                 {!isOff && expandedRate === key && !readOnly && mode === 'admin' && (() => {
-                  const RATE_SNAPS = [0, 10, 15, 20, 25, 30];
+                  const RATE_SNAPS = [0, 10, 15, 20, 25, 30, 40];
                   const currentRate = e.allowance_rate_override ?? (rates.find(r => r.special_date === e.entry_date)?.rate_percent ?? 0);
                   return (
                     <div className="px-3 pb-3 pt-1">

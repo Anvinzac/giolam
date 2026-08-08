@@ -1202,12 +1202,62 @@ export default function SalaryTableTypeC({
     );
   };
 
-  const renderEmptyRow = (dateStr: string | null, idx: number, showWeekSep: boolean = false) => (
+  const resolveRateDesc = (dateStr: string): { rateDesc?: string; isMoonDay: boolean } => {
+    const matchedRate = rates.find(r => r.special_date === dateStr);
+    const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    let rateDesc = matchedRate?.description_vi;
+    if (shiftType === 'lunar_rate') {
+      if (matchedRate?.day_type === 'new_moon') rateDesc = 'Mùng 1 - 35k';
+      else if (matchedRate?.day_type === 'full_moon') rateDesc = 'Rằm - 35k';
+      else rateDesc = undefined;
+    } else if (rateDesc) {
+      if (rateDesc.includes('&')) {
+        rateDesc = rateDesc
+          .replace(/Chủ\s*Nhật/g, 'CN')
+          .replace(/Chu\s*Nhat/g, 'CN')
+          .replace(/Mùng\s*1/g, 'M1')
+          .replace(/Mung\s*1/g, 'M1');
+      }
+      if (/Ngày\s*chay|Ngay\s*chay/.test(rateDesc)) {
+        const nextDate = (() => {
+          const d = new Date(dateStr + 'T12:00:00');
+          d.setDate(d.getDate() + 1);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        })();
+        const tomorrowRow = rates.find(r => r.special_date === nextDate);
+        const lunarLabel =
+          tomorrowRow?.day_type === 'full_moon'
+            ? '14AL'
+            : tomorrowRow?.day_type === 'new_moon'
+              ? '30AL'
+              : null;
+        if (lunarLabel) {
+          rateDesc = rateDesc
+            .replace(/Ngày\s*chay/g, lunarLabel)
+            .replace(/Ngay\s*chay/g, lunarLabel);
+        }
+      }
+    }
+    return { rateDesc, isMoonDay };
+  };
+
+  const renderEmptyRow = (dateStr: string | null, idx: number, showWeekSep: boolean = false) => {
+    const { rateDesc, isMoonDay } = dateStr ? resolveRateDesc(dateStr) : { rateDesc: undefined, isMoonDay: false };
+    const noteLabel = dateStr && scheduledOffDays.has(dateStr)
+      ? OFF_DAY_NOTE
+      : (rateDesc || '—');
+
+    return (
     <div key={`empty-${dateStr || idx}`}>
       <div
         className={`${showWeekSep ? 'relative ' : ''}flex items-start justify-between gap-2 py-2.5 pl-3 pr-3 text-[13px] border-b border-border/20 w-full sm:hidden ${
           idx % 2 !== 0 ? 'bg-muted/40' : ''
         } ${dateStr ? 'opacity-50' : ''} ${
+          isMoonDay ? 'moon-accent-row' : ''
+        } ${
           !readOnly && dateStr && !scheduledOffDays.has(dateStr) ? 'cursor-pointer hover:opacity-70' : ''
         }`}
         onClick={() => {
@@ -1244,8 +1294,10 @@ export default function SalaryTableTypeC({
               ) : (
                 <span className="block font-semibold text-[15px] leading-none whitespace-nowrap opacity-0">00</span>
               )}
-              <span className="mt-1 block text-left text-[12px] leading-tight text-muted-foreground">
-                {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
+              <span className={`mt-1 block text-left text-[12px] leading-tight ${
+                isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+              }`}>
+                {noteLabel}
               </span>
             </div>
           </div>
@@ -1275,6 +1327,8 @@ export default function SalaryTableTypeC({
         className={`${showWeekSep ? 'relative ' : ''}hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
           idx % 2 !== 0 ? 'bg-muted/40' : ''
         } ${dateStr ? 'opacity-50' : ''} ${
+          isMoonDay ? 'moon-accent-row' : ''
+        } ${
           !readOnly && dateStr && !scheduledOffDays.has(dateStr) ? 'cursor-pointer hover:opacity-70' : ''
         }`}
         onClick={() => {
@@ -1311,22 +1365,20 @@ export default function SalaryTableTypeC({
               ) : (
                 <span className="block font-semibold text-[15px] leading-none sm:text-[14px] sm:leading-normal whitespace-nowrap opacity-0">00</span>
               )}
-              <span className="mt-1 block text-left text-[12px] leading-tight text-muted-foreground sm:hidden">
-                {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
+              <span className={`mt-1 block text-left text-[12px] leading-tight sm:hidden ${
+                isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+              }`}>
+                {noteLabel}
               </span>
             </div>
           </div>
         </div>
         {/* Note/Chips column - needed for alignment in separate clock mode */}
-        {separateClockColumns ? (
-          <span className="hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
-            {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
-          </span>
-        ) : (
-          <span className="hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] text-muted-foreground mr-1 sm:mr-2">
-            {dateStr && scheduledOffDays.has(dateStr) ? OFF_DAY_NOTE : '—'}
-          </span>
-        )}
+        <span className={`hidden sm:block sm:ml-1 text-left text-[13px] sm:text-[14px] mr-1 sm:mr-2 ${
+          isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+        }`}>
+          {noteLabel}
+        </span>
         {/* Clock columns */}
         {separateClockColumns ? (
           <>
@@ -1352,7 +1404,8 @@ export default function SalaryTableTypeC({
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   const renderTableHeader = () => (
     <>

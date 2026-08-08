@@ -8,9 +8,11 @@ function formatLocalDate(date: Date): string {
 }
 
 /**
- * Split entries into fixed 10-day pages for balance across the month.
- * Payroll periods are 30 days (25th → 23rd): 3 pages of 10 days each.
- * Leftover days (< 10) fold into the last page when a period is longer.
+ * Split entries into ~10-day pages for balance across the month.
+ * Typical 30-day payroll periods land as 3×10. Slightly longer leftovers
+ * (e.g. 31 → 10+10+11) stay on one final page, but a near-full leftover
+ * (e.g. 29 → leftover 19) must become its own pair of unequal pages
+ * (10+9) instead of folding into a 19-day monster page.
  */
 export function splitIntoPages(
   startDate: string,
@@ -29,38 +31,23 @@ export function splitIntoPages(
 
   if (allDates.length === 0) return pages;
 
-  // Split into 10-day pages. Leftover days (< 10) fold into the last page
-  // so a 31-day period (e.g. 25/05–24/06) stays 3 pages, not 4.
   const DAYS_PER_PAGE = 10;
-  for (let i = 0; i < allDates.length; i += DAYS_PER_PAGE) {
-    const remaining = allDates.length - i;
-    if (remaining <= DAYS_PER_PAGE) {
-      const pageDates = allDates.slice(i);
-      if (pageDates.length < DAYS_PER_PAGE && pages.length > 0) {
-        const lastPage = pages[pages.length - 1];
-        lastPage.endDate = pageDates[pageDates.length - 1];
-        lastPage.entries = getEntriesForDates(
-          generateDateRange(lastPage.startDate, lastPage.endDate),
-          entries
-        );
-      } else {
-        pages.push({
-          pageIndex: pages.length,
-          startDate: pageDates[0],
-          endDate: pageDates[pageDates.length - 1],
-          entries: getEntriesForDates(pageDates, entries),
-        });
-      }
-      break;
-    }
+  // Allow a short oversize final page (11–12) so 31-day periods stay at
+  // 3 pages, but anything larger starts a new page.
+  const MAX_PAGE_DAYS = 12;
 
-    const pageDates = allDates.slice(i, i + DAYS_PER_PAGE);
+  let i = 0;
+  while (i < allDates.length) {
+    const remaining = allDates.length - i;
+    const take = remaining <= MAX_PAGE_DAYS ? remaining : DAYS_PER_PAGE;
+    const pageDates = allDates.slice(i, i + take);
     pages.push({
       pageIndex: pages.length,
       startDate: pageDates[0],
       endDate: pageDates[pageDates.length - 1],
       entries: getEntriesForDates(pageDates, entries),
     });
+    i += take;
   }
 
   return pages;

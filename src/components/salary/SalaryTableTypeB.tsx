@@ -522,11 +522,17 @@ export default function SalaryTableTypeB({
   };
 
   // ── Page renderer ──────────────────────────────────────────────────────────
-  const renderEmptyRow = (dateStr: string, idx: number) => (
+  const renderEmptyRow = (dateStr: string, idx: number) => {
+    const matchedRate = rates.find(r => r.special_date === dateStr);
+    const rateDesc = matchedRate?.description_vi;
+    const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    const noteLabel = rateDesc || '—';
+
+    return (
     <div key={`empty-${dateStr}`}>
       <div className={`flex items-start justify-between gap-2 py-3.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
-      }`}>
+      } ${isMoonDay ? 'moon-accent-row' : ''}`}>
         <div className="min-w-0 flex-1 pr-1">
           <button
             onClick={() => activateEmptyDay(dateStr)}
@@ -536,9 +542,11 @@ export default function SalaryTableTypeB({
           </button>
           <button
             onClick={() => activateEmptyDay(dateStr)}
-            className={`mt-1 block text-left text-[12px] leading-tight text-muted-foreground ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+            className={`mt-1 block text-left text-[12px] leading-tight ${
+              isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+            } ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
           >
-            —
+            {noteLabel}
           </button>
         </div>
         <div className="ml-1 flex shrink-0 items-center gap-3 text-right text-muted-foreground">
@@ -552,7 +560,7 @@ export default function SalaryTableTypeB({
 
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
-      }`}>
+      } ${isMoonDay ? 'moon-accent-row' : ''}`}>
         <button
           onClick={() => activateEmptyDay(dateStr)}
           className={`text-left font-semibold text-[14px] ${getDayColor(dateStr)} ${!readOnly ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
@@ -561,9 +569,11 @@ export default function SalaryTableTypeB({
         </button>
         <button
           onClick={() => activateEmptyDay(dateStr)}
-          className={`text-left text-muted-foreground ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
+          className={`text-left ${
+            isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
+          } ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
         >
-          —
+          {noteLabel}
         </button>
         <span className="text-right text-muted-foreground">—</span>
         <span className="text-right text-muted-foreground font-semibold">—</span>
@@ -572,7 +582,8 @@ export default function SalaryTableTypeB({
         <span className="text-right text-muted-foreground font-bold">—</span>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderPage = (page: { startDate: string; endDate: string; entries: SalaryEntry[] }) => {
     const pageDates = generateDateRange(page.startDate, page.endDate);
