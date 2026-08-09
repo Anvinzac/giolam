@@ -793,6 +793,9 @@ export default function SalaryTableTypeC({
           }
         }}
       >
+        {e.is_admin_reviewed && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 z-10" title="Đã chỉnh sửa" />
+        )}
         {!readOnly && !e.is_day_off && !isScheduledOffDay && !showClockChips && (
           <button
             data-toggle-button
@@ -975,6 +978,9 @@ export default function SalaryTableTypeC({
           }
         }}
       >
+        {e.is_admin_reviewed && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 z-10" title="Đã chỉnh sửa" />
+        )}
         {!readOnly && !e.is_day_off && !isScheduledOffDay && (
           <button
             data-toggle-button
