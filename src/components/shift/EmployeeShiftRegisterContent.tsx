@@ -257,7 +257,7 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
           exit={{ x: -tabDir.current * 120, opacity: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
         >
           {showApproved ? (
-            <ApprovedShiftTable weekDates={weekDates} periodId={periodId} />
+            <ApprovedShiftTable weekDates={weekDates} periodId={periodId} userId={userId} />
           ) : (
             <>
               <div className="flex gap-4 mb-3 text-[10px] text-muted-foreground">
@@ -331,7 +331,12 @@ function getPersonColor(userId: string): string {
   return personColorMap.get(userId)!;
 }
 
-function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; periodId: string | null }) {
+// Cells the employee is rostered on get a distinct outline; co-workers'
+// names stay legible but recede so their own shifts pop at a glance.
+const MINE_CELL_OUTLINE = 'outline outline-2 -outline-offset-2 outline-primary/70 bg-primary/5';
+const OTHERS_NAME_OPACITY = 'opacity-30';
+
+function ApprovedShiftTable({ weekDates, periodId, userId }: { weekDates: Date[]; periodId: string | null; userId: string }) {
   const [shifts, setShifts] = useState<Record<string, { morning: { name: string; userId: string }[]; afternoon: { name: string; userId: string }[] }>>({});
 
   useEffect(() => {
@@ -369,6 +374,8 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
             const dateStr = formatLocalDate(date);
             const dayIndex = (date.getDay() + 6) % 7;
             const day = shifts[dateStr] || { morning: [], afternoon: [] };
+            const mineMorning = day.morning.some(info => info.userId === userId);
+            const mineAfternoon = day.afternoon.some(info => info.userId === userId);
             return (
               <tr key={dateStr} className="border-b border-border/30 last:border-0">
                 <td className="bg-muted/30 px-1 py-2 border-r border-border text-center">
@@ -377,14 +384,14 @@ function ApprovedShiftTable({ weekDates, periodId }: { weekDates: Date[]; period
                     <span className="text-sm font-semibold text-foreground/50">{format(date, "dd")}</span>
                   </div>
                 </td>
-                <td className="px-2 py-2 border-r border-border/30 h-[80px] align-middle">
+                <td className={`px-2 py-2 border-r border-border/30 h-[80px] align-middle ${mineMorning ? MINE_CELL_OUTLINE : ''}`}>
                   <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
-                    {day.morning.length === 0 ? <span className="text-[10px] text-muted-foreground/50">—</span> : day.morning.map((info, i) => <span key={i} className="text-xs font-bold" style={{ color: `hsl(${getPersonColor(info.userId)})` }}>{shortName(info.name)}</span>)}
+                    {day.morning.length === 0 ? <span className="text-[10px] text-muted-foreground/50">—</span> : day.morning.map((info, i) => <span key={i} className={`text-xs font-bold ${info.userId === userId ? '' : OTHERS_NAME_OPACITY}`} style={{ color: `hsl(${getPersonColor(info.userId)})` }}>{shortName(info.name)}</span>)}
                   </div>
                 </td>
-                <td className="px-2 py-2 h-[80px] align-middle">
+                <td className={`px-2 py-2 h-[80px] align-middle ${mineAfternoon ? MINE_CELL_OUTLINE : ''}`}>
                   <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
-                    {day.afternoon.length === 0 ? <span className="text-[10px] text-muted-foreground/50">—</span> : day.afternoon.map((info, i) => <span key={i} className="text-xs font-bold" style={{ color: `hsl(${getPersonColor(info.userId)})` }}>{shortName(info.name)}</span>)}
+                    {day.afternoon.length === 0 ? <span className="text-[10px] text-muted-foreground/50">—</span> : day.afternoon.map((info, i) => <span key={i} className={`text-xs font-bold ${info.userId === userId ? '' : OTHERS_NAME_OPACITY}`} style={{ color: `hsl(${getPersonColor(info.userId)})` }}>{shortName(info.name)}</span>)}
                   </div>
                 </td>
               </tr>

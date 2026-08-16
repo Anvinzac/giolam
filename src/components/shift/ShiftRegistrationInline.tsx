@@ -36,6 +36,11 @@ function getPersonColor(userId: string): string {
   return personColorMap.get(userId)!;
 }
 
+// Cells the employee is rostered on get a distinct outline; co-workers'
+// names stay legible but recede so their own shifts pop at a glance.
+const MINE_CELL_OUTLINE = 'outline outline-2 -outline-offset-2 outline-primary/70 bg-primary/5';
+const OTHERS_NAME_OPACITY = 'opacity-30';
+
 interface ShiftRegistrationInlineProps {
   userId: string;
   periodId: string;
@@ -323,6 +328,8 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                       const isWeekend = dayIndex >= 5;
                       const morningSlots = slotNames[`${lookupDate}|morning`] || [];
                       const afternoonSlots = slotNames[`${lookupDate}|afternoon`] || [];
+                      const mineMorning = morningSlots.some(info => info.userId === userId);
+                      const mineAfternoon = afternoonSlots.some(info => info.userId === userId);
 
                       return (
                         <tr key={dateStr} className="border-b border-border/30 last:border-0">
@@ -332,7 +339,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                               <span className="text-sm font-semibold text-foreground/50">{format(date, 'dd')}</span>
                             </div>
                           </td>
-                          <td className="px-2 py-2 border-r border-border/30 h-[80px] align-middle">
+                          <td className={`px-2 py-2 border-r border-border/30 h-[80px] align-middle ${mineMorning ? MINE_CELL_OUTLINE : ''}`}>
                             <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
                               {morningSlots.length === 0 ? (
                                 <span className="text-[10px] text-muted-foreground/50">—</span>
@@ -342,7 +349,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                                 return (
                                   <span
                                     key={i}
-                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : ''}`}
+                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : OTHERS_NAME_OPACITY}`}
                                     style={{ color: `hsl(${c})` }}
                                   >
                                     {shortName(info.name)}
@@ -351,7 +358,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                               })}
                             </div>
                           </td>
-                          <td className="px-2 py-2 h-[80px] align-middle">
+                          <td className={`px-2 py-2 h-[80px] align-middle ${mineAfternoon ? MINE_CELL_OUTLINE : ''}`}>
                             <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
                               {afternoonSlots.length === 0 ? (
                                 <span className="text-[10px] text-muted-foreground/50">—</span>
@@ -361,7 +368,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                                 return (
                                   <span
                                     key={i}
-                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : ''}`}
+                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : OTHERS_NAME_OPACITY}`}
                                     style={{ color: `hsl(${c})` }}
                                   >
                                     {shortName(info.name)}

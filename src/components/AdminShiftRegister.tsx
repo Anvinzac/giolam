@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -532,6 +532,18 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     return map;
   }, [serviceEmployees]);
 
+  // Cells the selected employee already works get outlined in that person's
+  // own colour, so tapping a chip reads as their individual week at a glance.
+  const activeCellStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!activeEmployee) return undefined;
+    const color = getPersonColor(activeEmployee);
+    return {
+      outline: `2px solid hsl(${color} / 0.75)`,
+      outlineOffset: '-2px',
+      backgroundColor: `hsl(${color} / 0.08)`,
+    };
+  }, [activeEmployee]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -635,6 +647,8 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
             const isWeekend = dayIndex >= 5;
             const moonLabel = getMoonLabel(date);
             const dayShiftsForDay = dayShifts[lookupDate] || { morning: [], afternoon: [] };
+            const activeMorning = !!activeEmployee && dayShiftsForDay.morning.some(s => s.user_id === activeEmployee);
+            const activeAfternoon = !!activeEmployee && dayShiftsForDay.afternoon.some(s => s.user_id === activeEmployee);
 
             return (
               <tr key={dateStr} className="border-b border-border/30">
@@ -655,7 +669,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
                   )}
                 </td>
 
-                <td className="px-2 py-2 border-r border-border/30">
+                <td className="px-2 py-2 border-r border-border/30" style={activeMorning ? activeCellStyle : undefined}>
                   <ShiftCell
                     dateStr={dateStr}
                     shiftKey="morning"
@@ -669,7 +683,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
                   />
                 </td>
 
-                <td className="px-2 py-2">
+                <td className="px-2 py-2" style={activeAfternoon ? activeCellStyle : undefined}>
                   <ShiftCell
                     dateStr={dateStr}
                     shiftKey="afternoon"
