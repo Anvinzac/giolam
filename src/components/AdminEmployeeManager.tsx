@@ -126,7 +126,7 @@ export default function AdminEmployeeManager() {
       return;
     }
 
-    toast.success("Đã thêm nhân viên (mật khẩu mặc định: abc12345)");
+    toast.success(`Đã thêm nhân viên (mật khẩu mặc định: ${res.data?.password || "—"})`);
     setShowAdd(false);
     setAddForm({ username: "", full_name: "", shift_type: "basic", default_clock_in: "08:00", default_clock_out: "17:00", department_id: "", base_salary: 5000000, hourly_rate: 25000 });
 

@@ -48,10 +48,36 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Username and full_name required" }), { status: 400, headers: corsHeaders });
     }
 
+    // Default password rule (matches historical per-employee map):
+    // 8-char interleave of a prefix of "abcdef" (k=1..6) and a prefix of
+    // "1234567" (8-k), always starting with "a". Loose regex: /^[a-f][a-f1-7]{7}$/
+    const LETTERS = "abcdef";
+    const DIGITS = "1234567";
+    const letterCount = 1 + Math.floor(Math.random() * 6);
+    const digitCount = 8 - letterCount;
+    const letters = LETTERS.slice(0, letterCount).split("");
+    const digits = DIGITS.slice(0, digitCount).split("");
+    const chars: string[] = [letters.shift()!];
+    let li = 0;
+    let di = 0;
+    while (li < letters.length || di < digits.length) {
+      const canL = li < letters.length;
+      const canD = di < digits.length;
+      if (canL && canD) {
+        if (Math.random() < 0.5) chars.push(letters[li++]);
+        else chars.push(digits[di++]);
+      } else if (canL) {
+        chars.push(letters[li++]);
+      } else {
+        chars.push(digits[di++]);
+      }
+    }
+    const password = chars.join("");
+
     const email = `${username}@lunarflow.local`;
     const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
       email,
-      password: "abc12345",
+      password,
       email_confirm: true,
       user_metadata: { full_name },
     });
@@ -149,7 +175,7 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, user_id: authData?.user?.id }), {
+    return new Response(JSON.stringify({ success: true, user_id: authData?.user?.id, password }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
