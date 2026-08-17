@@ -532,15 +532,13 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     return map;
   }, [serviceEmployees]);
 
-  // Cells the selected employee already works get outlined in that person's
+  // Cells the selected employee already works get a soft tint in that person's
   // own colour, so tapping a chip reads as their individual week at a glance.
   const activeCellStyle = useMemo<CSSProperties | undefined>(() => {
     if (!activeEmployee) return undefined;
     const color = getPersonColor(activeEmployee);
     return {
-      outline: `2px solid hsl(${color} / 0.75)`,
-      outlineOffset: '-2px',
-      backgroundColor: `hsl(${color} / 0.08)`,
+      backgroundColor: `hsl(${color} / 0.12)`,
     };
   }, [activeEmployee]);
 

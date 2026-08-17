@@ -36,9 +36,9 @@ function getPersonColor(userId: string): string {
   return personColorMap.get(userId)!;
 }
 
-// Cells the employee is rostered on get a distinct outline; co-workers'
+// Cells the employee is rostered on get a soft tint; co-workers'
 // names stay legible but recede so their own shifts pop at a glance.
-const MINE_CELL_OUTLINE = 'outline outline-2 -outline-offset-2 outline-primary/70 bg-primary/5';
+const MINE_CELL_OUTLINE = 'bg-primary/10';
 const OTHERS_NAME_OPACITY = 'opacity-30';
 
 interface ShiftRegistrationInlineProps {
@@ -349,7 +349,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                                 return (
                                   <span
                                     key={i}
-                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : OTHERS_NAME_OPACITY}`}
+                                    className={`text-xs font-bold ${isMe ? '' : OTHERS_NAME_OPACITY}`}
                                     style={{ color: `hsl(${c})` }}
                                   >
                                     {shortName(info.name)}
@@ -368,7 +368,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
                                 return (
                                   <span
                                     key={i}
-                                    className={`text-xs font-bold ${isMe ? 'underline decoration-2 underline-offset-2' : OTHERS_NAME_OPACITY}`}
+                                    className={`text-xs font-bold ${isMe ? '' : OTHERS_NAME_OPACITY}`}
                                     style={{ color: `hsl(${c})` }}
                                   >
                                     {shortName(info.name)}
