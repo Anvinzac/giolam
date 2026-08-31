@@ -8,19 +8,27 @@ export function getLunarPhase(date: Date): number {
   return phase / lunarCycle;
 }
 
-export function isFullMoon(date: Date): boolean {
-  // Use local midnight to check the phase for that day
+/**
+ * Astronomical phase for a calendar day always lands one civil day late
+ * versus the shop calendar (Rằm / Mùng 1 / Ngày chay). After the heavy
+ * phase math, attribute the event to the previous calendar day by reading
+ * tomorrow's phase for today's label.
+ */
+function phaseForCalendarDay(date: Date): number {
   const d = new Date(date);
-  d.setHours(12, 0, 0, 0); // Check mid-day to be safe
-  const phase = getLunarPhase(d);
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  return getLunarPhase(d);
+}
+
+export function isFullMoon(date: Date): boolean {
+  const phase = phaseForCalendarDay(date);
   // Full moon is at 0.5 phase — increased threshold to prevent missing boundary days
   return Math.abs(phase - 0.5) < 0.025;
 }
 
 export function isNewMoon(date: Date): boolean {
-  const d = new Date(date);
-  d.setHours(12, 0, 0, 0);
-  const phase = getLunarPhase(d);
+  const phase = phaseForCalendarDay(date);
   // New moon is at 0.0 or 1.0 phase
   return phase < 0.025 || phase > 0.975;
 }
@@ -45,7 +53,24 @@ export function getMoonEmoji(date: Date): string | null {
   return null;
 }
 
+function formatLocalYmd(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Closed days on the shift-registration table (not lunar events).
+const MOON_LABEL_OVERRIDES: Record<string, string | null> = {
+  '2026-08-31': 'Nghỉ',
+  '2026-09-01': 'Nghỉ',
+};
+
 export function getMoonLabel(date: Date): string | null {
+  const key = formatLocalYmd(date);
+  if (Object.prototype.hasOwnProperty.call(MOON_LABEL_OVERRIDES, key)) {
+    return MOON_LABEL_OVERRIDES[key];
+  }
   if (isFullMoon(date)) return 'Full Moon';
   if (isNewMoon(date)) return 'New Moon';
   if (isDayBeforeFullMoon(date)) return 'Chay (Rằm)';

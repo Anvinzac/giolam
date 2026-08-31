@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Plus, X, Clock } from 'lucide-react';
-import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcHoursFromTimes, getRateForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
+import { SalaryEntry, SalaryPage, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
+import { roundToThousand, calcHoursFromTimes, getRateForDate, getRateDescriptionForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
+import { isFullMoon, isNewMoon } from '@/lib/lunarUtils';
 import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -128,23 +129,11 @@ export default function SalaryTableTypeC({
   } | null>(null);
 
   const effectiveStart = customStartDate || periodStart;
-  // Default end is the period end (or admin-picked custom end), but stretch
-  // it so any salary_entries persisted past the period boundary stay
-  // visible — e.g. chiloan (Type D) carrying May 28-31 rows on a period
-  // that ends May 24. Without this, filteredEntries / splitIntoPages
-  // silently dropped the out-of-range rows even though they still
-  // contribute to computeTotalSalaryTypeD.
-  const rawEnd = customEndDate || periodEnd;
-  const maxEntryDate = useMemo(() => {
-    let max = rawEnd;
-    for (const e of entries) if (e.entry_date > max) max = e.entry_date;
-    return max;
-  }, [entries, rawEnd]);
-  const effectiveEnd = maxEntryDate;
+  const effectiveEnd = customEndDate || periodEnd;
 
   useEffect(() => {
-    setNewRowDate(effectiveEnd >= periodStart ? effectiveStart : periodStart);
-  }, [effectiveStart, effectiveEnd, periodStart]);
+    setNewRowDate(periodStart);
+  }, [periodStart]);
 
   useEffect(() => {
     setDefaultClockIn(normalizeClockDefault(persistedDefaultClockIn, '08:00'));
@@ -162,9 +151,13 @@ export default function SalaryTableTypeC({
     };
   }, []);
 
+  // filteredEntries: Keep in-period entries AND any out-of-period entries that exist
   const filteredEntries = useMemo(() => {
-    return entries.filter(e => e.entry_date >= effectiveStart && e.entry_date <= effectiveEnd);
-  }, [entries, effectiveStart, effectiveEnd]);
+    return [...entries].sort(
+      (a, b) => a.entry_date.localeCompare(b.entry_date) || a.sort_order - b.sort_order
+    );
+  }, [entries]);
+
   const scheduledOffDays = useMemo(
     () => new Set(offDays.filter(date => date >= effectiveStart && date <= effectiveEnd)),
     [offDays, effectiveStart, effectiveEnd]
@@ -539,14 +532,17 @@ export default function SalaryTableTypeC({
 
   const renderRow = (e: SalaryEntry, idx?: number, allEntries?: SalaryEntry[]) => {
     const { rate, hours, baseWage, allowanceAmt, total } = computeRow(e);
+    const isOutOfRange = e.entry_date < periodStart || e.entry_date > periodEnd;
     const matchedRate = rates.find(r => r.special_date === e.entry_date);
     
     // For Type D (lunar_rate), only show notice for New Moon and Full Moon
-    let rateDesc = matchedRate?.description_vi;
+    let rateDesc = matchedRate?.description_vi || getRateDescriptionForDate(e.entry_date, rates, e.allowance_rate_override);
     if (shiftType === 'lunar_rate') {
-      if (matchedRate?.day_type === 'new_moon') {
+      const isMoon = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon' ||
+        isFullMoon(new Date(e.entry_date + 'T12:00:00')) || isNewMoon(new Date(e.entry_date + 'T12:00:00'));
+      if (matchedRate?.day_type === 'new_moon' || isNewMoon(new Date(e.entry_date + 'T12:00:00'))) {
         rateDesc = 'Mùng 1 - 35k';
-      } else if (matchedRate?.day_type === 'full_moon') {
+      } else if (matchedRate?.day_type === 'full_moon' || isFullMoon(new Date(e.entry_date + 'T12:00:00'))) {
         rateDesc = 'Rằm - 35k';
       } else {
         rateDesc = undefined; // No notice for other days
@@ -776,8 +772,10 @@ export default function SalaryTableTypeC({
       <div key={cellKey}>
       <div
         className={`relative overflow-hidden py-2.5 px-0 text-[13px] border-b border-border/20 w-full sm:hidden ${
+          isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
+        } ${
           e.is_day_off && !isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
-        } ${idx && idx % 2 !== 0 ? 'bg-muted/40' : ''} ${
+        } ${idx && idx % 2 !== 0 && !isOutOfRange ? 'bg-muted/40' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
         } ${showWeekSep ? 'relative' : ''}`}
         onClick={(ev) => {
@@ -961,8 +959,10 @@ export default function SalaryTableTypeC({
       </div>
       <div 
         className={`relative hidden sm:grid ${tableGridClass} ${tableGapClass} py-2.5 items-center text-[13px] sm:text-[14px] border-b border-border/20 w-full ${
+          isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
+        } ${
           e.is_day_off && !isScheduledOffDay ? 'opacity-50 cursor-pointer hover:opacity-70' : ''
-        } ${idx && idx % 2 !== 0 ? 'bg-muted/40' : ''} ${
+        } ${idx && idx % 2 !== 0 && !isOutOfRange ? 'bg-muted/40' : ''} ${
           isMoonDay ? 'moon-accent-row' : ''
         }`}
         onClick={(ev) => {
@@ -1494,7 +1494,7 @@ export default function SalaryTableTypeC({
               rates={rates}
               entries={entries}
               onSelect={(date) => {
-                onAddRowAtDate(clampDateToPeriod(date));
+                onAddRowAtDate(date);
                 setAddingDate(false);
               }}
               onClose={() => setAddingDate(false)}
@@ -1516,8 +1516,8 @@ export default function SalaryTableTypeC({
     );
   };
 
-  const renderPage = (page: { startDate: string; endDate: string; entries: SalaryEntry[] }) => {
-    const pageDates = generateDateRange(page.startDate, page.endDate);
+  const renderPage = (page: SalaryPage) => {
+    const pageDates = page.pageDates || generateDateRange(page.startDate, page.endDate);
     const pageRows = pageDates.map((dateStr, idx) => ({
       idx,
       dateStr,
@@ -1537,7 +1537,7 @@ export default function SalaryTableTypeC({
               rates={rates}
               entries={entries}
               onSelect={(date) => {
-                onAddRowAtDate(clampDateToPeriod(date));
+                onAddRowAtDate(date);
                 setAddingDate(false);
               }}
               onClose={() => setAddingDate(false)}

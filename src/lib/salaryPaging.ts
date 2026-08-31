@@ -23,10 +23,21 @@ export function splitIntoPages(
   const end = new Date(endDate + 'T00:00:00');
   const pages: SalaryPage[] = [];
 
-  const allDates: string[] = [];
+  // Core working period dates
+  const dateSet = new Set<string>();
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    allDates.push(formatLocalDate(d));
+    dateSet.add(formatLocalDate(d));
   }
+
+  // Also include dates for existing entries outside the period (individual bonus days)
+  for (const e of entries) {
+    if (e.entry_date) {
+      dateSet.add(e.entry_date);
+    }
+  }
+
+  // Sort all included dates chronologically
+  const allDates = Array.from(dateSet).sort();
 
   if (allDates.length === 0) return pages;
 
@@ -35,8 +46,6 @@ export function splitIntoPages(
   while (i < allDates.length) {
     const remaining = allDates.length - i;
     // If the remaining days are 14 or less, we fold them into this final page.
-    // e.g., a 31-day month splits into 10, 10, 11 (the 11 goes on the last page).
-    // e.g., a 29-day month splits into 10, 10, 9 (the 9 goes on the last page).
     const take = remaining <= 14 ? remaining : DAYS_PER_PAGE;
     const pageDates = allDates.slice(i, i + take);
     
@@ -44,6 +53,7 @@ export function splitIntoPages(
       pageIndex: pages.length,
       startDate: pageDates[0],
       endDate: pageDates[pageDates.length - 1],
+      pageDates,
       entries: getEntriesForDates(pageDates, entries),
     });
     

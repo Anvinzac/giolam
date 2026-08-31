@@ -1,0 +1,60 @@
+{
+  "schema": {
+    "version": "1.0",
+    "description": "Published payroll export for one completed working period. Import apps should read `employees[]` and match rows by `account` (login username).",
+    "root_fields": {
+      "schema": "Self-describing import contract (this object).",
+      "period": "Payroll period metadata (id, start_date, end_date, label).",
+      "exported_at": "ISO-8601 timestamp when this file was generated.",
+      "employees": "One row per employee with a published salary for this period.",
+      "summary": "Roll-up counts and totals for validation after import."
+    },
+    "employee_fields": {
+      "account": "Login username (profiles.username). Required. Unique within the file.",
+      "name": "Display name (profiles.full_name). Required.",
+      "amount": "Published gross salary in VND (salary_records.total_salary). Required.",
+      "deposit": "Optional advance/deduction held back (salary_breakdown.deposit). Defaults to 0.",
+      "transfer_amount": "Optional net bank transfer = amount - deposit.",
+      "published_at": "Optional ISO timestamp when this employee payroll was published."
+    },
+    "import_notes": [
+      "Only employees with status=published are included.",
+      "amount is the gross published total, not the net transfer.",
+      "Use transfer_amount when paying net of deposit/advance.",
+      "Period is complete when end_date is before today (local calendar day)."
+    ]
+  },
+  "period": {
+    "id": "bb66468c-1b7e-4954-9fdd-c4d31c36dcb6",
+    "start_date": "2026-07-26",
+    "end_date": "2026-08-23",
+    "label": "26/07/2026 – 23/08/2026"
+  },
+  "exported_at": "2026-08-29T06:11:25.207Z",
+  "employees": [
+    {
+      "account": "anhkhanh",
+      "name": "Anh Khanh",
+      "amount": 736000,
+      "published_at": "2026-08-07T08:09:25.278+00:00"
+    },
+    {
+      "account": "ptuan",
+      "name": "P.Tuân",
+      "amount": 3459000,
+      "published_at": "2026-08-25T17:55:50.132+00:00"
+    },
+    {
+      "account": "thanhtu",
+      "name": "Thanh Tú",
+      "amount": 845000,
+      "published_at": "2026-08-09T19:08:54.77+00:00"
+    }
+  ],
+  "summary": {
+    "employee_count": 3,
+    "total_amount": 5040000,
+    "total_deposit": 0,
+    "total_transfer": 5040000
+  }
+}

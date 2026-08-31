@@ -2,12 +2,14 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, formatDateViet, formatVND } from '@/lib/salaryCalculations';
+import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, getRateDescriptionForDate, formatDateViet, formatVND } from '@/lib/salaryCalculations';
+import { isFullMoon, isNewMoon } from '@/lib/lunarUtils';
 import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
+import PeriodDatePicker from './PeriodDatePicker';
 import FormulaTooltip from './FormulaTooltip';
 import AnalogClock from '../AnalogClock';
 
@@ -20,6 +22,7 @@ interface SalaryTableTypeBProps {
   periodStart: string;
   periodEnd: string;
   onEntryUpdate: (entryDate: string, sortOrder: number, updates: Partial<SalaryEntry>) => void;
+  onAddRowAtDate?: (entryDate: string) => void;
   onAddDuplicateRow: (entryDate: string) => void;
   onRemoveEntry: (id: string) => void;
   onAllowanceToggle: (key: AllowanceKey) => void;
@@ -92,7 +95,7 @@ const CHIP_FADE_MASK =
 export default function SalaryTableTypeB({
   entries, rates, allowances, baseSalary, hourlyRate,
   periodStart, periodEnd,
-  onEntryUpdate, onAddDuplicateRow, onRemoveEntry,
+  onEntryUpdate, onAddRowAtDate, onAddDuplicateRow, onRemoveEntry,
   onAllowanceToggle, onAllowanceUpdate, onAddAllowance, onHourlyRateChange,
   globalClockIn, onGlobalClockInChange,
   breakdown,
@@ -103,6 +106,7 @@ export default function SalaryTableTypeB({
 }: SalaryTableTypeBProps) {
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
   const readOnly = mode === 'preview';
+  const [addingDate, setAddingDate] = useState(false);
   const globalOffDaySet = useMemo(() => new Set(offDays), [offDays]);
   const canDeleteRow = (e: SalaryEntry) => {
     if (mode === 'admin') return true;
@@ -160,6 +164,11 @@ export default function SalaryTableTypeB({
       clock_in: null,
       clock_out: null,
       note: extraNoteValue.trim() || null,
+      allowance_rate_override: null,
+      base_daily_wage: 0,
+      allowance_amount: 0,
+      extra_wage: 0,
+      total_daily_wage: 0,
     });
     setExtraRowFor(null);
   };
@@ -200,6 +209,7 @@ export default function SalaryTableTypeB({
 
 
   const dailyBase = useMemo(() => calcDailyBase(baseSalary), [baseSalary]);
+
   const pages = useMemo(() => splitIntoPages(periodStart, periodEnd, entries), [periodStart, periodEnd, entries]);
 
   const guiXeSummary = useMemo(() => {
@@ -585,8 +595,8 @@ export default function SalaryTableTypeB({
     );
   };
 
-  const renderPage = (page: { startDate: string; endDate: string; entries: SalaryEntry[] }) => {
-    const pageDates = generateDateRange(page.startDate, page.endDate);
+  const renderPage = (page: SalaryPage) => {
+    const pageDates = page.pageDates || generateDateRange(page.startDate, page.endDate);
     const pageRows = pageDates.flatMap((dateStr) => {
       const dateEntries = page.entries.filter(entry => entry.entry_date === dateStr);
       return dateEntries.length > 0
@@ -599,9 +609,34 @@ export default function SalaryTableTypeB({
 
     return (
     <div>
+      {addingDate && !readOnly && onAddRowAtDate && (
+        <PeriodDatePicker
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          rates={rates}
+          entries={entries}
+          onSelect={(date) => {
+            onAddRowAtDate(date);
+            setAddingDate(false);
+          }}
+          onClose={() => setAddingDate(false)}
+        />
+      )}
+
       {/* Mobile column headers */}
       <div className="flex items-center justify-between gap-2 py-3 pl-3 pr-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 sm:hidden">
-        <span>Ngày</span>
+        <button
+          onClick={() => !readOnly && onAddRowAtDate && setAddingDate(prev => !prev)}
+          className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] uppercase tracking-wider whitespace-nowrap ${
+            !readOnly && onAddRowAtDate
+              ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
+              : 'border-border/30 bg-muted/20 cursor-default'
+          }`}
+          aria-label="Thêm ngày"
+        >
+          <span>Ngày</span>
+          <Plus size={10} />
+        </button>
         <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
           <span className="w-[38px]">Ra</span>
           <span className="w-[24px]">Giờ</span>
@@ -612,7 +647,18 @@ export default function SalaryTableTypeB({
       </div>
       {/* Desktop column headers */}
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40`}>
-        <span>Ngày</span>
+        <button
+          onClick={() => !readOnly && onAddRowAtDate && setAddingDate(prev => !prev)}
+          className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] uppercase tracking-wider whitespace-nowrap w-fit ${
+            !readOnly && onAddRowAtDate
+              ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
+              : 'border-border/30 bg-muted/20 cursor-default'
+          }`}
+          aria-label="Thêm ngày"
+        >
+          <span>Ngày</span>
+          <Plus size={10} />
+        </button>
         <span className="text-center">Ghi chú</span>
         <span className="text-right">Ra</span>
         <span className="text-right">Giờ</span>
@@ -629,9 +675,11 @@ export default function SalaryTableTypeB({
           const { rate, allowance, hours, extraWage, total } = computeRow(e);
           const cellKey = `${e.entry_date}-${e.sort_order}`;
           const isDupe = e.sort_order > 0;
+          const isOutOfRange = e.entry_date < periodStart || e.entry_date > periodEnd;
           const matchedRate = rates.find(r => r.special_date === e.entry_date);
-          const rateDesc = matchedRate?.description_vi;
-          const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+          const rateDesc = matchedRate?.description_vi || getRateDescriptionForDate(e.entry_date, rates, e.allowance_rate_override);
+          const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon' ||
+            isFullMoon(new Date(e.entry_date + 'T12:00:00')) || isNewMoon(new Date(e.entry_date + 'T12:00:00'));
           // Global off-days ("Quán nghỉ") come from working_periods.off_days
           // and must stay locked. Without this guard a stale row that landed
           // in the sentinel state on an off-day date could still surface the
@@ -658,8 +706,10 @@ export default function SalaryTableTypeB({
               {/* ── Mobile row ─────────────────────────────────────────────── */}
               <div
                 className={`relative min-h-[52px] py-2.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden overflow-hidden flex items-center gap-2 ${
+                  isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
+                } ${
                   e.is_day_off ? 'opacity-40' : ''
-                } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+                } ${idx % 2 !== 0 && !isPending && !isOutOfRange ? 'bg-muted/20' : ''} ${
                   isMoonDay ? 'moon-accent-row' : ''
                 } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${
                   isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''
@@ -784,8 +834,10 @@ export default function SalaryTableTypeB({
 
               {/* ── Desktop row ────────────────────────────────────────────── */}
               <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
+                isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
+              } ${
                 e.is_day_off ? 'opacity-40' : ''
-              } ${idx % 2 !== 0 && !isPending ? 'bg-muted/20' : ''} ${
+              } ${idx % 2 !== 0 && !isPending && !isOutOfRange ? 'bg-muted/20' : ''} ${
                 isMoonDay ? 'moon-accent-row' : ''
               } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${
                 isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''

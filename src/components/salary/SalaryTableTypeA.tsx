@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Trash2, Clock, Check, Eye, EyeOff } from 'lucide-react';
 import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, computeTypeARowAmounts, formatDateViet, VIET_DAYS, formatVND, isTypeASupplementalEntry } from '@/lib/salaryCalculations';
+import { roundToThousand, calcDailyBase, computeTypeARowAmounts, getRateDescriptionForDate, formatDateViet, VIET_DAYS, formatVND, isTypeASupplementalEntry } from '@/lib/salaryCalculations';
 import { getMoonEmoji } from '@/lib/lunarUtils';
 import OffPercentSnapper from './OffPercentSnapper';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
@@ -362,8 +362,9 @@ export default function SalaryTableTypeA({
             const isEditing = editingRow === key && !readOnly;
             const isOff = e.is_day_off;
             const isSupplemental = isTypeASupplementalEntry(e);
+            const isOutOfRange = (periodStart && e.entry_date < periodStart) || (coveragePeriodEnd ? e.entry_date > coveragePeriodEnd : (periodEnd ? e.entry_date > periodEnd : false));
             const matchedRate = rates.find(r => r.special_date === e.entry_date);
-            const rateDesc = matchedRate?.description_vi;
+            const rateDesc = matchedRate?.description_vi || getRateDescriptionForDate(e.entry_date, rates, e.allowance_rate_override);
             // Show delete for manually added rows: no matching rate OR a duplicate sort_order
             const isDeletable = !readOnly && onRemoveEntry && e.id &&
               (!matchedRate || e.sort_order > 0) &&
@@ -376,10 +377,12 @@ export default function SalaryTableTypeA({
               <div key={key}>
                 <div
                   className={`flex items-center gap-2 pl-3 pr-3 py-3.5 border-b border-border/20 ${
+                    isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
+                  } ${
                     isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
-                  } ${isSupplemental && !isOff ? 'relative overflow-hidden border-l-2 border-l-primary/45 shadow-[inset_0_1px_0_hsl(var(--primary)/0.10)]' : ''} ${
+                  } ${isSupplemental && !isOff && !isOutOfRange ? 'relative overflow-hidden border-l-2 border-l-primary/45 shadow-[inset_0_1px_0_hsl(var(--primary)/0.10)]' : ''} ${
                     isSupplemental && isOff ? 'border-l-2 border-l-primary/35' : ''
-                  } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff && !isPending ? 'bg-muted/20' : ''}`}
+                  } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff && !isPending && !isOutOfRange ? 'bg-muted/20' : ''}`}
                 >
                   {isSupplemental && !isOff && (
                     <div

@@ -141,7 +141,7 @@ export function generateDefaultSpecialDays(
   );
 }
 
-/** Look up the rate for a given entry date from the rates array */
+/** Look up the rate for a given entry date from the rates array, falling back to dynamic lunar/weekend calculations */
 export function getRateForDate(
   entryDate: string,
   rates: SpecialDayRate[],
@@ -149,7 +149,26 @@ export function getRateForDate(
 ): number {
   if (overrideRate !== null && overrideRate !== undefined) return overrideRate;
   const found = rates.find(r => r.special_date === entryDate);
-  return found?.rate_percent ?? 0;
+  if (found) return found.rate_percent;
+  // Dynamic fallback for cross-period / out-of-range dates
+  const dt = getSpecialDayType(new Date(entryDate + 'T12:00:00'));
+  return dt ? DEFAULT_RATES[dt] ?? 0 : 0;
+}
+
+/** Look up or dynamically generate Vietnamese description for a date */
+export function getRateDescriptionForDate(
+  entryDate: string,
+  rates: SpecialDayRate[],
+  overrideRate?: number | null
+): string | undefined {
+  const found = rates.find(r => r.special_date === entryDate);
+  if (found) return found.description_vi;
+  const dt = getSpecialDayType(new Date(entryDate + 'T12:00:00'));
+  if (dt) {
+    const rate = overrideRate ?? DEFAULT_RATES[dt] ?? 0;
+    return getVietnameseDescription(dt, rate);
+  }
+  return undefined;
 }
 
 export function isTypeASupplementalEntry(entry: Pick<SalaryEntry, 'sort_order'>): boolean {
@@ -234,32 +253,47 @@ export function computeTotalSalaryTypeA(
   allowances: EmployeeAllowance[],
   baseSalary: number,
   hourlyRate: number,
-  rates: SpecialDayRate[]
+  rates: SpecialDayRate[],
+  periodStart?: string,
+  periodEnd?: string
 ): SalaryBreakdown {
   const dailyBase = calcDailyBase(baseSalary);
   let totalDailyWages = 0;
   let totalAllowancesFromRates = 0;
   let totalDeductions = 0;
   let totalExtraWages = 0;
+  let totalBonusDayBaseWages = 0;
   let offDays = 0;
+  let bonusWorkedDays = 0;
 
   for (const e of entries) {
+    const isBonusDay = !!(periodStart && periodEnd && (e.entry_date < periodStart || e.entry_date > periodEnd));
     const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
     totalAllowancesFromRates += allowance;
     totalExtraWages += extraWage;
-    if (e.is_day_off && e.off_percent > 0) {
-      totalDeductions += deduction;
-    }
-    if (e.is_day_off && !isTypeASupplementalEntry(e)) {
-      offDays++;
+
+    if (isBonusDay) {
+      if (!e.is_day_off) {
+        bonusWorkedDays++;
+        if (!isTypeASupplementalEntry(e) && (!e.total_hours || e.total_hours === 0)) {
+          totalBonusDayBaseWages += dailyBase;
+        }
+      }
+    } else {
+      if (e.is_day_off && e.off_percent > 0) {
+        totalDeductions += deduction;
+      }
+      if (e.is_day_off && !isTypeASupplementalEntry(e)) {
+        offDays++;
+      }
     }
   }
 
-  // Type A total: baseSalary + special day premiums + extra wages - deductions
-  totalDailyWages = baseSalary + totalAllowancesFromRates + totalExtraWages - totalDeductions;
+  // Type A total: baseSalary + special day premiums + extra wages + bonus day base wages - deductions
+  totalDailyWages = baseSalary + totalAllowancesFromRates + totalExtraWages + totalBonusDayBaseWages - totalDeductions;
 
-  // Calculate gui_xe automatically: (28 - off_days) * 10000
-  const guiXeAmount = (28 - offDays) * 10000;
+  // Calculate gui_xe automatically: (28 - off_days + bonusWorkedDays) * 10000
+  const guiXeAmount = (28 - offDays + bonusWorkedDays) * 10000;
 
   const allowanceItems = allowances.map(a => ({
     key: a.allowance_key,
@@ -298,8 +332,7 @@ export function computeTotalSalaryTypeA(
  * `periodEnd` is the inclusive last date covered by the monthly base.
  * Entries with `entry_date <= periodEnd` are treated as Type-A-style;
  * entries beyond it pull dailyBase per day. If `periodEnd` is null /
- * empty the function degrades to "everything is past the period",
- * matching the prior implementation.
+ * omitted, every entry pulls dailyBase (pure daily pay).
  */
 export function computeTotalSalaryTypeE(
   entries: SalaryEntry[],
@@ -307,57 +340,48 @@ export function computeTotalSalaryTypeE(
   baseSalary: number,
   hourlyRate: number,
   rates: SpecialDayRate[],
-  periodEnd?: string | null
+  periodEnd: string | null = null
 ): SalaryBreakdown {
   const dailyBase = calcDailyBase(baseSalary);
+  const isPureDaily = !periodEnd;
+
+  let totalDailyWages = 0;
   let totalAllowancesFromRates = 0;
   let totalDeductions = 0;
   let totalExtraWages = 0;
-  let pastPeriodWorkingDays = 0;   // days that earn an extra dailyBase
-  let workingDays = 0;             // for gui_xe (every primary working day)
-  let offDays = 0;
-
-  const inPeriod = (date: string) =>
-    !periodEnd || date <= periodEnd;
-
-  // Lunar days pay extra hours at 35k/hr regardless of the profile's
-  // normal rate, mirroring Type D's flat lunar rate.
-  const LUNAR_HOURLY_RATE = 35000;
-  const effectiveHourly = (e: SalaryEntry): number => {
-    const m = rates.find(r => r.special_date === e.entry_date);
-    return m?.day_type === 'new_moon' || m?.day_type === 'full_moon'
-      ? LUNAR_HOURLY_RATE
-      : hourlyRate;
-  };
+  let pastPeriodPrimaryBaseWages = 0;
+  let inPeriodOffDays = 0;
 
   for (const e of entries) {
-    const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, effectiveHourly(e), rates);
+    const { allowance, extraWage, deduction } = computeTypeARowAmounts(e, dailyBase, hourlyRate, rates);
     totalAllowancesFromRates += allowance;
     totalExtraWages += extraWage;
 
+    const isPastPeriod = isPureDaily || e.entry_date > periodEnd;
+
     if (e.is_day_off) {
       if (e.off_percent > 0) totalDeductions += deduction;
-      if (!isTypeASupplementalEntry(e)) offDays++;
-      continue;
-    }
-
-    if (!isTypeASupplementalEntry(e)) {
-      workingDays++;
-      if (!inPeriod(e.entry_date)) pastPeriodWorkingDays++;
+      if (!isTypeASupplementalEntry(e) && !isPastPeriod) inPeriodOffDays++;
+    } else {
+      if (!isTypeASupplementalEntry(e) && isPastPeriod) {
+        pastPeriodPrimaryBaseWages += dailyBase;
+      }
     }
   }
 
-  // baseSalary covers in-period work; pastPeriodWorkingDays each add an
-  // extra dailyBase for the day-by-day stretch.
-  const totalDailyWages =
-    baseSalary
-    + pastPeriodWorkingDays * dailyBase
-    + totalAllowancesFromRates
-    + totalExtraWages
-    - totalDeductions;
+  const effectiveBase = isPureDaily ? 0 : baseSalary;
+  totalDailyWages =
+    effectiveBase +
+    pastPeriodPrimaryBaseWages +
+    totalAllowancesFromRates +
+    totalExtraWages -
+    totalDeductions;
 
-  // gui_xe still tracks every primary working day, in or out of period.
-  const guiXeAmount = workingDays * 10000;
+  const guiXeDays = isPureDaily
+    ? entries.filter(e => !e.is_day_off).length
+    : Math.max(0, 28 - inPeriodOffDays) +
+      entries.filter(e => e.entry_date > periodEnd && !e.is_day_off).length;
+  const guiXeAmount = guiXeDays * 10000;
 
   const allowanceItems = allowances.map(a => ({
     key: a.allowance_key,
@@ -374,7 +398,7 @@ export function computeTotalSalaryTypeE(
   const total = totalDailyWages + enabledAllowancesSum;
 
   return {
-    base_salary: baseSalary,
+    base_salary: effectiveBase,
     daily_base: dailyBase,
     total_daily_wages: totalDailyWages,
     total_allowances_from_rates: totalAllowancesFromRates,
@@ -391,39 +415,47 @@ export function computeTotalSalaryTypeB(
   hourlyRate: number,
   rates: SpecialDayRate[],
   globalClockIn: string,
-  globalOffDays: string[] = []
+  globalOffDays: string[] = [],
+  periodStart?: string,
+  periodEnd?: string
 ): SalaryBreakdown {
   const dailyBase = calcDailyBase(baseSalary);
   let totalExtraWages = 0;
   let totalAllowancesFromRates = 0;
   let totalDeductions = 0;
+  let totalBonusDayBaseWages = 0;
   let offDays = 0;
+  let bonusWorkedDays = 0;
   const globalOffDaySet = new Set(globalOffDays);
 
   for (const e of entries) {
+    const isBonusDay = !!(periodStart && periodEnd && (e.entry_date < periodStart || e.entry_date > periodEnd));
+
     if (e.is_day_off) {
-      offDays++;
-      // Personal off-day (not a global holiday): deduct dailyBase
-      if (!globalOffDaySet.has(e.entry_date)) {
-        totalDeductions += dailyBase;
+      if (!isBonusDay) {
+        offDays++;
+        // Personal off-day (not a global holiday): deduct dailyBase
+        if (!globalOffDaySet.has(e.entry_date)) {
+          totalDeductions += dailyBase;
+        }
       }
       continue;
     }
+
+    if (isBonusDay) {
+      bonusWorkedDays++;
+      if (e.sort_order === 0 && (!e.total_hours || e.total_hours === 0) && (!e.clock_out || e.clock_out === (e.clock_in || globalClockIn))) {
+        totalBonusDayBaseWages += dailyBase;
+      }
+    }
+
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
-    // Prefer the clock-derived hours whenever clock_in / clock_out are
-    // both present and different — that's the source of truth. A stored
-    // total_hours of 0 left behind by an earlier seed/revert run would
-    // otherwise short-circuit the `??` and zero out the row's wage even
-    // when the row carries a real shift. Fall back to total_hours only
-    // when the clocks can't produce a usable value.
     const baseIn = e.clock_in || globalClockIn;
     const clockHours = e.clock_out && baseIn && baseIn !== e.clock_out
       ? calcHoursFromTimes(baseIn, e.clock_out)
       : null;
     const hours = clockHours ?? e.total_hours ?? 0;
     const extraWage = roundToThousand(hours * hourlyRate);
-    // Added rows (sort_order > 0) are pure delta adjustments — allowance
-    // applies only on the extra wage itself, not on (dailyBase + extraWage).
     const allowanceBase = e.sort_order > 0 ? extraWage : (dailyBase + extraWage);
     const allowance = roundToThousand(allowanceBase * rate / 100);
 
@@ -431,11 +463,11 @@ export function computeTotalSalaryTypeB(
     totalAllowancesFromRates += allowance;
   }
 
-  // Type B total: baseSalary + extra overtime wages + special day allowances - personal off-day deductions
-  const totalDailyWages = baseSalary + totalExtraWages + totalAllowancesFromRates - totalDeductions;
+  // Type B total: baseSalary + extra overtime wages + special day allowances + bonus days - personal off-day deductions
+  const totalDailyWages = baseSalary + totalExtraWages + totalAllowancesFromRates + totalBonusDayBaseWages - totalDeductions;
 
-  // Calculate gui_xe automatically: (28 - off_days) * 10000
-  const guiXeAmount = (28 - offDays) * 10000;
+  // Calculate gui_xe automatically: (28 - off_days + bonusWorkedDays) * 10000
+  const guiXeAmount = (28 - offDays + bonusWorkedDays) * 10000;
 
   const allowanceItems = allowances.map(a => ({
     key: a.allowance_key,

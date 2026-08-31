@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
-import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Archive, Calendar, Check } from 'lucide-react';
+import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Archive, Calendar, Check, Download, Copy, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -24,6 +24,25 @@ import { withTimeout } from '@/lib/withTimeout';
 import AnalogClock from '@/components/AnalogClock';
 import CSVImportModal, { ParsedRow } from '@/components/salary/CSVImportModal';
 import { archiveAndCreateNextPeriod } from '@/lib/archivePeriod';
+import {
+  buildSalaryPeriodExport,
+  downloadSalaryPeriodExport,
+  isPayrollPeriodCompleted,
+  serializeSalaryPeriodExport,
+  type SalaryPeriodExportPayload,
+} from '@/lib/salaryPeriodExport';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface Employee {
   user_id: string;
@@ -377,12 +396,66 @@ export default function SalaryAdmin() {
   const [pendingCounts, setPendingCounts] = useState<Map<string, number>>(new Map());
   const [publishedTotals, setPublishedTotals] = useState<Map<string, { total: number; deposit: number }>>(new Map());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [exportingPayroll, setExportingPayroll] = useState(false);
+  const [payrollPreviewJson, setPayrollPreviewJson] = useState<string | null>(null);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
   const [isArchiving, setIsArchiving] = useState(false);
   const [typeBViewMode, setTypeBViewMode] = useState<'table' | 'card'>('table');
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
+  const periodCompleted = selectedPeriod ? isPayrollPeriodCompleted(selectedPeriod.end_date) : false;
+
+  const fetchPayrollExportPayload = useCallback(async (): Promise<SalaryPeriodExportPayload | null> => {
+    if (!selectedPeriod) return null;
+    const { data, error } = await supabase
+      .from('salary_records')
+      .select('user_id, total_salary, salary_breakdown, published_at, status')
+      .eq('period_id', selectedPeriod.id)
+      .eq('status', 'published');
+    if (error) throw error;
+
+    const payload = buildSalaryPeriodExport(
+      selectedPeriod,
+      employees.map(e => ({
+        user_id: e.user_id,
+        username: e.username ?? null,
+        full_name: e.full_name,
+      })),
+      (data || []) as any[],
+    );
+
+    if (payload.employees.length === 0) {
+      toast.error('Chưa có nhân viên nào được công bố lương cho kỳ này');
+      return null;
+    }
+    return payload;
+  }, [selectedPeriod, employees]);
+
+  const runPayrollExportAction = useCallback(async (
+    action: 'copy' | 'view' | 'download',
+  ) => {
+    setExportingPayroll(true);
+    try {
+      const payload = await fetchPayrollExportPayload();
+      if (!payload) return;
+
+      if (action === 'download') {
+        downloadSalaryPeriodExport(payload);
+        toast.success(`Đã tải ${payload.employees.length} nhân viên`);
+      } else if (action === 'copy') {
+        await navigator.clipboard.writeText(serializeSalaryPeriodExport(payload));
+        toast.success('Đã sao chép JSON');
+      } else {
+        setPayrollPreviewJson(serializeSalaryPeriodExport(payload));
+      }
+    } catch (err) {
+      console.error('Payroll export failed:', err);
+      toast.error(err instanceof Error ? err.message : 'Xuất JSON thất bại');
+    } finally {
+      setExportingPayroll(false);
+    }
+  }, [fetchPayrollExportPayload]);
 
   // Reset Type B view mode when switching employees
   useEffect(() => {
@@ -542,11 +615,11 @@ export default function SalaryAdmin() {
     if (!selectedEmployee || entries.length === 0) return null;
     switch (selectedEmployee.shift_type) {
       case 'basic':
-        return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates);
+        return computeTotalSalaryTypeA(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, selectedPeriod?.start_date, selectedPeriod?.end_date);
       case 'daily':
         return computeTotalSalaryTypeE(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, selectedPeriod?.end_date);
       case 'overtime':
-        return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn, selectedPeriod?.off_days || []);
+        return computeTotalSalaryTypeB(entries, allowances, selectedEmployee.base_salary, selectedEmployee.hourly_rate, rates, globalClockIn, selectedPeriod?.off_days || [], selectedPeriod?.start_date, selectedPeriod?.end_date);
       case 'notice_only':
         return computeTotalSalaryTypeC(entries, allowances, selectedEmployee.hourly_rate, rates);
       case 'lunar_rate':
@@ -554,7 +627,7 @@ export default function SalaryAdmin() {
       default:
         return null;
     }
-  }, [entries, allowances, selectedEmployee, rates, globalClockIn]);
+  }, [entries, allowances, selectedEmployee, rates, globalClockIn, selectedPeriod]);
 
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
     if (!rawBreakdown) return null;
@@ -1220,6 +1293,43 @@ export default function SalaryAdmin() {
             >
               <Archive size={18} />
             </motion.button>
+            {periodCompleted && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    disabled={exportingPayroll}
+                    className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                    title="Xuất bảng lương đã công bố (JSON)"
+                  >
+                    <Download size={18} />
+                  </motion.button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    disabled={exportingPayroll}
+                    onClick={() => runPayrollExportAction('copy')}
+                  >
+                    <Copy size={14} className="mr-2" />
+                    Sao chép
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={exportingPayroll}
+                    onClick={() => runPayrollExportAction('view')}
+                  >
+                    <Eye size={14} className="mr-2" />
+                    Xem file
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={exportingPayroll}
+                    onClick={() => runPayrollExportAction('download')}
+                  >
+                    <Download size={14} className="mr-2" />
+                    Tải xuống
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         )}
 
@@ -1289,22 +1399,7 @@ export default function SalaryAdmin() {
                 onAddAllowance={addAllowance}
                 onHourlyRateChange={handleHourlyRateChange}
                 periodStart={selectedPeriod.start_date}
-                periodEnd={(() => {
-                  // Type A: 5-day grace beyond the period end so admins
-                  //         can patch a stray late-month row.
-                  // Type E: extend to today + 5 instead — every day past
-                  //         the period end is a real day-by-day pay day,
-                  //         not a grace patch, so the date picker needs
-                  //         to reach today.
-                  const fmt = (d: Date) =>
-                    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                  const periodPlus5 = new Date(selectedPeriod.end_date + 'T00:00:00');
-                  periodPlus5.setDate(periodPlus5.getDate() + 5);
-                  if (selectedEmployee.shift_type !== 'daily') return fmt(periodPlus5);
-                  const todayPlus5 = new Date();
-                  todayPlus5.setDate(todayPlus5.getDate() + 5);
-                  return fmt(todayPlus5 > periodPlus5 ? todayPlus5 : periodPlus5);
-                })()}
+                periodEnd={selectedPeriod.end_date}
                 breakdown={breakdown}
                 isPreview={isPreviewMode}
                 editMode={isPreviewMode ? 'preview' : 'admin'}
@@ -1351,6 +1446,7 @@ export default function SalaryAdmin() {
                 periodStart={selectedPeriod.start_date}
                 periodEnd={selectedPeriod.end_date}
                 onEntryUpdate={updateEntry}
+                onAddRowAtDate={addRowAtDate}
                 onAddDuplicateRow={addDuplicateRow}
                 onRemoveEntry={removeEntry}
                 onAllowanceToggle={toggleAllowance}
@@ -1614,6 +1710,17 @@ export default function SalaryAdmin() {
           </div>
         </div>
       )}
+
+      <Dialog open={payrollPreviewJson !== null} onOpenChange={(open) => { if (!open) setPayrollPreviewJson(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Xem file JSON lương</DialogTitle>
+          </DialogHeader>
+          <pre className="flex-1 overflow-auto rounded-xl bg-muted/50 border border-border p-3 text-[11px] leading-relaxed text-foreground whitespace-pre-wrap break-all">
+            {payrollPreviewJson}
+          </pre>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

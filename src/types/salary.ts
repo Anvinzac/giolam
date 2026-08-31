@@ -82,6 +82,7 @@ export interface SalaryPage {
   pageIndex: number;
   startDate: string;
   endDate: string;
+  pageDates?: string[];
   entries: SalaryEntry[];
 }
 
