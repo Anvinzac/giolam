@@ -62,6 +62,7 @@ serve(async (req) => {
           user_id: emp.user_id,
           period_id: periodId,
           shift_date: dateStr,
+          shift_slot: baseIn.startsWith("08:") ? "morning" : "afternoon",
           is_active: true,
           clock_in: baseIn,
           clock_out: null,
@@ -87,7 +88,7 @@ serve(async (req) => {
     // Batch upsert
     if (shifts.length > 0) {
       const { error } = await supabase.from("shifts").upsert(shifts, {
-        onConflict: "user_id,shift_date",
+        onConflict: "user_id,shift_date,shift_slot",
       });
       if (error) {
         results.push(`Error for ${emp.username}: ${error.message}`);

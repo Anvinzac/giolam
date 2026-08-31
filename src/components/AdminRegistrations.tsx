@@ -149,8 +149,29 @@ export default function AdminRegistrations({ onBadgeCount }: Props) {
     }
 
     if (updates.length > 0) {
-      const { error } = await supabase.from('shift_registrations').upsert(updates);
-      if (error) {
+      // The rows already exist — update them in place by primary key.
+      // (A PostgREST upsert with a partial payload is rejected with HTTP 400
+      // because user_id / shift_date / shift_slot are NOT NULL columns that
+      // are absent from the payload.)
+      let failed = false;
+      for (const u of updates) {
+        const { error } = await supabase
+          .from('shift_registrations')
+          .update({
+            status: u.status,
+            reviewed_by: u.reviewed_by,
+            reviewed_at: u.reviewed_at,
+            admin_clock_in: u.admin_clock_in,
+            admin_clock_out: u.admin_clock_out,
+            admin_note: u.admin_note,
+          })
+          .eq('id', u.id);
+        if (error) {
+          failed = true;
+          break;
+        }
+      }
+      if (failed) {
         toast.error('Có lỗi khi lưu');
         setIsPublishing(false);
         return;

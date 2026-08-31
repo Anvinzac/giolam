@@ -96,21 +96,23 @@ serve(async (req) => {
             user_id: auth.user.id,
             period_id: period.id,
             shift_date: dateStr,
+            shift_slot: emp.clock_in && emp.clock_in.startsWith('08:') ? 'morning' : 'afternoon',
             is_active: true,
             clock_in: emp.clock_in || `${7 + Math.floor(Math.random() * 3)}:${Math.random() > 0.5 ? '00' : '30'}`,
             clock_out: emp.clock_out || `${16 + Math.floor(Math.random() * 3)}:${Math.random() > 0.5 ? '00' : '30'}`,
             main_clock_in: emp.shift_type === 'overtime' ? emp.clock_in : null,
             main_clock_out: emp.shift_type === 'overtime' ? emp.clock_out : null,
             notice: dayOfWeek === 6 || dayOfWeek === 0 ? 'Weekend shift' : null,
-          }, { onConflict: 'user_id,shift_date' });
+          }, { onConflict: 'user_id,shift_date,shift_slot' });
         } else if (emp.shift_type === 'notice_only') {
           await supabase.from('shifts').upsert({
             user_id: auth.user.id,
             period_id: period.id,
             shift_date: dateStr,
+            shift_slot: 'morning',
             is_active: false,
             notice: isActive ? 'Available' : 'Unavailable',
-          }, { onConflict: 'user_id,shift_date' });
+          }, { onConflict: 'user_id,shift_date,shift_slot' });
         }
 
         current.setDate(current.getDate() + 1);

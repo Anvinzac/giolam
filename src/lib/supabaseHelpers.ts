@@ -57,6 +57,7 @@ export async function upsertShift(shift: {
   user_id: string;
   period_id: string;
   shift_date: string;
+  shift_slot?: string;
   is_active: boolean;
   clock_in?: string | null;
   clock_out?: string | null;
@@ -68,7 +69,7 @@ export async function upsertShift(shift: {
 }) {
   const { data, error } = await supabase
     .from('shifts')
-    .upsert(shift, { onConflict: 'user_id,shift_date' })
+    .upsert({ ...shift, shift_slot: shift.shift_slot || 'morning' }, { onConflict: 'user_id,shift_date,shift_slot' })
     .select()
     .single();
   if (error) throw error;

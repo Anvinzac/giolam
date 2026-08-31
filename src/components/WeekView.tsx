@@ -217,6 +217,7 @@ export default function WeekView({
       const rows = submittable.map(reg => ({
         user_id: userId,
         shift_date: reg.date,
+        shift_slot: 'morning' as const,
         clock_in: reg.clockIn,
         clock_out: reg.clockOut,
         status: 'pending' as const,
@@ -224,7 +225,7 @@ export default function WeekView({
 
       const { error } = await supabase.from('shift_registrations').upsert(
         rows as any,
-        { onConflict: 'user_id,shift_date' }
+        { onConflict: 'user_id,shift_date,shift_slot' }
       );
 
       if (error) throw error;

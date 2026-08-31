@@ -136,11 +136,14 @@ serve(async (req) => {
 
         if (w === 0) {
           // Week 1 (next week): mix of statuses
+          const slot = acc.default_clock_in && acc.default_clock_in.startsWith("08:")
+            ? "morning" : acc.default_clock_in ? "afternoon" : "morning";
           if (dayOfWeek === 1) {
             // Monday — pending
             rows.push({
               user_id: userId,
               shift_date: sDate,
+              shift_slot: slot,
               clock_in: acc.default_clock_in,
               clock_out: acc.default_clock_out,
               status: "pending",
@@ -150,6 +153,7 @@ serve(async (req) => {
             rows.push({
               user_id: userId,
               shift_date: sDate,
+              shift_slot: slot,
               clock_in: acc.default_clock_in,
               clock_out: acc.default_clock_out,
               status: "approved",
@@ -162,6 +166,7 @@ serve(async (req) => {
             rows.push({
               user_id: userId,
               shift_date: sDate,
+              shift_slot: slot,
               clock_in: acc.default_clock_in,
               clock_out: acc.default_clock_out,
               status: "rejected",
@@ -172,6 +177,7 @@ serve(async (req) => {
             rows.push({
               user_id: userId,
               shift_date: sDate,
+              shift_slot: slot,
               clock_in: acc.default_clock_in,
               clock_out: acc.default_clock_out,
               status: "modified",
@@ -184,6 +190,7 @@ serve(async (req) => {
             rows.push({
               user_id: userId,
               shift_date: sDate,
+              shift_slot: slot,
               clock_in: acc.default_clock_in,
               clock_out: acc.default_clock_out,
               status: "pending",
@@ -193,6 +200,7 @@ serve(async (req) => {
             rows.push({
               user_id: userId,
               shift_date: sDate,
+              shift_slot: "morning",
               clock_in: null,
               clock_out: null,
               status: "pending",
@@ -201,9 +209,12 @@ serve(async (req) => {
         } else {
           // Week 2 (week after next): all pending — so they can practice submitting
           if (dayOfWeek <= 5) {
+            const slot = acc.default_clock_in && acc.default_clock_in.startsWith("08:")
+              ? "morning" : acc.default_clock_in ? "afternoon" : "morning";
             rows.push({
               user_id: userId,
               shift_date: sDate,
+              shift_slot: slot,
               clock_in: acc.default_clock_in,
               clock_out: acc.default_clock_out,
               status: "pending",
@@ -214,7 +225,7 @@ serve(async (req) => {
 
       if (rows.length > 0) {
         const { error } = await supabase.from("shift_registrations").upsert(rows, {
-          onConflict: "user_id,shift_date",
+          onConflict: "user_id,shift_date,shift_slot",
         });
         if (error) {
           results.push(`Registration error for ${acc.username} week ${w + 1}: ${error.message}`);
