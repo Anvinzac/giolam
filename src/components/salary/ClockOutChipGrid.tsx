@@ -57,11 +57,15 @@ export default function ClockOutChipGrid({
   const chipTimes = generateChipTimes(baseTime, anchorTime);
   const isReview = cardState === 'review';
 
-  const normalizedSelectedTime = selectedTime
-    ? selectedTime.split(':').slice(0, 2).join(':')
+  // Sentinel: clock_out === clock_in is the "pending input" placeholder
+  // seeded for Type B. Treat it as no selection so chips show unselected
+  // and the cell can display '—' while staying tappable.
+  const isSentinel = !!selectedTime && !!baseTime && selectedTime.slice(0, 5) === baseTime.slice(0, 5);
+  const effectiveSelected = isSentinel ? null : selectedTime;
+  const normalizedSelectedTime = effectiveSelected
+    ? effectiveSelected.split(':').slice(0, 2).join(':')
     : null;
 
-  // Check if selected time is a custom value (not in any chip)
   const isCustomValue = normalizedSelectedTime && !isOffDay && !chipTimes.includes(normalizedSelectedTime);
 
   return (

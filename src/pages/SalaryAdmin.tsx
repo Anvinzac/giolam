@@ -470,6 +470,17 @@ export default function SalaryAdmin() {
     selectedPeriod?.off_days || []
   );
 
+  const typeBSeedOptions = useMemo(() => {
+    if (selectedEmployee?.shift_type !== 'overtime' || !selectedPeriod) return undefined;
+    return {
+      periodStart: selectedPeriod.start_date,
+      periodEnd: selectedPeriod.end_date,
+      defaultClockIn: selectedEmployee.default_clock_in || '17:00',
+      defaultClockOut: selectedEmployee.default_clock_out || '22:00',
+      offDays: selectedPeriod.off_days || [],
+    };
+  }, [selectedEmployee?.shift_type, selectedEmployee?.default_clock_in, selectedEmployee?.default_clock_out, selectedPeriod]);
+
   const { entries, updateEntry, addDuplicateRow, addRowAtDate, moveEntryToDate, removeEntry, acceptEntry, isSaving } = useSalaryEntries(
     selectedEmployee?.user_id || null,
     selectedPeriodId,
@@ -477,6 +488,7 @@ export default function SalaryAdmin() {
       editorMode: 'admin',
       enableRealtime: true,
       seedAllDays: selectedEmployee?.shift_type === 'basic',
+      seedAllPeriodDays: typeBSeedOptions,
     }
   );
 

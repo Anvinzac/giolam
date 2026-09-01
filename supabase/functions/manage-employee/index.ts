@@ -143,7 +143,7 @@ serve(async (req) => {
               });
             }
           } else {
-            // Type B (overtime): seed all dates with clock_in pre-filled
+            // Type B (overtime): sentinel — clock_out === clock_in renders as '—' but is tappable
             const start = new Date(period.start_date + "T00:00:00Z");
             const end = new Date(period.end_date + "T00:00:00Z");
             const cur = new Date(start);
@@ -156,7 +156,8 @@ serve(async (req) => {
                 sort_order: 0,
                 is_day_off: false,
                 clock_in: defaultIn,
-                clock_out: null,
+                clock_out: defaultIn,
+                total_hours: 0,
                 is_admin_reviewed: true,
               });
               cur.setUTCDate(cur.getUTCDate() + 1);

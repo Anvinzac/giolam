@@ -55,7 +55,10 @@ serve(async (req) => {
       const isActive = !isOff;
 
       if (isActive) {
-        // Set clock_in to default, leave clock_out null so only clock-out needs entry
+        // Sentinel seeding for Type B: clock_out === clock_in renders as '—'
+        // in the UI while keeping the clock-out cell fully tappable. Seeding
+        // clock_out as null forced admins/employees to "activate" the day
+        // before the cell would respond.
         const baseIn = emp.default_clock_in || "08:00";
 
         const shift: any = {
@@ -65,13 +68,13 @@ serve(async (req) => {
           shift_slot: baseIn.startsWith("08:") ? "morning" : "afternoon",
           is_active: true,
           clock_in: baseIn,
-          clock_out: null,
+          clock_out: baseIn,
         };
 
         // For overtime employees, also set main clock fields
         if (emp.shift_type === "overtime") {
           shift.main_clock_in = baseIn;
-          shift.main_clock_out = null;
+          shift.main_clock_out = baseIn;
         }
 
         // Weekend notice

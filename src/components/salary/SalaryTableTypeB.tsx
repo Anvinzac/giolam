@@ -412,8 +412,8 @@ export default function SalaryTableTypeB({
     onEntryUpdate(entryDate, 0, {
       is_day_off: false,
       clock_in: globalClockIn,
-      clock_out: null,
-      total_hours: null,
+      clock_out: globalClockIn,
+      total_hours: 0,
       note: null,
     });
     showRowChips(rowKey);
@@ -537,6 +537,17 @@ export default function SalaryTableTypeB({
     const rateDesc = matchedRate?.description_vi;
     const isMoonDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
     const noteLabel = rateDesc || '—';
+    const isGlobalOffDay = globalOffDaySet.has(dateStr);
+    // Render the empty row in the state it will have right after activation
+    // (sentinel: clock_out === clock_in → hours 0 → extraWage 0). The
+    // allowance (PC) and total (TỔNG) therefore already show their computed
+    // values, and the clock-out dash is blue + tappable like a real working
+    // row — tap it to activate the row and open the chip strip. Global
+    // off-days stay locked (no clock-out affordance) as everywhere else.
+    const activatedRate = getRateForDate(dateStr, rates, null);
+    const activatedAllowance = roundToThousand(dailyBase * activatedRate / 100);
+    const activatedTotal = activatedAllowance;
+    const canActivate = !readOnly && !isGlobalOffDay;
 
     return (
     <div key={`empty-${dateStr}`}>
@@ -559,12 +570,25 @@ export default function SalaryTableTypeB({
             {noteLabel}
           </button>
         </div>
-        <div className="ml-1 flex shrink-0 items-center gap-3 text-right text-muted-foreground">
-          <span className="w-[38px] text-right text-sm font-medium">—</span>
-          <span className="w-[24px] text-right font-semibold text-[12px]">—</span>
-          <span className="w-[34px] text-right font-medium text-[12px]">—</span>
-          <span className="w-[30px] text-right font-semibold text-[12px]">—</span>
-          <span className="w-[40px] text-right font-bold text-[14px]">—</span>
+        <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
+          {canActivate ? (
+            <button
+              onClick={() => activateEmptyDay(dateStr)}
+              className="w-[38px] text-right text-sm font-medium text-accent hover:underline"
+            >
+              —
+            </button>
+          ) : (
+            <span className="w-[38px] text-right text-sm font-medium text-muted-foreground">—</span>
+          )}
+          <span className="w-[24px] text-right font-semibold text-[12px] text-muted-foreground">—</span>
+          <span className="w-[34px] text-right font-medium text-[12px] text-muted-foreground">—</span>
+          <span className={`w-[30px] text-right font-semibold text-[12px] allowance-amt ${activatedAllowance !== 0 ? '' : 'text-muted-foreground'}`}>
+            {activatedAllowance !== 0 ? formatCompact(activatedAllowance) : ''}
+          </span>
+          <span className={`w-[40px] text-right font-bold text-[14px] ${activatedTotal === 0 ? 'text-muted-foreground' : ''}`}>
+            {formatCompact(activatedTotal)}
+          </span>
         </div>
       </div>
 
@@ -585,11 +609,24 @@ export default function SalaryTableTypeB({
         >
           {noteLabel}
         </button>
-        <span className="text-right text-muted-foreground">—</span>
+        {canActivate ? (
+          <button
+            onClick={() => activateEmptyDay(dateStr)}
+            className="justify-self-end text-right text-sm font-medium text-accent hover:underline"
+          >
+            —
+          </button>
+        ) : (
+          <span className="text-right text-muted-foreground">—</span>
+        )}
         <span className="text-right text-muted-foreground font-semibold">—</span>
         <span className="text-right text-muted-foreground font-medium">—</span>
-        <span className="text-right text-muted-foreground font-semibold">—</span>
-        <span className="text-right text-muted-foreground font-bold">—</span>
+        <span className={`text-right allowance-amt font-semibold ${activatedAllowance !== 0 ? '' : 'text-muted-foreground'}`}>
+          {activatedAllowance !== 0 ? formatCompact(activatedAllowance) : ''}
+        </span>
+        <span className={`text-right font-bold ${activatedTotal === 0 ? 'text-muted-foreground' : ''}`}>
+          {formatCompact(activatedTotal)}
+        </span>
       </div>
     </div>
     );

@@ -138,10 +138,13 @@ serve(async (req) => {
         });
       }
     } else if (profile.shift_type === "overtime") {
-      // Type B: seed ALL dates — clock_in pre-filled, clock_out blank, special rate notes
+      // Type B: seed ALL dates — clock_in AND clock_out pre-filled to the same
+      // sentinel (clock_out === clock_in). Display layer renders it as '—'
+      // but the row is fully active and tappable without a second activation.
       for (const dateStr of allDates) {
         if (existingDates.has(dateStr)) continue;
         const special = specialDateMap.get(dateStr);
+        const defaultIn = profile.default_clock_in || "17:00";
         entriesToInsert.push({
           user_id: userId,
           period_id: periodId,
@@ -150,8 +153,9 @@ serve(async (req) => {
           is_day_off: false,
           off_percent: 0,
           note: special?.description || null,
-          clock_in: profile.default_clock_in || "17:00",
-          clock_out: null,
+          clock_in: defaultIn,
+          clock_out: defaultIn,
+          total_hours: 0,
           is_admin_reviewed: true,
         });
       }

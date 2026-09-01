@@ -7,3 +7,6 @@
 - When staging files for a commit, verify each file contains only changes the assistant made — do not blindly `git add .`. Check diffs of unfamiliar files and unstage anything with unrelated pre-existing modifications to avoid committing other people's work. Confidence: 0.70
 - When running the app locally, provide the LAN address for mobile testing. Confidence: 0.85
 - When investigating a data issue (bad rows, unexpected records), do not modify or delete existing database data — find and fix the source code that created it. Only touch production data when explicitly asked. Confidence: 0.80
+- When fixing type-specific logic (e.g., Type B / overtime), strictly scope all changes to that type only — do not alter behavior for other employee/shift types. Confidence: 0.90
+- Expects complete, durable fixes that patch every code path capable of recreating the bug (all client seeders and all server Supabase functions) — partial single-location patches that leave other seeders writing null cause recurring regressions and strong frustration. Confidence: 0.85
+- Do not use agent-browser for verification/preview — it takes infinite waiting time and delays fixing the core interactive bug; fix code directly and verify via build/type-check instead of browser preview. Confidence: 0.90

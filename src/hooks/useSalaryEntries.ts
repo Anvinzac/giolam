@@ -175,6 +175,27 @@ export function useSalaryEntries(
       // callers that may want to actually pre-fill in some future flow,
       // but seeding intentionally does not consume it.
       if (seedAllPeriodDays && periodId) {
+        const healDefaultIn = seedAllPeriodDays.defaultClockIn || '17:00';
+        const toHeal = loaded.filter(e => !e.is_day_off && !e.clock_out);
+        if (toHeal.length > 0) {
+          for (const e of toHeal) {
+            const fixOut = e.clock_in || healDefaultIn;
+            e.clock_out = fixOut;
+            if (e.total_hours == null) e.total_hours = 0;
+            if (e.id) {
+              supabase.from('salary_entries').update({ clock_out: fixOut, total_hours: 0 }).eq('id', e.id).then(({ error }) => {
+                if (error) console.error('Failed to heal Type B null clock_out:', error);
+              });
+            } else {
+              supabase.from('salary_entries').upsert({
+                user_id: userId!, period_id: periodId!, entry_date: e.entry_date, sort_order: e.sort_order,
+                clock_in: e.clock_in || healDefaultIn, clock_out: fixOut, total_hours: 0,
+                is_day_off: false, off_percent: 0, note: null, is_admin_reviewed: true,
+              } as any, { onConflict: 'user_id,period_id,entry_date,sort_order' });
+            }
+          }
+        }
+
         const existingDates = new Set(loaded.map(e => e.entry_date));
         const { periodStart, periodEnd, defaultClockIn, offDays } = seedAllPeriodDays;
         // Don't auto-seed days for periods that already ended — the rows should

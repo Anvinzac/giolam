@@ -86,6 +86,17 @@ export default function EmployeeSalaryEntry() {
     selectedPeriod?.off_days || []
   );
 
+  const typeBSeedOptions = useMemo(() => {
+    if (profile?.shift_type !== 'overtime' || !selectedPeriod) return undefined;
+    return {
+      periodStart: selectedPeriod.start_date,
+      periodEnd: selectedPeriod.end_date,
+      defaultClockIn: profile.default_clock_in || '17:00',
+      defaultClockOut: profile.default_clock_out || '22:00',
+      offDays: selectedPeriod.off_days || [],
+    };
+  }, [profile?.shift_type, profile?.default_clock_in, profile?.default_clock_out, selectedPeriod]);
+
   const {
     entries,
     updateEntry,
@@ -97,6 +108,7 @@ export default function EmployeeSalaryEntry() {
     editorMode: 'employee',
     enableRealtime: true,
     employeeReviewMode: profile?.shift_type === 'overtime' ? 'auto' : 'pending',
+    seedAllPeriodDays: typeBSeedOptions,
   });
   
   // Calculate working days count for gui_xe
