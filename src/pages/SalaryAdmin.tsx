@@ -782,14 +782,26 @@ export default function SalaryAdmin() {
 
         // Some environments may not have salary columns on `profiles` yet. If the
         // select errors, retry with a minimal column set so the employee list
-        // still loads instead of going empty.
+        // still loads instead of going empty. NOTE: the newest column
+        // (`include_in_shift_register`) lives in the first query on purpose,
+        // but a migration that hasn't been applied yet must never disable
+        // salary editing — so retry salary columns WITHOUT the new column
+        // before giving up on them entirely.
         let profilesRes: any = await withTimeout(
           supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in, default_clock_out, include_in_shift_register'),
           10000,
           'Profile lookup timed out.',
         );
         if (profilesRes?.error) {
-          console.warn('Profile lookup (with salary columns) failed, retrying:', profilesRes.error);
+          console.warn('Profile lookup (with settings columns) failed, retrying with salary columns only:', profilesRes.error);
+          profilesRes = await withTimeout(
+            supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in, default_clock_out'),
+            10000,
+            'Profile lookup timed out.',
+          );
+        }
+        if (profilesRes?.error) {
+          console.warn('Profile lookup (with salary columns) failed, retrying minimal:', profilesRes.error);
           setSalaryColumnsAvailable(false);
           profilesRes = await withTimeout(
             supabase.from('profiles').select('user_id, username, full_name, shift_type, department_id, default_clock_in, default_clock_out'),
