@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
-import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Archive, Calendar, Check, Download, Copy, Eye } from 'lucide-react';
+import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Archive, Calendar, Check, Download, Copy, Eye, Settings2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -23,6 +23,8 @@ import AppBootState from '@/components/AppBootState';
 import { withTimeout } from '@/lib/withTimeout';
 import AnalogClock from '@/components/AnalogClock';
 import CSVImportModal, { ParsedRow } from '@/components/salary/CSVImportModal';
+import FlipCard from '@/components/salary/FlipCard';
+import EmployeeSettingsPage from '@/components/salary/EmployeeSettingsPage';
 import { archiveAndCreateNextPeriod } from '@/lib/archivePeriod';
 import {
   buildSalaryPeriodExport,
@@ -55,6 +57,8 @@ interface Employee {
   default_clock_out: string | null;
   department_id: string | null;
   department_name?: string;
+  work_shift?: string | null;
+  include_in_shift_register?: boolean;
 }
 
 interface Period {
@@ -402,6 +406,8 @@ export default function SalaryAdmin() {
   const [newPeriodEndDate, setNewPeriodEndDate] = useState('');
   const [isArchiving, setIsArchiving] = useState(false);
   const [typeBViewMode, setTypeBViewMode] = useState<'table' | 'card'>('table');
+  const [showEmployeeSettings, setShowEmployeeSettings] = useState(false);
+  const [departmentsList, setDepartmentsList] = useState<{ id: string; name: string }[]>([]);
 
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || null;
   const periodCompleted = selectedPeriod ? isPayrollPeriodCompleted(selectedPeriod.end_date) : false;
@@ -460,6 +466,7 @@ export default function SalaryAdmin() {
   // Reset Type B view mode when switching employees
   useEffect(() => {
     setTypeBViewMode('table');
+    setShowEmployeeSettings(false);
   }, [selectedEmployee?.user_id]);
 
   // Hooks for selected employee
@@ -777,7 +784,7 @@ export default function SalaryAdmin() {
         // select errors, retry with a minimal column set so the employee list
         // still loads instead of going empty.
         let profilesRes: any = await withTimeout(
-          supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in, default_clock_out'),
+          supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in, default_clock_out, include_in_shift_register'),
           10000,
           'Profile lookup timed out.',
         );
@@ -796,6 +803,7 @@ export default function SalaryAdmin() {
 
         const profiles = (profilesRes as any).data || [];
         const depts = deptsRes.data || [];
+        setDepartmentsList(depts);
         const deptMap = new Map(depts.map(d => [d.id, d.name]));
         const adminIds = new Set((adminRolesRes.data || []).map(r => r.user_id));
 
@@ -821,6 +829,8 @@ export default function SalaryAdmin() {
             default_clock_out: (p as any).default_clock_out || null,
             department_id: p.department_id || null,
             department_name: p.department_id ? deptMap.get(p.department_id) : undefined,
+            work_shift: (p as any).work_shift || null,
+            include_in_shift_register: p.include_in_shift_register ?? true,
           }));
 
         setEmployees(emps);
@@ -1104,6 +1114,43 @@ export default function SalaryAdmin() {
     toast.success(`Đã đổi ca làm việc sang ${newShift === 'morning' ? 'Ca sáng (8:00-15:00)' : 'Ca chiều (15:00-22:00)'}`);
   }, [selectedEmployee]);
 
+  const handleDepartmentChange = useCallback(async (departmentId: string | null) => {
+    if (!selectedEmployee) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ department_id: departmentId } as any)
+      .eq('user_id', selectedEmployee.user_id);
+    if (error) {
+      console.error('Failed to update department:', error);
+      toast.error(error.message || 'Lỗi lưu bộ phận');
+      return;
+    }
+    const deptName = departmentId ? departmentsList.find(d => d.id === departmentId)?.name : undefined;
+    setSelectedEmployee(prev => prev ? { ...prev, department_id: departmentId, department_name: deptName } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, department_id: departmentId, department_name: deptName } : e
+    ));
+    toast.success('Đã cập nhật bộ phận');
+  }, [selectedEmployee, departmentsList]);
+
+  const handleIncludeShiftRegisterChange = useCallback(async (include: boolean) => {
+    if (!selectedEmployee) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ include_in_shift_register: include } as any)
+      .eq('user_id', selectedEmployee.user_id);
+    if (error) {
+      console.error('Failed to update include_in_shift_register:', error);
+      toast.error(error.message || 'Lỗi lưu cài đặt đăng ký ca');
+      return;
+    }
+    setSelectedEmployee(prev => prev ? { ...prev, include_in_shift_register: include } : null);
+    setEmployees(prev => prev.map(e =>
+      e.user_id === selectedEmployee.user_id ? { ...e, include_in_shift_register: include } : e
+    ));
+    toast.success(include ? 'Đã thêm vào bảng đăng ký ca' : 'Đã ẩn khỏi bảng đăng ký ca');
+  }, [selectedEmployee]);
+
   const typeBadgeColor = (t: EmployeeShiftType) => {
     switch (t) {
       case 'basic': return 'bg-amber-500/20 text-amber-400';
@@ -1194,6 +1241,17 @@ export default function SalaryAdmin() {
                         </button>
                       </div>
                     )}
+                    <button
+                      onClick={() => setShowEmployeeSettings(v => !v)}
+                      className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium transition-all ${
+                        showEmployeeSettings
+                          ? 'gradient-gold text-primary-foreground'
+                          : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {showEmployeeSettings ? <Undo2 size={10} /> : <Settings2 size={10} />}
+                      {showEmployeeSettings ? 'Bảng lương' : 'Cài đặt'}
+                    </button>
                   </div>
                 )}
               </div>
@@ -1393,9 +1451,13 @@ export default function SalaryAdmin() {
           />
         )}
 
-        {/* Selected employee salary table */}
+        {/* Selected employee salary table — flips to Settings page */}
         {selectedEmployee && selectedPeriod && (
           <>
+            <FlipCard
+              flipped={showEmployeeSettings}
+              front={
+                <>
             {(selectedEmployee.shift_type === 'basic' || selectedEmployee.shift_type === 'daily') && (
               <SalaryTableTypeA
                 entries={entries}
@@ -1585,6 +1647,30 @@ export default function SalaryAdmin() {
                 </div>
               </div>
             </div>
+                </>
+              }
+              back={
+                <EmployeeSettingsPage
+                  employee={selectedEmployee}
+                  departments={departmentsList}
+                  allowances={allowances}
+                  isPreview={isPreviewMode}
+                  onNameChange={handleNameChange}
+                  onShiftTypeChange={handleShiftTypeChange}
+                  onDepartmentChange={handleDepartmentChange}
+                  onBaseSalaryChange={handleBaseSalaryChange}
+                  onHourlyRateChange={handleHourlyRateChange}
+                  onWorkShiftChange={handleWorkShiftChange}
+                  onDefaultClockInChange={handleTypeCDefaultClockInChange}
+                  onDefaultClockOutChange={handleTypeCDefaultClockOutChange}
+                  onIncludeShiftRegisterChange={handleIncludeShiftRegisterChange}
+                  onAllowanceToggle={toggleAllowance}
+                  onAllowanceUpdate={updateAllowance}
+                  onAddAllowance={addAllowance}
+                  onFlipBack={() => setShowEmployeeSettings(false)}
+                />
+              }
+            />
 
             {/* CSV Import Modal */}
             {showCSVImport && selectedPeriod && (

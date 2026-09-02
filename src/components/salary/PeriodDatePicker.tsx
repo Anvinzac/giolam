@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { SpecialDayRate, SalaryEntry } from '@/types/salary';
 
@@ -34,6 +34,9 @@ export default function PeriodDatePicker({
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+
+  // Slide direction of the last month change, for the flick transition
+  const [direction, setDirection] = useState(0);
 
   const entryMap = useMemo(() => {
     const map = new Map<string, SalaryEntry>();
@@ -76,12 +79,23 @@ export default function PeriodDatePicker({
     return 'text-foreground';
   };
 
-  const handlePrevMonth = () => {
-    setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  const goToMonth = (delta: number) => {
+    setDirection(delta);
+    setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   };
 
-  const handleNextMonth = () => {
-    setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  const handlePrevMonth = () => goToMonth(-1);
+
+  const handleNextMonth = () => goToMonth(1);
+
+  // Flick / swipe on the grid moves between months
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    const threshold = 40;
+    if (info.offset.x < -threshold) {
+      goToMonth(1);
+    } else if (info.offset.x > threshold) {
+      goToMonth(-1);
+    }
   };
 
   const handleResetPeriod = () => {
@@ -161,36 +175,52 @@ export default function PeriodDatePicker({
               ))}
             </div>
 
-            {/* Date grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {allSlots.map((dateStr, idx) => {
-                if (!dateStr) return <div key={`e-${idx}`} className="h-8" />;
+            {/* Date grid — flick left/right to change month */}
+            <div className="relative overflow-hidden">
+              <AnimatePresence initial={false} custom={direction} mode="popLayout">
+                <motion.div
+                  key={`${year}-${month}`}
+                  custom={direction}
+                  initial={{ x: direction >= 0 ? '40%' : '-40%', opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: direction >= 0 ? '-40%' : '40%', opacity: 0 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.15}
+                  onDragEnd={handleDragEnd}
+                  className="grid grid-cols-7 gap-1 touch-pan-y"
+                >
+                  {allSlots.map((dateStr, idx) => {
+                    if (!dateStr) return <div key={`e-${idx}`} className="h-8" />;
 
-                const entry = entryMap.get(dateStr);
-                const isOff = entry?.is_day_off === true;
-                const hasEntry = !!entry;
-                const isInRange = !!(periodStart && periodEnd && dateStr >= periodStart && dateStr <= periodEnd);
-                const d = new Date(dateStr + 'T00:00:00');
-                const dayNum = d.getDate();
+                    const entry = entryMap.get(dateStr);
+                    const isOff = entry?.is_day_off === true;
+                    const hasEntry = !!entry;
+                    const isInRange = !!(periodStart && periodEnd && dateStr >= periodStart && dateStr <= periodEnd);
+                    const d = new Date(dateStr + 'T00:00:00');
+                    const dayNum = d.getDate();
 
-                return (
-                  <button
-                    key={dateStr}
-                    onClick={() => onSelect(dateStr)}
-                    className={`relative flex flex-col items-center justify-center h-8 rounded-lg text-[12px] font-medium transition-all active:scale-90 ${
-                      isInRange
-                        ? 'bg-primary/15 text-primary font-bold border border-primary/35 shadow-sm hover:bg-primary/25'
-                        : 'border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50'
-                    } ${isOff ? 'opacity-50 text-destructive/80' : getDayColor(dateStr)}`}
-                    title={`${dateStr} ${isInRange ? '(Trong kỳ)' : '(Ngoài kỳ - Thêm công)'}`}
-                  >
-                    <span>{dayNum}</span>
-                    {hasEntry && !isOff && (
-                      <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary/70" />
-                    )}
-                  </button>
-                );
-              })}
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => onSelect(dateStr)}
+                        className={`relative flex flex-col items-center justify-center h-8 rounded-lg text-[12px] font-medium transition-all active:scale-90 ${
+                          isInRange
+                            ? 'bg-primary/15 text-primary font-bold border border-primary/35 shadow-sm hover:bg-primary/25'
+                            : 'border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/50'
+                        } ${isOff ? 'opacity-50 text-destructive/80' : getDayColor(dateStr)}`}
+                        title={`${dateStr} ${isInRange ? '(Trong kỳ)' : '(Ngoài kỳ - Thêm công)'}`}
+                      >
+                        <span>{dayNum}</span>
+                        {hasEntry && !isOff && (
+                          <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary/70" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Subtle footer note explaining colors */}

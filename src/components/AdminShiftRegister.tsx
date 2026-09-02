@@ -95,7 +95,7 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
   useEffect(() => {
     const fetchData = async () => {
       const [{ data: profiles }, { data: departments }, { data: shifts }, { data: registrations }] = await Promise.all([
-        supabase.from('profiles').select('user_id, full_name, work_shift, shift_type, department_id'),
+        supabase.from('profiles').select('user_id, full_name, work_shift, shift_type, department_id, include_in_shift_register').eq('include_in_shift_register', true),
         supabase.from('departments').select('id, name'),
         supabase.from('shifts').select('*').eq('period_id', periodId),
         supabase.from('shift_registrations').select('user_id, status').eq('status', 'pending'),

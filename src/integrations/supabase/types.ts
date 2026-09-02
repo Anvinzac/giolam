@@ -146,6 +146,7 @@ export type Database = {
           full_name: string
           hourly_rate: number
           id: string
+          include_in_shift_register: boolean
           must_change_password: boolean
           shift_type: Database["public"]["Enums"]["shift_type"]
           updated_at: string
@@ -162,6 +163,7 @@ export type Database = {
           full_name?: string
           hourly_rate?: number
           id?: string
+          include_in_shift_register?: boolean
           must_change_password?: boolean
           shift_type?: Database["public"]["Enums"]["shift_type"]
           updated_at?: string
@@ -178,6 +180,7 @@ export type Database = {
           full_name?: string
           hourly_rate?: number
           id?: string
+          include_in_shift_register?: boolean
           must_change_password?: boolean
           shift_type?: Database["public"]["Enums"]["shift_type"]
           updated_at?: string
