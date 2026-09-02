@@ -275,15 +275,15 @@ export default function EmployeeSettingsPage({
               isPreview ? 'cursor-default' : 'hover:bg-muted/70'
             }`}
           >
-            <span className="text-sm text-muted-foreground">Họ tên</span>
-            <span className={`text-sm font-medium text-foreground ${isPreview ? '' : 'hover:underline'}`}>
+            <span className="text-sm text-muted-foreground flex-shrink-0">Họ tên</span>
+            <span className={`text-sm font-medium text-foreground truncate ${isPreview ? '' : 'hover:underline'}`}>
               {employee.full_name}
             </span>
           </button>
         )}
-        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
-          <span className="text-sm text-muted-foreground">Tài khoản</span>
-          <span className="text-sm font-medium text-muted-foreground">@{employee.username || '—'}</span>
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40 min-w-0">
+          <span className="text-sm text-muted-foreground flex-shrink-0">Tài khoản</span>
+          <span className="text-sm font-medium text-muted-foreground truncate">@{employee.username || '—'}</span>
         </div>
       </div>
 
@@ -337,7 +337,7 @@ export default function EmployeeSettingsPage({
               type="button"
               disabled={isPreview}
               onClick={() => onWorkShiftChange(shift)}
-              className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
+              className={`flex-1 min-w-0 py-2 px-2 rounded-xl text-xs font-medium transition-all ${
                 employee.work_shift === shift
                   ? shift === 'morning'
                     ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-400/50'
@@ -345,7 +345,10 @@ export default function EmployeeSettingsPage({
                   : 'bg-muted/50 text-muted-foreground hover:bg-muted'
               }`}
             >
-              {shift === 'morning' ? 'Ca sáng (8:00–15:00)' : 'Ca chiều (15:00–22:00)'}
+              <span className="block truncate">{shift === 'morning' ? 'Ca sáng' : 'Ca chiều'}</span>
+              <span className="block text-[10px] font-normal opacity-70 truncate">
+                {shift === 'morning' ? '8:00 – 15:00' : '15:00 – 22:00'}
+              </span>
             </button>
           ))}
         </div>
@@ -355,24 +358,24 @@ export default function EmployeeSettingsPage({
       <div className="glass-card p-3 space-y-2">
         <SectionHeader icon={Clock} title="Giờ chấm công mặc định" />
         <div className="grid grid-cols-2 gap-2">
-          <div className="p-3 rounded-xl bg-muted/40">
+          <div className="p-3 rounded-xl bg-muted/40 min-w-0">
             <span className="block text-[11px] text-muted-foreground mb-1.5">Giờ vào</span>
             <input
               type="time"
               value={employee.default_clock_in || ''}
               disabled={isPreview}
               onChange={e => onDefaultClockInChange(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-sm text-foreground"
+              className="w-full min-w-0 px-2 py-1.5 rounded-lg bg-background border border-border text-sm text-foreground"
             />
           </div>
-          <div className="p-3 rounded-xl bg-muted/40">
+          <div className="p-3 rounded-xl bg-muted/40 min-w-0">
             <span className="block text-[11px] text-muted-foreground mb-1.5">Giờ ra</span>
             <input
               type="time"
               value={employee.default_clock_out || ''}
               disabled={isPreview}
               onChange={e => onDefaultClockOutChange(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-sm text-foreground"
+              className="w-full min-w-0 px-2 py-1.5 rounded-lg bg-background border border-border text-sm text-foreground"
             />
           </div>
         </div>
