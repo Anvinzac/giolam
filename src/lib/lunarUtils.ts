@@ -1,48 +1,69 @@
 // Using a more precise UTC seed for lunar calculations
 // 2000-01-06T18:14:00Z was a new moon
+const KNOWN_NEW_MOON_MS = Date.parse('2000-01-06T18:14:00Z');
+const LUNAR_CYCLE_DAYS = 29.53058867;
+
 export function getLunarPhase(date: Date): number {
-  const knownNewMoon = new Date("2000-01-06T18:14:00Z");
-  const lunarCycle = 29.53058867; // days
-  const diff = (date.getTime() - knownNewMoon.getTime()) / (1000 * 60 * 60 * 24);
-  const phase = ((diff % lunarCycle) + lunarCycle) % lunarCycle;
-  return phase / lunarCycle;
+  const diff = (date.getTime() - KNOWN_NEW_MOON_MS) / (1000 * 60 * 60 * 24);
+  const phase = ((diff % LUNAR_CYCLE_DAYS) + LUNAR_CYCLE_DAYS) % LUNAR_CYCLE_DAYS;
+  return phase / LUNAR_CYCLE_DAYS;
+}
+
+function formatLocalYmd(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function atNoon(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
+function addDays(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function newMoonDistance(date: Date): number {
+  const phase = getLunarPhase(atNoon(date));
+  return Math.min(phase, 1 - phase);
+}
+
+function fullMoonDistance(date: Date): number {
+  return Math.abs(getLunarPhase(atNoon(date)) - 0.5);
+}
+
+/** Exactly one civil day per lunation: closer than both neighbors. */
+function isLocalMinimum(date: Date, distance: (d: Date) => number): boolean {
+  const here = distance(date);
+  return here < distance(addDays(date, -1)) && here <= distance(addDays(date, 1));
 }
 
 /**
- * Astronomical phase for a calendar day always lands one civil day late
- * versus the shop calendar (Rằm / Mùng 1 / Ngày chay). After the heavy
- * phase math, attribute the event to the previous calendar day by reading
- * tomorrow's phase for today's label.
+ * Shop calendar follows Vietnamese âm lịch.
+ * A wide phase threshold tagged two days as Rằm (e.g. 28/7 and 29/7) and
+ * a blanket −1 shift made Ngày chay land a day early around midnight new
+ * moons (11/8). Pick the unique nearest day instead: Mùng 1 = closest noon
+ * to new moon; Rằm = the day before the closest noon to full moon.
  */
-function phaseForCalendarDay(date: Date): number {
-  const d = new Date(date);
-  d.setHours(12, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  return getLunarPhase(d);
+export function isNewMoon(date: Date): boolean {
+  return isLocalMinimum(date, newMoonDistance);
 }
 
 export function isFullMoon(date: Date): boolean {
-  const phase = phaseForCalendarDay(date);
-  // Full moon is at 0.5 phase — increased threshold to prevent missing boundary days
-  return Math.abs(phase - 0.5) < 0.025;
-}
-
-export function isNewMoon(date: Date): boolean {
-  const phase = phaseForCalendarDay(date);
-  // New moon is at 0.0 or 1.0 phase
-  return phase < 0.025 || phase > 0.975;
+  return isLocalMinimum(addDays(date, 1), fullMoonDistance);
 }
 
 export function isDayBeforeFullMoon(date: Date): boolean {
-  const next = new Date(date);
-  next.setDate(next.getDate() + 1);
-  return isFullMoon(next);
+  return isFullMoon(addDays(date, 1));
 }
 
 export function isDayBeforeNewMoon(date: Date): boolean {
-  const next = new Date(date);
-  next.setDate(next.getDate() + 1);
-  return isNewMoon(next);
+  return isNewMoon(addDays(date, 1));
 }
 
 export function getMoonEmoji(date: Date): string | null {
@@ -51,13 +72,6 @@ export function getMoonEmoji(date: Date): string | null {
   if (isDayBeforeFullMoon(date)) return '🌔';
   if (isDayBeforeNewMoon(date)) return '🌘';
   return null;
-}
-
-function formatLocalYmd(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 // Closed days on the shift-registration table (not lunar events).

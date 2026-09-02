@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
 import { timeToString } from "@/lib/lunarUtils";
@@ -319,7 +320,7 @@ export default function AnalogClock({
     onClose();
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -707,6 +708,7 @@ export default function AnalogClock({
           )}
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

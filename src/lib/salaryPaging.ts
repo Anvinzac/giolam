@@ -7,6 +7,8 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export const DAYS_PER_PAGE = 10;
+
 /**
  * Split entries into ~10-day pages for balance across the month.
  * Typical 30-day payroll periods land as 3×10. Slightly longer leftovers
@@ -41,7 +43,6 @@ export function splitIntoPages(
 
   if (allDates.length === 0) return pages;
 
-  const DAYS_PER_PAGE = 10;
   let i = 0;
   while (i < allDates.length) {
     const remaining = allDates.length - i;

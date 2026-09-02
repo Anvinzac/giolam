@@ -4,8 +4,8 @@ import { Check, Plus, X, Clock } from 'lucide-react';
 import { SalaryEntry, SalaryPage, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcHoursFromTimes, getRateForDate, getRateDescriptionForDate, formatVND, formatDateViet } from '@/lib/salaryCalculations';
 import { isFullMoon, isNewMoon } from '@/lib/lunarUtils';
-import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
-import SwipeablePages from './SwipeablePages';
+import { DAYS_PER_PAGE, generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
+import SwipeablePages, { dateRangePageLabel } from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
@@ -791,9 +791,6 @@ export default function SalaryTableTypeC({
           }
         }}
       >
-        {e.is_admin_reviewed && (
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 z-10" title="Đã chỉnh sửa" />
-        )}
         {!readOnly && !e.is_day_off && !isScheduledOffDay && !showClockChips && (
           <button
             data-toggle-button
@@ -978,9 +975,6 @@ export default function SalaryTableTypeC({
           }
         }}
       >
-        {e.is_admin_reviewed && (
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 z-10" title="Đã chỉnh sửa" />
-        )}
         {!readOnly && !e.is_day_off && !isScheduledOffDay && (
           <button
             data-toggle-button
@@ -1478,7 +1472,7 @@ export default function SalaryTableTypeC({
   );
 
   const renderCompact = () => {
-    const emptyCount = Math.max(0, 10 - workingEntries.length);
+    const emptyCount = Math.max(0, DAYS_PER_PAGE - workingEntries.length);
     const emptyRows = Array.from({ length: emptyCount }, (_, i) => ({
       idx: i + workingEntries.length,
       dateStr: null,
@@ -1523,6 +1517,7 @@ export default function SalaryTableTypeC({
       dateStr,
       entry: page.entries.find(entry => entry.entry_date === dateStr) || null,
     }));
+    const padCount = Math.max(0, DAYS_PER_PAGE - pageRows.length);
     const orderedEntries = pageRows
       .filter((row): row is { idx: number; dateStr: string; entry: SalaryEntry } => row.entry !== null)
       .map(row => row.entry);
@@ -1550,6 +1545,9 @@ export default function SalaryTableTypeC({
               const isSun = row.dateStr ? new Date(row.dateStr + 'T00:00:00').getDay() === 0 : false;
               return renderEmptyRow(row.dateStr, idx, isSun);
             })}
+            {Array.from({ length: padCount }, (_, i) =>
+              renderEmptyRow(null, pageRows.length + i)
+            )}
           </div>
         </div>
       </div>
@@ -1678,7 +1676,7 @@ export default function SalaryTableTypeC({
         ) : pages.length > 0 ? (
           <SwipeablePages
             pages={pages.map(p => renderPage(p))}
-            labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
+            labels={pages.map(p => dateRangePageLabel(p.startDate, p.endDate, pages.length))}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
           />

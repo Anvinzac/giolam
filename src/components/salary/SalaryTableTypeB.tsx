@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
-import { SalaryEntry, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
+import { SalaryEntry, SalaryPage, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, getRateDescriptionForDate, formatDateViet, formatVND } from '@/lib/salaryCalculations';
 import { isFullMoon, isNewMoon } from '@/lib/lunarUtils';
-import { generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
-import SwipeablePages from './SwipeablePages';
+import { DAYS_PER_PAGE, generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
+import SwipeablePages, { dateRangePageLabel } from './SwipeablePages';
 import EmployeeAllowanceEditor from './EmployeeAllowanceEditor';
 import TotalSalaryDisplay from './TotalSalaryDisplay';
 import SalaryBreakdownPopup from './SalaryBreakdownPopup';
@@ -119,8 +119,12 @@ export default function SalaryTableTypeB({
 
     return e.is_admin_reviewed === false || isOwnDuplicateRow;
   };
-  const tableGridClass = 'sm:grid-cols-[60px_minmax(100px,1fr)_40px_35px_50px_70px_60px]';
+  // Date | note (desktop) or date (mobile) | Ra Giờ Lương PC Tổng as 5 equal tracks.
+  // Chips always start on the Ra (clock-out) track: col-span-5 from there.
+  const tableGridClass = 'sm:grid-cols-[3.75rem_minmax(5rem,1.2fr)_repeat(5,minmax(0,1fr))]';
   const tableGapClass = 'sm:gap-1.5 sm:px-1';
+  const mobileGridClass = 'grid grid-cols-[minmax(0,1.3fr)_repeat(5,minmax(0,1fr))] gap-x-1.5 pl-3 pr-3 items-center';
+  const mobileNumClass = 'col-span-5 min-w-0';
   const [currentPage, setCurrentPage] = useState(0);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [cellValue, setCellValue] = useState('');
@@ -487,7 +491,7 @@ export default function SalaryTableTypeB({
       >
         <div
           ref={registerChipScroller(`${cellKey}-mobile`)}
-          className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
+          className="flex items-center gap-1 overflow-x-auto py-0.5 pr-1 no-scrollbar"
         >
           {/* "Khác" chip — opens celestial clock */}
           <motion.button
@@ -551,10 +555,10 @@ export default function SalaryTableTypeB({
 
     return (
     <div key={`empty-${dateStr}`}>
-      <div className={`flex items-start justify-between gap-2 py-3.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden ${
+      <div className={`${mobileGridClass} py-3.5 text-[14px] border-b border-border/20 sm:hidden ${
         idx % 2 !== 0 ? 'bg-muted/20' : ''
       } ${isMoonDay ? 'moon-accent-row' : ''}`}>
-        <div className="min-w-0 flex-1 pr-1">
+        <div className="min-w-0">
           <button
             onClick={() => activateEmptyDay(dateStr)}
             className={`block font-semibold text-[15px] leading-none ${getDayColor(dateStr)} ${!readOnly ? 'hover:underline' : 'cursor-default'}`}
@@ -570,26 +574,24 @@ export default function SalaryTableTypeB({
             {noteLabel}
           </button>
         </div>
-        <div className="ml-1 flex shrink-0 items-center gap-3 text-right">
-          {canActivate ? (
-            <button
-              onClick={() => activateEmptyDay(dateStr)}
-              className="w-[38px] text-right text-sm font-medium text-accent hover:underline"
-            >
-              —
-            </button>
-          ) : (
-            <span className="w-[38px] text-right text-sm font-medium text-muted-foreground">—</span>
-          )}
-          <span className="w-[24px] text-right font-semibold text-[12px] text-muted-foreground">—</span>
-          <span className="w-[34px] text-right font-medium text-[12px] text-muted-foreground">—</span>
-          <span className={`w-[30px] text-right font-semibold text-[12px] allowance-amt ${activatedAllowance !== 0 ? '' : 'text-muted-foreground'}`}>
-            {activatedAllowance !== 0 ? formatCompact(activatedAllowance) : ''}
-          </span>
-          <span className={`w-[40px] text-right font-bold text-[14px] ${activatedTotal === 0 ? 'text-muted-foreground' : ''}`}>
-            {formatCompact(activatedTotal)}
-          </span>
-        </div>
+        {canActivate ? (
+          <button
+            onClick={() => activateEmptyDay(dateStr)}
+            className="min-w-0 p-0 text-right text-sm font-medium text-accent hover:underline"
+          >
+            —
+          </button>
+        ) : (
+          <span className="min-w-0 text-right text-sm font-medium text-muted-foreground">—</span>
+        )}
+        <span className="min-w-0 text-right font-semibold text-[12px] text-muted-foreground">—</span>
+        <span className="min-w-0 text-right font-medium text-[12px] text-muted-foreground">—</span>
+        <span className={`min-w-0 text-right font-semibold text-[12px] allowance-amt ${activatedAllowance !== 0 ? '' : 'text-muted-foreground'}`}>
+          {activatedAllowance !== 0 ? formatCompact(activatedAllowance) : ''}
+        </span>
+        <span className={`min-w-0 text-right font-bold text-[14px] ${activatedTotal === 0 ? 'text-muted-foreground' : ''}`}>
+          {formatCompact(activatedTotal)}
+        </span>
       </div>
 
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
@@ -632,6 +634,17 @@ export default function SalaryTableTypeB({
     );
   };
 
+  const renderPadRow = (idx: number) => (
+    <div key={`pad-${idx}`} aria-hidden className="pointer-events-none">
+      <div className={`flex items-center min-h-[52px] py-2.5 pl-3 pr-3 border-b border-border/20 sm:hidden ${idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
+        <span className="font-semibold text-[15px] leading-none opacity-0">00</span>
+      </div>
+      <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center border-b border-border/20 ${idx % 2 !== 0 ? 'bg-muted/20' : ''}`}>
+        <span className="font-semibold text-[14px] opacity-0">00</span>
+      </div>
+    </div>
+  );
+
   const renderPage = (page: SalaryPage) => {
     const pageDates = page.pageDates || generateDateRange(page.startDate, page.endDate);
     const pageRows = pageDates.flatMap((dateStr) => {
@@ -640,6 +653,7 @@ export default function SalaryTableTypeB({
         ? dateEntries.map(entry => ({ dateStr, entry }))
         : [{ dateStr, entry: null }];
     });
+    const padCount = Math.max(0, DAYS_PER_PAGE - pageRows.length);
     const orderedEntries = pageRows
       .filter((row): row is { dateStr: string; entry: SalaryEntry } => row.entry !== null)
       .map(row => row.entry);
@@ -661,10 +675,10 @@ export default function SalaryTableTypeB({
       )}
 
       {/* Mobile column headers */}
-      <div className="flex items-center justify-between gap-2 py-3 pl-3 pr-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 sm:hidden">
+      <div className={`${mobileGridClass} py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40 sm:hidden`}>
         <button
           onClick={() => !readOnly && onAddRowAtDate && setAddingDate(prev => !prev)}
-          className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] uppercase tracking-wider whitespace-nowrap ${
+          className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] uppercase tracking-wider whitespace-nowrap w-fit ${
             !readOnly && onAddRowAtDate
               ? 'border-border/60 bg-muted/40 hover:border-border hover:bg-muted/70 hover:text-foreground transition-colors'
               : 'border-border/30 bg-muted/20 cursor-default'
@@ -674,13 +688,11 @@ export default function SalaryTableTypeB({
           <span>Ngày</span>
           <Plus size={10} />
         </button>
-        <div className="ml-2 flex shrink-0 items-center gap-3 text-right">
-          <span className="w-[38px]">Ra</span>
-          <span className="w-[24px]">Giờ</span>
-          <span className="w-[34px]">Lương</span>
-          <span className="w-[72px]">PC</span>
-          <span className="w-[40px]">Tổng</span>
-        </div>
+        <span className="text-right">Ra</span>
+        <span className="text-right">Giờ</span>
+        <span className="text-right">Lương</span>
+        <span className="text-right">PC</span>
+        <span className="text-right">Tổng</span>
       </div>
       {/* Desktop column headers */}
       <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border/40`}>
@@ -742,7 +754,7 @@ export default function SalaryTableTypeB({
             >
               {/* ── Mobile row ─────────────────────────────────────────────── */}
               <div
-                className={`relative min-h-[52px] py-2.5 pl-3 pr-3 text-[14px] border-b border-border/20 sm:hidden overflow-hidden flex items-center gap-2 ${
+                className={`${mobileGridClass} relative min-h-[52px] py-2.5 text-[14px] border-b border-border/20 sm:hidden overflow-hidden ${
                   isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
                 } ${
                   e.is_day_off ? 'opacity-40' : ''
@@ -752,8 +764,9 @@ export default function SalaryTableTypeB({
                   isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''
                 }`}
               >
-                {/* Left: date + note — always visible, even while chips are up */}
-                <div className="min-w-0 flex-1 pr-1">
+                {/* Date + note stay in column 1. Chips occupy Ra→Tổng (col-span-5)
+                    so the strip always starts on the clock-out cell. */}
+                <div className="min-w-0">
                   <div className="flex items-start gap-1">
                     {!readOnly && (
                       isDupe ? (
@@ -811,9 +824,6 @@ export default function SalaryTableTypeB({
                     </div>
                   </div>
                 </div>
-                {/* Right: columns OR chips — only this half swaps. Date + note
-                    above stay visible; chips replace just the clock-out / hours
-                    / wage / allowance / total cluster. */}
                 <AnimatePresence initial={false} mode="popLayout">
                   {chipsActive ? (
                     <motion.div
@@ -822,7 +832,7 @@ export default function SalaryTableTypeB({
                       animate={{ y: 0 }}
                       exit={{ y: '-180%' }}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex-1 min-w-0 ml-1 flex items-center"
+                      className={`${mobileNumClass} flex items-center`}
                     >
                       {renderChips(e, orderedEntries)}
                     </motion.div>
@@ -833,7 +843,7 @@ export default function SalaryTableTypeB({
                       animate={{ y: 0 }}
                       exit={{ y: '-180%' }}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-                      className="ml-1 flex shrink-0 items-center gap-3 text-right"
+                      className={`${mobileNumClass} grid grid-cols-5 gap-x-1.5`}
                     >
                       <button
                         // Tapping clock-out always opens the chip strip so
@@ -844,20 +854,20 @@ export default function SalaryTableTypeB({
                         // user wants an exact time — that's the escape
                         // hatch, not the default.
                         onClick={() => !readOnly && !e.is_day_off && !isGlobalOffDay && showRowChips(cellKey)}
-                        className={`w-[38px] text-right text-sm font-medium ${
+                        className={`min-w-0 p-0 text-right text-sm font-medium ${
                           !readOnly && !e.is_day_off ? 'text-accent hover:underline' : 'text-accent cursor-default'
                         }`}
                       >
                         {formatClockOut(e)}
                       </button>
-                      <FormulaTooltip formula={formulaHours(e)} className="w-[24px] text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
-                      <FormulaTooltip formula={formulaWage(hours)} className="w-[34px] text-right font-medium text-[12px] text-foreground/70">
+                      <FormulaTooltip formula={formulaHours(e)} className="block w-full min-w-0 text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
+                      <FormulaTooltip formula={formulaWage(hours)} className="block w-full min-w-0 text-right font-medium text-[12px] text-foreground/70">
                         {extraWage > 0 ? formatCompact(extraWage) : '—'}
                       </FormulaTooltip>
-                      <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="w-[70px] text-right allowance-amt font-semibold text-[12px]">
+                      <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="block w-full min-w-0 text-right allowance-amt font-semibold text-[12px]">
                         {allowance !== 0 ? formatCompact(allowance) : ''}
                       </FormulaTooltip>
-                      <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`w-[40px] text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
+                      <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`block w-full min-w-0 text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
                         {formatCompact(total)}
                       </FormulaTooltip>
                     </motion.div>
@@ -974,7 +984,7 @@ export default function SalaryTableTypeB({
                     >
                       <div
                         ref={registerChipScroller(`${cellKey}-desktop`)}
-                        className="flex items-center gap-1 overflow-x-auto py-0.5 px-1 no-scrollbar"
+                        className="flex items-center gap-1 overflow-x-auto py-0.5 no-scrollbar"
                       >
                         {(() => {
                           const eIdx = orderedEntries.findIndex(
@@ -1068,6 +1078,7 @@ export default function SalaryTableTypeB({
             </motion.div>
           );
         })}
+        {Array.from({ length: padCount }, (_, i) => renderPadRow(pageRows.length + i))}
       </div>
       </LayoutGroup>
     </div>
@@ -1081,7 +1092,7 @@ export default function SalaryTableTypeB({
         {pages.length > 0 ? (
           <SwipeablePages
             pages={pages.map(p => renderPage(p))}
-            labels={pages.map(p => `${formatDateViet(p.startDate)} — ${formatDateViet(p.endDate)}`)}
+            labels={pages.map(p => dateRangePageLabel(p.startDate, p.endDate, pages.length))}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
           />

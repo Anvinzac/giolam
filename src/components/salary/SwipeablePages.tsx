@@ -1,11 +1,36 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { formatDateViet } from '@/lib/salaryCalculations';
 
 interface SwipeablePagesProps {
   pages: React.ReactNode[];
-  labels?: string[];
+  labels?: React.ReactNode[];
   currentPage: number;
   onPageChange: (page: number) => void;
+}
+
+/**
+ * Pill label for a salary page's date range.
+ * Default is a single-line "dd/mm - dd/mm". Stack start over end only
+ * when there are 4+ pages (extra out-of-range days) — those pills are
+ * too narrow on mobile for the full range. Desktop still fits one line.
+ */
+export function dateRangePageLabel(startDate: string, endDate: string, pageCount: number): React.ReactNode {
+  const start = formatDateViet(startDate);
+  const end = formatDateViet(endDate);
+  const range = `${start} - ${end}`;
+  if (pageCount < 4) {
+    return <span className="whitespace-nowrap">{range}</span>;
+  }
+  return (
+    <>
+      <span className="hidden whitespace-nowrap sm:inline">{range}</span>
+      <span className="flex flex-col items-center leading-tight sm:hidden">
+        <span className="text-[9px] font-medium opacity-60">{start}</span>
+        <span className="text-[11px] font-semibold">{end}</span>
+      </span>
+    </>
+  );
 }
 
 export default function SwipeablePages({ pages, labels, currentPage, onPageChange }: SwipeablePagesProps) {

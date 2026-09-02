@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { SpecialDayRate } from '@/types/salary';
 import { generateDefaultSpecialDays } from '@/lib/salaryCalculations';
+import { isFullMoon, isNewMoon, isDayBeforeFullMoon, isDayBeforeNewMoon } from '@/lib/lunarUtils';
 
 export function useSpecialDayRates(
   periodId: string | null,
@@ -31,7 +32,20 @@ export function useSpecialDayRates(
       // with empty 0% "Quán nghỉ" rows. Off-days continue to flow
       // through the dedicated `offDays` prop wherever a renderer needs
       // them (Type C scheduledOffDays, EmployeeAllowanceEditor).
-      setRates(data as SpecialDayRate[]);
+      const lunarOk = (r: SpecialDayRate) => {
+        const d = new Date(r.special_date + 'T12:00:00');
+        if (r.day_type === 'full_moon') return isFullMoon(d);
+        if (r.day_type === 'new_moon') return isNewMoon(d);
+        if (r.day_type === 'day_before_full_moon') return isDayBeforeFullMoon(d);
+        if (r.day_type === 'day_before_new_moon') return isDayBeforeNewMoon(d);
+        return true;
+      };
+      const stale = (data as SpecialDayRate[]).filter(r => !lunarOk(r));
+      const fresh = (data as SpecialDayRate[]).filter(r => lunarOk(r));
+      if (stale.length > 0) {
+        void supabase.from('special_day_rates').delete().in('id', stale.map(r => r.id).filter(Boolean) as string[]);
+      }
+      setRates(fresh);
       setLoading(false);
       return;
     }

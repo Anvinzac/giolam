@@ -141,6 +141,24 @@ export function generateDefaultSpecialDays(
   );
 }
 
+const LUNAR_DAY_TYPES = new Set<DayType>([
+  'full_moon',
+  'new_moon',
+  'day_before_full_moon',
+  'day_before_new_moon',
+]);
+
+function storedLunarRateIsCurrent(rate: SpecialDayRate): boolean {
+  const d = new Date(rate.special_date + 'T12:00:00');
+  switch (rate.day_type) {
+    case 'full_moon': return isFullMoon(d);
+    case 'new_moon': return isNewMoon(d);
+    case 'day_before_full_moon': return isDayBeforeFullMoon(d);
+    case 'day_before_new_moon': return isDayBeforeNewMoon(d);
+    default: return true;
+  }
+}
+
 /** Look up the rate for a given entry date from the rates array, falling back to dynamic lunar/weekend calculations */
 export function getRateForDate(
   entryDate: string,
@@ -149,7 +167,9 @@ export function getRateForDate(
 ): number {
   if (overrideRate !== null && overrideRate !== undefined) return overrideRate;
   const found = rates.find(r => r.special_date === entryDate);
-  if (found) return found.rate_percent;
+  if (found && (!LUNAR_DAY_TYPES.has(found.day_type) || storedLunarRateIsCurrent(found))) {
+    return found.rate_percent;
+  }
   // Dynamic fallback for cross-period / out-of-range dates
   const dt = getSpecialDayType(new Date(entryDate + 'T12:00:00'));
   return dt ? DEFAULT_RATES[dt] ?? 0 : 0;
@@ -162,7 +182,9 @@ export function getRateDescriptionForDate(
   overrideRate?: number | null
 ): string | undefined {
   const found = rates.find(r => r.special_date === entryDate);
-  if (found) return found.description_vi;
+  if (found && (!LUNAR_DAY_TYPES.has(found.day_type) || storedLunarRateIsCurrent(found))) {
+    return found.description_vi;
+  }
   const dt = getSpecialDayType(new Date(entryDate + 'T12:00:00'));
   if (dt) {
     const rate = overrideRate ?? DEFAULT_RATES[dt] ?? 0;
