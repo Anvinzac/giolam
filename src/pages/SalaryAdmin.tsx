@@ -718,11 +718,9 @@ export default function SalaryAdmin() {
     if (!breakdown || !selectedEmployee || isPublished) return;
     if (allowancesLoading) return;
     if (!depositLoadedRef.current) return; // don't save until deposit is loaded from record
-    // Don't overwrite a saved non-zero deposit with 0 during a stale recalculation
-    const savedDeposit = sumDeposits(normalizeDeposits(record?.salary_breakdown as SalaryBreakdown | null));
-    if (sumDeposits(deposits) === 0 && savedDeposit > 0) return;
     saveDraft(breakdown.total, breakdown);
-  }, [breakdown, selectedEmployee, isPublished, allowancesLoading, deposits, record]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakdown, selectedEmployee, isPublished, allowancesLoading, deposits]);
 
   // Init
   useEffect(() => {
