@@ -1,6 +1,8 @@
 import { formatDateViet } from '@/lib/salaryCalculations';
+import { normalizeDeposits, sumDeposits, type SalaryDepositItem } from '@/lib/salaryDeposits';
+import type { SalaryBreakdown } from '@/types/salary';
 
-export const SALARY_PERIOD_EXPORT_VERSION = '1.0';
+export const SALARY_PERIOD_EXPORT_VERSION = '1.1';
 
 /** Machine-readable schema so another app knows how to import this file. */
 export const SALARY_PERIOD_EXPORT_SCHEMA = {
@@ -19,13 +21,18 @@ export const SALARY_PERIOD_EXPORT_SCHEMA = {
     account: 'Login username (profiles.username). Required. Unique within the file.',
     name: 'Display name (profiles.full_name). Required.',
     amount: 'Published gross salary in VND (salary_records.total_salary). Required.',
-    deposit: 'Optional advance/deduction held back (salary_breakdown.deposit). Defaults to 0.',
-    transfer_amount: 'Optional net bank transfer = amount - deposit.',
+    deposits:
+      'Optional list of named deductions/advances ({ label, amount }). Prefer this over deposit.',
+    deposit: 'Optional sum of all deposits (legacy). Defaults to 0. Prefer deposits[].',
+    deposit_label:
+      'Optional display name of the first deposit (legacy). Prefer deposits[].label.',
+    transfer_amount: 'Optional net bank transfer = amount - deposit (sum of deposits).',
     published_at: 'Optional ISO timestamp when this employee payroll was published.',
   },
   import_notes: [
     'Only employees with status=published are included.',
     'amount is the gross published total, not the net transfer.',
+    'Prefer deposits[] when present; otherwise use deposit / deposit_label.',
     'Use transfer_amount when paying net of deposit/advance.',
     'Period is complete when end_date is before today (local calendar day).',
   ],
@@ -35,7 +42,9 @@ export interface SalaryPeriodExportEmployee {
   account: string;
   name: string;
   amount: number;
+  deposits?: { label: string; amount: number }[];
   deposit?: number;
+  deposit_label?: string;
   transfer_amount?: number;
   published_at?: string;
 }
@@ -67,13 +76,19 @@ export interface SalaryPeriodExportProfile {
 export interface SalaryPeriodExportRecord {
   user_id: string;
   total_salary: number;
-  salary_breakdown: { deposit?: number } | null;
+  salary_breakdown: Pick<SalaryBreakdown, 'deposit' | 'deposit_label' | 'deposits'> | null;
   published_at: string | null;
 }
 
 export function isPayrollPeriodCompleted(endDate: string, todayStr?: string): boolean {
   const today = todayStr ?? new Date().toISOString().slice(0, 10);
   return endDate < today;
+}
+
+function exportDepositRows(items: SalaryDepositItem[]): { label: string; amount: number }[] {
+  return items
+    .filter(d => d.amount > 0)
+    .map(d => ({ label: d.label, amount: d.amount }));
 }
 
 export function buildSalaryPeriodExport(
@@ -87,13 +102,17 @@ export function buildSalaryPeriodExport(
   for (const emp of employees) {
     const rec = byUser.get(emp.user_id);
     if (!rec) continue;
-    const deposit = rec.salary_breakdown?.deposit ?? 0;
+    const depositItems = normalizeDeposits(rec.salary_breakdown);
+    const deposit = sumDeposits(depositItems);
+    const depositRows = exportDepositRows(depositItems);
     const amount = rec.total_salary ?? 0;
     rows.push({
       account: emp.username || emp.user_id,
       name: emp.full_name,
       amount,
+      ...(depositRows.length > 0 ? { deposits: depositRows } : {}),
       ...(deposit > 0 ? { deposit } : {}),
+      ...(deposit > 0 && depositRows[0]?.label ? { deposit_label: depositRows[0].label } : {}),
       ...(deposit > 0 ? { transfer_amount: amount - deposit } : {}),
       ...(rec.published_at ? { published_at: rec.published_at } : {}),
     });

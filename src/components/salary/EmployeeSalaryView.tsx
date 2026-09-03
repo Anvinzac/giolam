@@ -24,6 +24,11 @@ import {
   formatDateViet,
   calcDailyBase,
 } from '@/lib/salaryCalculations';
+import {
+  normalizeDeposits,
+  sumDeposits,
+  withSyncedDepositFields,
+} from '@/lib/salaryDeposits';
 
 interface EmployeeSalaryViewProps {
   userId: string;
@@ -217,20 +222,17 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           computed = null;
       }
     }
-    // Deposit is frozen on publish and never recomputed from entries —
-    // merge it back so the employee footer/popup show the same transfer.
+    // Deposits are frozen on publish and never recomputed from entries —
+    // merge them back so the employee footer/popup show the same transfer.
     if (!computed) return frozen;
-    return {
-      ...computed,
-      deposit: frozen?.deposit ?? 0,
-      deposit_label: frozen?.deposit_label ?? 'Tạm ứng',
-    };
+    const frozenDeposits = normalizeDeposits(frozen);
+    return withSyncedDepositFields(computed, frozenDeposits);
   }, [entries, allowances, profile, rates, globalClockIn, record, period?.end_date, period?.off_days]);
 
-  const deposit = record?.salary_breakdown?.deposit ?? 0;
-  const depositLabel = record?.salary_breakdown?.deposit_label ?? 'Tạm ứng';
-  const receiveAmount = (record?.total_salary ?? 0) - deposit;
-  const hasDeposit = deposit > 0;
+  const depositItems = normalizeDeposits(record?.salary_breakdown as SalaryBreakdown | null);
+  const depositTotal = sumDeposits(depositItems);
+  const receiveAmount = (record?.total_salary ?? 0) - depositTotal;
+  const hasDeposit = depositTotal > 0;
 
   const noop = () => {};
 
@@ -312,7 +314,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
                     {chipRange(s)}
                   </span>
                   <span className={`block text-[11px] leading-tight whitespace-nowrap ${active ? 'opacity-90' : 'opacity-70'}`}>
-                    {formatVND(s.total_salary - (s.breakdown?.deposit ?? 0)).replace(' đ', '')}đ
+                    {formatVND(s.total_salary - sumDeposits(normalizeDeposits(s.breakdown))).replace(' đ', '')}đ
                   </span>
                 </button>
               );
@@ -342,12 +344,17 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
                 {formatVND(record.total_salary)}
               </span>
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-destructive/8 border border-destructive/15 px-2.5 py-1.5">
-              <span className="text-[12px] text-destructive/80 font-medium">{depositLabel}</span>
-              <span className="text-[13px] font-bold text-destructive tabular-nums">
-                −{formatVND(deposit)}
-              </span>
-            </div>
+            {depositItems.map(item => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-3 rounded-lg bg-destructive/8 border border-destructive/15 px-2.5 py-1.5"
+              >
+                <span className="text-[12px] text-destructive/80 font-medium truncate">{item.label}</span>
+                <span className="text-[13px] font-bold text-destructive tabular-nums shrink-0">
+                  −{formatVND(item.amount)}
+                </span>
+              </div>
+            ))}
             <div className="pt-1.5 border-t border-border/40 text-center">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
                 Sẽ nhận
@@ -418,8 +425,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           editMode="preview"
           shiftType={profile.shift_type === 'daily' ? 'daily' : 'basic'}
           coveragePeriodEnd={period.end_date}
-          deposit={deposit}
-          depositLabel={depositLabel}
+          deposits={depositItems}
         />
       )}
 
@@ -443,8 +449,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           breakdown={breakdown}
           editMode="preview"
           offDays={period.off_days || []}
-          deposit={deposit}
-          depositLabel={depositLabel}
+          deposits={depositItems}
         />
       )}
 
@@ -471,8 +476,7 @@ export default function EmployeeSalaryView({ userId }: EmployeeSalaryViewProps) 
           breakdown={breakdown}
           editMode="preview"
           shiftType={profile.shift_type}
-          deposit={deposit}
-          depositLabel={depositLabel}
+          deposits={depositItems}
         />
       )}
     </div>

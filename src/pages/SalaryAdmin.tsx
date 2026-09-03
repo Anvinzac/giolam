@@ -34,6 +34,12 @@ import {
   type SalaryPeriodExportPayload,
 } from '@/lib/salaryPeriodExport';
 import {
+  normalizeDeposits,
+  sumDeposits,
+  withSyncedDepositFields,
+  type SalaryDepositItem,
+} from '@/lib/salaryDeposits';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -564,7 +570,7 @@ export default function SalaryAdmin() {
     if (error) { console.error('Published totals fetch failed:', error); return; }
     const map = new Map<string, { total: number; deposit: number }>();
     for (const row of (data || []) as any[]) {
-      const deposit = (row.salary_breakdown as any)?.deposit || 0;
+      const deposit = sumDeposits(normalizeDeposits(row.salary_breakdown as SalaryBreakdown | null));
       map.set(row.user_id, { total: row.total_salary, deposit });
     }
     setPublishedTotals(map);
@@ -602,31 +608,26 @@ export default function SalaryAdmin() {
   }, [selectedEmployee]);
 
   // Compute breakdown
-  const [deposit, setDeposit] = useState(0);
-  const [depositLabel, setDepositLabel] = useState('Tạm ứng');
+  const [deposits, setDeposits] = useState<SalaryDepositItem[]>([]);
   const depositLoadedRef = useRef(false);
 
-  // Reset deposit immediately when switching employees
+  // Reset deposits immediately when switching employees
   const prevEmployeeRef = useRef<string | null>(null);
   useEffect(() => {
     const uid = selectedEmployee?.user_id || null;
     if (uid !== prevEmployeeRef.current) {
-      setDeposit(0);
-      setDepositLabel('Tạm ứng');
+      setDeposits([]);
       depositLoadedRef.current = false; // block auto-save until record loads
       prevEmployeeRef.current = uid;
     }
   }, [selectedEmployee?.user_id]);
 
-  // Load deposit from saved breakdown once record loads for the correct employee
+  // Load deposits from saved breakdown once record loads for the correct employee
   useEffect(() => {
     if (!selectedEmployee) return;
     if (!record) return; // wait for record
     if (record.user_id !== selectedEmployee.user_id) return;
-    const saved = (record.salary_breakdown as SalaryBreakdown | null)?.deposit || 0;
-    const savedLabel = (record.salary_breakdown as SalaryBreakdown | null)?.deposit_label || 'Tạm ứng';
-    setDeposit(saved);
-    setDepositLabel(savedLabel);
+    setDeposits(normalizeDeposits(record.salary_breakdown as SalaryBreakdown | null));
     depositLoadedRef.current = true; // now safe to auto-save
   }, [record?.id, selectedEmployee?.user_id]);
 
@@ -650,8 +651,8 @@ export default function SalaryAdmin() {
 
   const breakdown = useMemo<SalaryBreakdown | null>(() => {
     if (!rawBreakdown) return null;
-    return { ...rawBreakdown, deposit, deposit_label: depositLabel };
-  }, [rawBreakdown, deposit, depositLabel]);
+    return withSyncedDepositFields(rawBreakdown, deposits);
+  }, [rawBreakdown, deposits]);
 
   // Auto-seed entries when employee has none
   const seedingRef = useRef<string | null>(null);
@@ -718,10 +719,10 @@ export default function SalaryAdmin() {
     if (allowancesLoading) return;
     if (!depositLoadedRef.current) return; // don't save until deposit is loaded from record
     // Don't overwrite a saved non-zero deposit with 0 during a stale recalculation
-    const savedDeposit = (record?.salary_breakdown as SalaryBreakdown | null)?.deposit || 0;
-    if (deposit === 0 && savedDeposit > 0) return;
+    const savedDeposit = sumDeposits(normalizeDeposits(record?.salary_breakdown as SalaryBreakdown | null));
+    if (sumDeposits(deposits) === 0 && savedDeposit > 0) return;
     saveDraft(breakdown.total, breakdown);
-  }, [breakdown, selectedEmployee, isPublished, allowancesLoading]);
+  }, [breakdown, selectedEmployee, isPublished, allowancesLoading, deposits, record]);
 
   // Init
   useEffect(() => {
@@ -866,7 +867,7 @@ export default function SalaryAdmin() {
       await publish(breakdown.total, breakdown);
       setPublishedTotals(prev => {
         const next = new Map(prev);
-        next.set(selectedEmployee.user_id, { total: breakdown.total, deposit: breakdown.deposit || 0 });
+        next.set(selectedEmployee.user_id, { total: breakdown.total, deposit: sumDeposits(normalizeDeposits(breakdown)) });
         return next;
       });
       await refreshPublishedTotals();
@@ -1491,10 +1492,12 @@ export default function SalaryAdmin() {
                 editMode={isPreviewMode ? 'preview' : 'admin'}
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
-                deposit={deposit}
-                depositLabel={depositLabel}
-                onDepositChange={setDeposit}
-                onDepositLabelChange={setDepositLabel}
+                deposits={deposits}
+                onDepositsChange={setDeposits}
+                deposit={sumDeposits(deposits)}
+                depositLabel={deposits[0]?.label || 'Tạm ứng'}
+                onDepositChange={() => {}}
+                onDepositLabelChange={() => {}}
                 shiftType={selectedEmployee.shift_type === 'daily' ? 'daily' : 'basic'}
                 coveragePeriodEnd={selectedPeriod.end_date}
               />
@@ -1544,10 +1547,12 @@ export default function SalaryAdmin() {
                 editMode={isPreviewMode ? 'preview' : 'admin'}
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
-                deposit={deposit}
-                depositLabel={depositLabel}
-                onDepositChange={setDeposit}
-                onDepositLabelChange={setDepositLabel}
+                deposits={deposits}
+                onDepositsChange={setDeposits}
+                deposit={sumDeposits(deposits)}
+                depositLabel={deposits[0]?.label || 'Tạm ứng'}
+                onDepositChange={() => {}}
+                onDepositLabelChange={() => {}}
                 offDays={selectedPeriod.off_days || []}
               />
               ) : (
@@ -1614,10 +1619,12 @@ export default function SalaryAdmin() {
                 onAcceptEntry={acceptEntry}
                 currentUserId={adminUid}
                 shiftType={selectedEmployee.shift_type}
-                deposit={deposit}
-                depositLabel={depositLabel}
-                onDepositChange={setDeposit}
-                onDepositLabelChange={setDepositLabel}
+                deposits={deposits}
+                onDepositsChange={setDeposits}
+                deposit={sumDeposits(deposits)}
+                depositLabel={deposits[0]?.label || 'Tạm ứng'}
+                onDepositChange={() => {}}
+                onDepositLabelChange={() => {}}
                 offDays={selectedPeriod.off_days || []}
               />
             )}

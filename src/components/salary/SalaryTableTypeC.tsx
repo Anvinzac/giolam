@@ -58,6 +58,8 @@ interface SalaryTableTypeCProps {
   depositLabel?: string;
   onDepositChange?: (amount: number) => void;
   onDepositLabelChange?: (label: string) => void;
+  deposits?: { id: string; label: string; amount: number }[];
+  onDepositsChange?: (items: { id: string; label: string; amount: number }[]) => void;
 }
 
 export default function SalaryTableTypeC({
@@ -75,6 +77,8 @@ export default function SalaryTableTypeC({
   depositLabel = 'Tạm ứng',
   onDepositChange,
   onDepositLabelChange,
+  deposits,
+  onDepositsChange,
 }: SalaryTableTypeCProps) {
   const mode: 'admin' | 'employee' | 'preview' =
     editMode ?? (isPreview ? 'preview' : 'admin');
@@ -1750,6 +1754,8 @@ export default function SalaryTableTypeC({
           {/* Total - only show for admin */}
           <TotalSalaryDisplay
             total={breakdown?.total ?? 0}
+            deposits={deposits}
+            onDepositsChange={onDepositsChange}
             deposit={deposit}
             depositLabel={depositLabel}
             onDepositLabelChange={onDepositLabelChange}

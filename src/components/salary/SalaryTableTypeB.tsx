@@ -40,6 +40,8 @@ interface SalaryTableTypeBProps {
   depositLabel?: string;
   onDepositChange?: (amount: number) => void;
   onDepositLabelChange?: (label: string) => void;
+  deposits?: { id: string; label: string; amount: number }[];
+  onDepositsChange?: (items: { id: string; label: string; amount: number }[]) => void;
   offDays?: string[];
 }
 
@@ -102,6 +104,7 @@ export default function SalaryTableTypeB({
   isPreview = false,
   editMode, onAcceptEntry, currentUserId,
   deposit = 0, depositLabel = 'Tạm ứng', onDepositChange, onDepositLabelChange,
+  deposits, onDepositsChange,
   offDays = [],
 }: SalaryTableTypeBProps) {
   const mode: 'admin' | 'employee' | 'preview' = editMode ?? (isPreview ? 'preview' : 'admin');
@@ -119,11 +122,12 @@ export default function SalaryTableTypeB({
 
     return e.is_admin_reviewed === false || isOwnDuplicateRow;
   };
-  // Date | note (desktop) or date (mobile) | Ra Giờ Lương PC Tổng as 5 equal tracks.
-  // Chips always start on the Ra (clock-out) track: col-span-5 from there.
-  const tableGridClass = 'sm:grid-cols-[3.75rem_minmax(5rem,1.2fr)_repeat(5,minmax(0,1fr))]';
-  const tableGapClass = 'sm:gap-1.5 sm:px-1';
-  const mobileGridClass = 'grid grid-cols-[minmax(0,1.3fr)_repeat(5,minmax(0,1fr))] gap-x-1.5 pl-3 pr-3 items-center';
+  // Date | note (expands left half) | Ra Giờ Lương PC Tổng packed into the
+  // right half so notice text has room to wrap fully. Chips still start on
+  // the Ra (clock-out) track via col-span-5.
+  const tableGridClass = 'sm:grid-cols-[3.25rem_minmax(0,1fr)_repeat(5,2.55rem)]';
+  const tableGapClass = 'sm:gap-x-0.5 sm:gap-y-1 sm:px-1';
+  const mobileGridClass = 'grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(1.85rem,2.35rem))] gap-x-0.5 pl-3 pr-2 items-center';
   const mobileNumClass = 'col-span-5 min-w-0';
   const [currentPage, setCurrentPage] = useState(0);
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -605,7 +609,7 @@ export default function SalaryTableTypeB({
         </button>
         <button
           onClick={() => activateEmptyDay(dateStr)}
-          className={`text-left ${
+          className={`text-left text-sm leading-snug break-words whitespace-normal ${
             isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
           } ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
         >
@@ -708,7 +712,7 @@ export default function SalaryTableTypeB({
           <span>Ngày</span>
           <Plus size={10} />
         </button>
-        <span className="text-center">Ghi chú</span>
+        <span className="text-left">Ghi chú</span>
         <span className="text-right">Ra</span>
         <span className="text-right">Giờ</span>
         <span className="text-right">Lương</span>
@@ -843,7 +847,7 @@ export default function SalaryTableTypeB({
                       animate={{ y: 0 }}
                       exit={{ y: '-180%' }}
                       transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-                      className={`${mobileNumClass} grid grid-cols-5 gap-x-1.5`}
+                      className={`${mobileNumClass} grid grid-cols-5 gap-x-0.5`}
                     >
                       <button
                         // Tapping clock-out always opens the chip strip so
@@ -941,7 +945,7 @@ export default function SalaryTableTypeB({
                 ) : (
                   <button
                     onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
-                    className={`text-left truncate text-sm transition-colors ${
+                    className={`text-left text-sm leading-snug break-words whitespace-normal transition-colors ${
                       isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
                     } ${
                       !readOnly && !e.is_day_off ? 'hover:text-foreground' : 'cursor-default'
@@ -1148,6 +1152,8 @@ export default function SalaryTableTypeB({
       ) : (
         <TotalSalaryDisplay
           total={breakdown?.total ?? 0}
+          deposits={deposits}
+          onDepositsChange={onDepositsChange}
           deposit={deposit}
           depositLabel={depositLabel}
           onDepositLabelChange={onDepositLabelChange}

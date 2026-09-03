@@ -74,8 +74,12 @@ export interface SalaryBreakdown {
   total_deductions: number;
   allowances: { key: AllowanceKey; label: string; amount: number; enabled: boolean }[];
   total: number;
+  /** @deprecated Prefer `deposits[]`. Kept as the sum for older readers. */
   deposit?: number;
+  /** @deprecated Prefer `deposits[].label`. Kept as the first item's label. */
   deposit_label?: string;
+  /** Named advance/deduction rows subtracted from total before transfer. */
+  deposits?: { id: string; label: string; amount: number }[];
 }
 
 export interface SalaryPage {

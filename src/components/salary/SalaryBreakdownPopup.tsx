@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import { AllowanceKey, SalaryBreakdown } from '@/types/salary';
 import { formatVND } from './TotalSalaryDisplay';
+import { normalizeDeposits, sumDeposits } from '@/lib/salaryDeposits';
 
 interface SalaryBreakdownPopupProps {
   isOpen: boolean;
@@ -41,9 +42,12 @@ export default function SalaryBreakdownPopup({
     .map((v, i) => i === 0 ? `${v}` : v < 0 ? `${v}` : `+${v}`)
     .join('');
 
-  const depositK = breakdown.deposit ? toK(breakdown.deposit) : 0;
-  const depositLabel = breakdown.deposit_label || 'Tạm ứng';
-  const fullExpression = depositK > 0 ? `${expression}-${depositK}` : expression;
+  const depositItems = normalizeDeposits(breakdown);
+  const depositTotal = sumDeposits(depositItems);
+  const depositParts = depositItems.map(d => toK(d.amount)).filter(k => k > 0);
+  const fullExpression = depositParts.length > 0
+    ? `${expression}${depositParts.map(k => `-${k}`).join('')}`
+    : expression;
 
   const handleCopy = async () => {
     try {
@@ -88,9 +92,9 @@ export default function SalaryBreakdownPopup({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-display font-semibold text-foreground">= {formatVND(breakdown.total)}</h3>
-                {depositK > 0 && (
+                {depositTotal > 0 && (
                   <p className="font-display font-extrabold text-sm text-gradient-gold mt-0.5">
-                    Sẽ nhận: {formatVND(breakdown.total - (breakdown.deposit || 0))}
+                    Sẽ nhận: {formatVND(breakdown.total - depositTotal)}
                   </p>
                 )}
               </div>
@@ -111,8 +115,7 @@ export default function SalaryBreakdownPopup({
               {(() => {
                 // Parse expression into tokens: each number with its leading sign
                 const tokens: string[] = [];
-                const allParts = [...parts];
-                if (depositK > 0) allParts.push(-depositK);
+                const allParts = [...parts, ...depositParts.map(k => -k)];
                 allParts.forEach((v, i) => {
                   if (i === 0) tokens.push(`${v}`);
                   else tokens.push(v < 0 ? `${v}` : `+${v}`);
@@ -128,9 +131,8 @@ export default function SalaryBreakdownPopup({
                   <div key={ri} className="whitespace-nowrap w-fit">
                     {row.map((tok, ti) => {
                       const isNegative = tok.startsWith('-');
-                      const isDeposit = depositK > 0 && ri === rows.length - 1 && ti === row.length - 1 && isNegative;
                       return (
-                        <span key={ti} className={isNegative ? 'text-destructive font-bold' : isDeposit ? 'text-destructive font-bold' : ''}>
+                        <span key={ti} className={isNegative ? 'text-destructive font-bold' : ''}>
                           {tok}
                         </span>
                       );
