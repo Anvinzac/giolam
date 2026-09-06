@@ -45,23 +45,26 @@ function isLocalMinimum(date: Date, distance: (d: Date) => number): boolean {
 
 /**
  * Shop calendar follows Vietnamese âm lịch.
- * A wide phase threshold tagged two days as Rằm (e.g. 28/7 and 29/7) and
- * a blanket −1 shift made Ngày chay land a day early around midnight new
- * moons (11/8). Pick the unique nearest day instead: Mùng 1 = closest noon
- * to new moon; Rằm = the day before the closest noon to full moon.
+ *
+ * Astronomical "closest noon" can land a day late vs the shop calendar
+ * (e.g. Sep 2026 new moon closest-noon is 12/9, shop wants Mùng 1 on 11/9).
+ * Rule: moon day = the civil day BEFORE the closest-noon astronomical day.
+ * Ngày chay is always the day before that moon day.
  */
 export function isNewMoon(date: Date): boolean {
-  return isLocalMinimum(date, newMoonDistance);
+  return isLocalMinimum(addDays(date, 1), newMoonDistance);
 }
 
 export function isFullMoon(date: Date): boolean {
   return isLocalMinimum(addDays(date, 1), fullMoonDistance);
 }
 
+/** Ngày chay (Rằm): always the day before the calculated full-moon day. */
 export function isDayBeforeFullMoon(date: Date): boolean {
   return isFullMoon(addDays(date, 1));
 }
 
+/** Ngày chay (Mùng 1): always the day before the calculated new-moon day. */
 export function isDayBeforeNewMoon(date: Date): boolean {
   return isNewMoon(addDays(date, 1));
 }
