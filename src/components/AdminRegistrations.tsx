@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Check, ChevronLeft, ChevronRight, Clock, Pen, Undo, UserCheck, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { getWeekDates } from "@/lib/lunarUtils";
 import { formatLocalDate } from "@/lib/utils";
@@ -25,28 +25,7 @@ interface Props {
   onBadgeCount?: (count: number) => void;
 }
 
-const PERSON_COLORS = [
-  "175 70% 45%", "280 60% 55%", "42 90% 55%", "195 85% 50%",
-  "340 70% 55%", "155 70% 45%", "25 85% 55%", "210 70% 55%",
-  "60 75% 50%", "0 65% 55%", "320 70% 50%", "120 65% 45%",
-];
-const personColorMap = new Map<string, string>();
-function getPersonColor(userId: string): string {
-  if (!personColorMap.has(userId)) {
-    personColorMap.set(userId, PERSON_COLORS[personColorMap.size % PERSON_COLORS.length]);
-  }
-  return personColorMap.get(userId)!;
-}
-
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-
-const STATUS_STYLES: Record<string, { bg: string; border: string; text: string; icon: string; label: string }> = {
-  pending:  { bg: 'from-amber-400/25 via-amber-400/10 via-60% to-transparent', border: 'border-amber-400/25', text: 'text-amber-500', icon: 'text-amber-400', label: 'Chờ' },
-  approved: { bg: 'from-emerald-500/15 via-emerald-500/10 via-60% to-transparent', border: 'border-emerald-500/20', text: 'text-emerald-600', icon: 'text-emerald-500', label: 'Duyệt' },
-  rejected: { bg: 'from-red-500/15 via-red-500/10 via-60% to-transparent', border: 'border-red-500/20', text: 'text-red-600', icon: 'text-red-500', label: 'Từ chối' },
-  modified: { bg: 'from-violet-500/15 via-violet-500/10 via-60% to-transparent', border: 'border-violet-500/20', text: 'text-violet-600', icon: 'text-violet-500', label: 'Sửa' },
-  assigned: { bg: 'from-blue-500/15 via-blue-500/10 via-60% to-transparent', border: 'border-blue-500/20', text: 'text-blue-600', icon: 'text-blue-500', label: 'Xếp' },
-};
 
 export default function AdminRegistrations({ onBadgeCount }: Props) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -309,32 +288,78 @@ const SHIFT_DEFAULTS: Record<string, { clock_in: string; clock_out: string }> = 
 function RegCell({ regs, shiftKey, profiles, editingId, editClockIn, editClockOut, editNote,
   onAction, onStartEdit, onModify, onRevert, setEditingId, setEditClockIn, setEditClockOut, setEditNote }: any) {
 
-  return (
-    <div className="flex flex-wrap gap-1 p-1 max-h-[140px] overflow-y-auto overflow-x-hidden">
-      {regs.map((reg: Registration) => {
-        const color = getPersonColor(reg.user_id);
-        const name = profiles.get(reg.user_id)?.split(' ').pop() || '?';
-        const isDefault = reg.clock_in?.slice(0, 5) === SHIFT_DEFAULTS[shiftKey]?.clock_in && reg.clock_out?.slice(0, 5) === SHIFT_DEFAULTS[shiftKey]?.clock_out;
-        const isPending = reg.status === 'pending';
-        
-        return (
-          <motion.button 
-            key={reg.id} 
-            whileTap={{ scale: 0.95 }}
-            onClick={() => isPending ? onAction(reg.id, 'approved') : onRevert(reg.id, reg.status === 'assigned')}
-            className={`flex items-center justify-between gap-1 px-3 py-1.5 rounded-md text-white text-xs font-semibold shadow-sm flex-1 min-w-[45%] ${isPending ? 'opacity-60 hover:opacity-80 transition-opacity' : ''}`}
-            style={{ backgroundColor: `hsl(${color})` }}
-            title={`${isPending ? 'Pending - ' : ''}${profiles.get(reg.user_id)}: ${reg.clock_in?.slice(0, 5)}–${reg.clock_out?.slice(0, 5)}`}
-          >
-            <span className="truncate max-w-[50px]">{name}</span>
-            {!isDefault && <span className="opacity-90 font-medium text-[10px] bg-black/20 px-1 py-0.5 rounded">{reg.clock_in?.slice(0, 5)}</span>}
-            {reg.status === 'assigned' && <UserCheck size={12} className="shrink-0 opacity-80" />}
-          </motion.button>
-        );
-      })}
+  const assigned = regs.filter((r: Registration) => r.status !== 'pending');
+  const pending = regs.filter((r: Registration) => r.status === 'pending');
 
-      {regs.length === 0 && (
-        <div className="text-[10px] text-muted-foreground/30 text-center py-2 w-full">—</div>
+  if (regs.length === 0) {
+    return (
+      <div className="min-h-[72px] flex items-center justify-center">
+        <span className="text-[10px] text-muted-foreground/30">—</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-[72px] max-h-[140px] flex flex-col overflow-hidden">
+      {/* Top ~30%: already assigned / reviewed — plain text, not chips */}
+      <div className="basis-[30%] min-h-[22px] max-h-[30%] px-1.5 py-0.5 flex flex-wrap content-start items-start gap-x-1.5 gap-y-0 overflow-hidden">
+        {assigned.length === 0 ? (
+          <span className="text-[9px] text-muted-foreground/25 leading-tight">—</span>
+        ) : (
+          assigned.map((reg: Registration) => {
+            const name = profiles.get(reg.user_id) || '?';
+            const short = name.split(' ').pop() || name;
+            const tone =
+              reg.status === 'assigned' ? 'text-foreground/70'
+              : reg.status === 'approved' ? 'text-emerald-600'
+              : reg.status === 'modified' ? 'text-violet-600'
+              : reg.status === 'rejected' ? 'text-muted-foreground/40 line-through'
+              : 'text-foreground/70';
+            return (
+              <motion.button
+                key={reg.id}
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onRevert(reg.id, reg.status === 'assigned')}
+                className={`text-[10px] font-medium leading-tight appearance-none bg-transparent border-0 p-0 cursor-pointer hover:underline ${tone}`}
+                title={`${name}: ${reg.clock_in?.slice(0, 5) || '—'}–${reg.clock_out?.slice(0, 5) || '—'}`}
+              >
+                {short}
+              </motion.button>
+            );
+          })
+        )}
+      </div>
+
+      {/* Bottom: pending registrations — full name, no wrap, stacked */}
+      {pending.length > 0 && (
+        <div className="flex-1 min-h-0 px-1 pb-1 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden border-t border-amber-400/20 bg-amber-400/5">
+          {pending.map((reg: Registration) => {
+            const fullName = profiles.get(reg.user_id) || '?';
+            const isDefault =
+              reg.clock_in?.slice(0, 5) === SHIFT_DEFAULTS[shiftKey]?.clock_in &&
+              reg.clock_out?.slice(0, 5) === SHIFT_DEFAULTS[shiftKey]?.clock_out;
+            return (
+              <motion.button
+                key={reg.id}
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onAction(reg.id, 'approved')}
+                className="w-full flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-amber-400/15 text-amber-600 hover:bg-amber-400/25 transition-colors text-left appearance-none border-0 cursor-pointer"
+                title={`Chờ duyệt — ${fullName}: ${reg.clock_in?.slice(0, 5) || '—'}–${reg.clock_out?.slice(0, 5) || '—'}`}
+              >
+                <span className="flex-1 text-[11px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                  {fullName}
+                </span>
+                {!isDefault && (
+                  <span className="shrink-0 text-[9px] font-medium text-amber-500/80">
+                    {reg.clock_in?.slice(0, 5)}
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
