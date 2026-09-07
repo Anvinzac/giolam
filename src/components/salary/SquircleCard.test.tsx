@@ -8,7 +8,7 @@ import { computeTotalSalaryTypeB } from '@/lib/salaryCalculations';
 describe('SquircleCard - Focus and Review States', () => {
   const mockEntry: SalaryEntry = {
     id: '1',
-    employee_id: 'emp1',
+    user_id: 'emp1',
     period_id: 'period1',
     entry_date: '2025-01-15',
     sort_order: 1,
