@@ -34,6 +34,7 @@ const App = () => (
           <Route path="/salary" element={<EmployeeDashboard />} />
           <Route path="/salary/edit" element={<EmployeeSalaryEntry />} />
           <Route path="/shift-register" element={<EmployeeDashboard />} />
+          <Route path="/off-schedule" element={<EmployeeDashboard />} />
           <Route path="/stock-alert" element={<StockAlertForm />} />
           <Route path="/notice-board" element={<NoticeBoard />} />
           <Route path="/settings" element={<Settings />} />

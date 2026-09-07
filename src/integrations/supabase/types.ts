@@ -218,6 +218,7 @@ export type Database = {
           created_by: string | null
           id: string
           off_date: string
+          shift_slot: string
           user_id: string
         }
         Insert: {
@@ -225,6 +226,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           off_date: string
+          shift_slot?: string
           user_id: string
         }
         Update: {
@@ -232,6 +234,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           off_date?: string
+          shift_slot?: string
           user_id?: string
         }
         Relationships: []

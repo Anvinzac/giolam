@@ -7,14 +7,33 @@ import { formatLocalDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+export type OffShiftSlot = 'noon' | 'evening';
+
 interface Employee {
   user_id: string;
   full_name: string;
-  department_name?: string | null;
+}
+
+interface Props {
+  /** Kitchen employees view the board read-only; admin can toggle. */
+  readOnly?: boolean;
 }
 
 const DAY_NAMES = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-const HIDDEN = new Set(['test_loaia', 'test_loaib', 'test_loaic', 'nv_overtime', 'nv_notice', 'nvienb', 'nhanvien_b', 'nhanvien_c']);
+const KITCHEN_DEPT_ID = 'd0000000-0000-0000-0000-000000000001';
+/** Earliest date shown / editable for Kitchen off schedule. */
+const RANGE_START = '2026-08-24';
+const HIDDEN = new Set([
+  'test_loaia', 'test_loaib', 'test_loaic',
+  'nv_basic', 'nv_overtime', 'nv_notice',
+  'nhanvien_a', 'nhanvien_b', 'nhanvien_c',
+  'nviena', 'nvienb', 'nvienc', 'nviend', 'cloan',
+]);
+
+const SLOT_LABEL: Record<OffShiftSlot, string> = {
+  noon: 'Trưa',
+  evening: 'Tối',
+};
 
 function mondayOf(d: Date): Date {
   const day = d.getDay();
@@ -25,14 +44,26 @@ function mondayOf(d: Date): Date {
   return monday;
 }
 
-export default function AdminOffSchedule() {
+function parseLocalDate(dateStr: string): Date {
+  return new Date(dateStr + 'T12:00:00');
+}
+
+function offKey(dateStr: string, slot: OffShiftSlot): string {
+  return `${dateStr}:${slot}`;
+}
+
+export default function AdminOffSchedule({ readOnly = false }: Props) {
   const today = useMemo(() => getVietnamToday(), []);
   const todayStr = formatLocalDate(today);
+  const rangeStartMonday = useMemo(() => mondayOf(parseLocalDate(RANGE_START)), []);
 
   const [weekStart, setWeekStart] = useState(() => mondayOf(getVietnamToday()));
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [selectedDate, setSelectedDate] = useState(() =>
+    todayStr >= RANGE_START ? todayStr : RANGE_START,
+  );
+  const [selectedSlot, setSelectedSlot] = useState<OffShiftSlot>('noon');
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [offByDate, setOffByDate] = useState<Record<string, string[]>>({});
+  const [offByKey, setOffByKey] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
 
@@ -50,41 +81,40 @@ export default function AdminOffSchedule() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: profiles }, { data: depts }, { data: adminRoles }, { data: offs }] = await Promise.all([
+      const [{ data: profiles }, { data: adminRoles }, { data: offs }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('user_id, username, full_name, department_id, include_in_shift_register')
+          .select('user_id, username, full_name, department_id')
+          .eq('department_id', KITCHEN_DEPT_ID)
           .order('full_name'),
-        supabase.from('departments').select('id, name'),
         supabase.from('user_roles').select('user_id').eq('role', 'admin'),
         supabase
           .from('employee_off_days')
-          .select('user_id, off_date')
+          .select('user_id, off_date, shift_slot')
           .gte('off_date', weekStartStr)
           .lte('off_date', weekEndStr),
       ]);
 
       const adminIds = new Set((adminRoles || []).map(r => r.user_id));
-      const deptName = new Map((depts || []).map(d => [d.id, d.name]));
       const list = ((profiles || []) as any[])
         .filter(p => !adminIds.has(p.user_id))
         .filter(p => !HIDDEN.has((p.username || '').toLowerCase()))
-        .filter(p => p.include_in_shift_register !== false)
         .map(p => ({
           user_id: p.user_id as string,
           full_name: (p.full_name || 'Unnamed') as string,
-          department_name: p.department_id ? deptName.get(p.department_id) || null : null,
         }))
         .sort((a, b) => a.full_name.localeCompare(b.full_name, 'vi'));
 
       setEmployees(list);
 
       const map: Record<string, string[]> = {};
-      for (const row of (offs || []) as { user_id: string; off_date: string }[]) {
-        if (!map[row.off_date]) map[row.off_date] = [];
-        map[row.off_date].push(row.user_id);
+      for (const row of (offs || []) as { user_id: string; off_date: string; shift_slot: string }[]) {
+        const slot = (row.shift_slot === 'evening' ? 'evening' : 'noon') as OffShiftSlot;
+        const key = offKey(row.off_date, slot);
+        if (!map[key]) map[key] = [];
+        map[key].push(row.user_id);
       }
-      setOffByDate(map);
+      setOffByKey(map);
     } catch (err) {
       console.error(err);
       toast.error('Không tải được lịch nghỉ');
@@ -101,13 +131,15 @@ export default function AdminOffSchedule() {
   useEffect(() => {
     const inWeek = weekDates.some(d => formatLocalDate(d) === selectedDate);
     if (inWeek) return;
-    const firstSelectable = weekDates.find(d => formatLocalDate(d) >= todayStr);
-    setSelectedDate(formatLocalDate(firstSelectable || weekDates[0]));
-  }, [weekDates, selectedDate, todayStr]);
+    const firstInRange = weekDates.find(d => formatLocalDate(d) >= RANGE_START);
+    setSelectedDate(formatLocalDate(firstInRange || weekDates[0]));
+  }, [weekDates, selectedDate]);
 
-  const selectedOff = offByDate[selectedDate] || [];
+  const selectedKey = offKey(selectedDate, selectedSlot);
+  const selectedOff = offByKey[selectedKey] || [];
   const selectedOffSet = useMemo(() => new Set(selectedOff), [selectedOff]);
-  const canEditSelected = selectedDate >= todayStr;
+  const inRange = selectedDate >= RANGE_START;
+  const canEdit = !readOnly && inRange;
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -115,19 +147,22 @@ export default function AdminOffSchedule() {
     return m;
   }, [employees]);
 
+  const dayOffSummary = (dateStr: string) => {
+    const noon = offByKey[offKey(dateStr, 'noon')] || [];
+    const evening = offByKey[offKey(dateStr, 'evening')] || [];
+    return { noon, evening, total: noon.length + evening.length };
+  };
+
   const toggleOff = async (userId: string) => {
-    if (!canEditSelected) {
-      toast.info('Chỉ đánh dấu nghỉ từ hôm nay trở đi');
-      return;
-    }
+    if (!canEdit) return;
     if (savingId) return;
 
     const isOff = selectedOffSet.has(userId);
     setSavingId(userId);
-    setOffByDate(prev => {
-      const current = prev[selectedDate] || [];
+    setOffByKey(prev => {
+      const current = prev[selectedKey] || [];
       const next = isOff ? current.filter(id => id !== userId) : [...current, userId];
-      return { ...prev, [selectedDate]: next };
+      return { ...prev, [selectedKey]: next };
     });
 
     try {
@@ -136,23 +171,24 @@ export default function AdminOffSchedule() {
           .from('employee_off_days')
           .delete()
           .eq('user_id', userId)
-          .eq('off_date', selectedDate);
+          .eq('off_date', selectedDate)
+          .eq('shift_slot', selectedSlot);
         if (error) throw error;
       } else {
         const { data: { user } } = await supabase.auth.getUser();
         const { error } = await supabase.from('employee_off_days').insert({
           user_id: userId,
           off_date: selectedDate,
+          shift_slot: selectedSlot,
           created_by: user?.id ?? null,
-        } as any);
+        });
         if (error) throw error;
       }
     } catch (err: any) {
-      // Revert optimistic update
-      setOffByDate(prev => {
-        const current = prev[selectedDate] || [];
+      setOffByKey(prev => {
+        const current = prev[selectedKey] || [];
         const next = isOff ? [...current, userId] : current.filter(id => id !== userId);
-        return { ...prev, [selectedDate]: next };
+        return { ...prev, [selectedKey]: next };
       });
       toast.error(err?.message || 'Không lưu được');
     } finally {
@@ -164,9 +200,7 @@ export default function AdminOffSchedule() {
     setWeekStart(prev => {
       const next = new Date(prev);
       next.setDate(prev.getDate() + 7 * dir);
-      // Don't allow navigating entirely before current week
-      const currentMonday = mondayOf(today);
-      if (next < currentMonday) return currentMonday;
+      if (next < rangeStartMonday) return rangeStartMonday;
       return next;
     });
   };
@@ -185,14 +219,15 @@ export default function AdminOffSchedule() {
         <button
           type="button"
           onClick={() => navigateWeek(-1)}
-          className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground"
+          disabled={weekStart.getTime() <= rangeStartMonday.getTime()}
+          className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30"
           aria-label="Tuần trước"
         >
           <ChevronLeft size={18} />
         </button>
         <h2 className="font-display font-semibold text-sm flex items-center gap-2">
           <Calendar size={16} className="text-primary" />
-          Lịch nghỉ {weekLabel}
+          Lịch nghỉ bếp {weekLabel}
         </h2>
         <button
           type="button"
@@ -205,20 +240,21 @@ export default function AdminOffSchedule() {
       </div>
 
       <p className="text-[11px] text-muted-foreground px-0.5">
-        Chọn ngày (hôm nay trở đi), rồi chạm tên nhân viên nghỉ ngày đó.
+        {readOnly
+          ? 'Xem ai nghỉ ca Trưa / Tối (từ 24/08).'
+          : 'Chọn ngày (từ 24/08) và ca, rồi chạm tên nhân viên nghỉ.'}
       </p>
 
       <div className="flex gap-2 items-stretch min-h-[420px]">
-        {/* Left: week days (~32%) */}
         <div className="w-[32%] shrink-0 space-y-1.5">
           {weekDates.map(date => {
             const dateStr = formatLocalDate(date);
             const dayIndex = (date.getDay() + 6) % 7;
             const isWeekend = dayIndex >= 5;
-            const isPast = dateStr < todayStr;
+            const beforeRange = dateStr < RANGE_START;
             const isSelected = dateStr === selectedDate;
             const isToday = dateStr === todayStr;
-            const offIds = offByDate[dateStr] || [];
+            const { noon, evening, total } = dayOffSummary(dateStr);
             const moonLabel = getMoonLabel(date);
             const moonShort =
               moonLabel === 'Full Moon' ? 'Rằm'
@@ -230,10 +266,10 @@ export default function AdminOffSchedule() {
               <button
                 key={dateStr}
                 type="button"
-                disabled={isPast}
-                onClick={() => !isPast && setSelectedDate(dateStr)}
+                disabled={beforeRange}
+                onClick={() => !beforeRange && setSelectedDate(dateStr)}
                 className={`w-full text-left rounded-xl px-2.5 py-2 border transition-all ${
-                  isPast
+                  beforeRange
                     ? 'opacity-40 cursor-not-allowed border-transparent bg-muted/30'
                     : isSelected
                       ? 'border-primary/50 bg-primary/10'
@@ -250,15 +286,26 @@ export default function AdminOffSchedule() {
                   <span className="text-[10px] text-primary truncate">
                     {isToday ? 'Hôm nay' : (moonShort || '')}
                   </span>
-                  {offIds.length > 0 && (
+                  {total > 0 && (
                     <span className="text-[10px] font-semibold text-destructive tabular-nums shrink-0">
-                      {offIds.length} nghỉ
+                      {total} nghỉ
                     </span>
                   )}
                 </div>
-                {offIds.length > 0 && (
-                  <div className="mt-1 text-[9px] text-muted-foreground leading-snug line-clamp-2">
-                    {offIds.map(id => (nameById.get(id) || '?').split(' ').pop()).join(', ')}
+                {(noon.length > 0 || evening.length > 0) && (
+                  <div className="mt-1 space-y-0.5 text-[9px] text-muted-foreground leading-snug">
+                    {noon.length > 0 && (
+                      <div className="line-clamp-1">
+                        <span className="text-foreground/70">Trưa:</span>{' '}
+                        {noon.map(id => (nameById.get(id) || '?').split(' ').pop()).join(', ')}
+                      </div>
+                    )}
+                    {evening.length > 0 && (
+                      <div className="line-clamp-1">
+                        <span className="text-foreground/70">Tối:</span>{' '}
+                        {evening.map(id => (nameById.get(id) || '?').split(' ').pop()).join(', ')}
+                      </div>
+                    )}
                   </div>
                 )}
               </button>
@@ -266,20 +313,45 @@ export default function AdminOffSchedule() {
           })}
         </div>
 
-        {/* Right: employee picker (~68%) */}
         <div className="flex-1 min-w-0 rounded-xl border border-border bg-card overflow-hidden flex flex-col">
-          <div className="px-3 py-2 border-b border-border/60 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">
-                Nghỉ {DAY_NAMES[(new Date(selectedDate + 'T12:00:00').getDay() + 6) % 7]} {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM')}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {canEditSelected
-                  ? `${selectedOff.length} người đã chọn`
-                  : 'Chỉ xem — ngày đã qua'}
-              </p>
+          <div className="px-3 py-2 border-b border-border/60 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">
+                  Nghỉ {DAY_NAMES[(parseLocalDate(selectedDate).getDay() + 6) % 7]}{' '}
+                  {format(parseLocalDate(selectedDate), 'dd/MM')}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {canEdit
+                    ? `${selectedOff.length} người · ca ${SLOT_LABEL[selectedSlot]}`
+                    : readOnly
+                      ? `Ca ${SLOT_LABEL[selectedSlot]} · chỉ xem`
+                      : 'Ngoài khoảng lịch'}
+                </p>
+              </div>
+              <UserX size={16} className="text-destructive/70 shrink-0" />
             </div>
-            <UserX size={16} className="text-destructive/70 shrink-0" />
+
+            <div className="flex bg-muted rounded-lg p-0.5">
+              {(['noon', 'evening'] as OffShiftSlot[]).map(slot => {
+                const count = (offByKey[offKey(selectedDate, slot)] || []).length;
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`flex-1 py-1.5 text-[11px] font-medium rounded-md transition-colors ${
+                      selectedSlot === slot
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {SLOT_LABEL[slot]}
+                    {count > 0 ? ` (${count})` : ''}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -290,23 +362,16 @@ export default function AdminOffSchedule() {
                 <motion.button
                   key={emp.user_id}
                   type="button"
-                  whileTap={canEditSelected ? { scale: 0.98 } : undefined}
-                  disabled={!canEditSelected || busy}
+                  whileTap={canEdit ? { scale: 0.98 } : undefined}
+                  disabled={!canEdit || busy}
                   onClick={() => toggleOff(emp.user_id)}
                   className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left transition-colors ${
                     isOff
                       ? 'bg-destructive/12 border border-destructive/30 text-destructive'
                       : 'bg-muted/40 border border-transparent text-foreground hover:bg-muted/70'
-                  } ${!canEditSelected ? 'opacity-60 cursor-default' : ''}`}
+                  } ${!canEdit ? 'opacity-70 cursor-default' : ''}`}
                 >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold truncate">{emp.full_name}</span>
-                    {emp.department_name && (
-                      <span className="block text-[10px] text-muted-foreground truncate">
-                        {emp.department_name}
-                      </span>
-                    )}
-                  </span>
+                  <span className="block text-sm font-semibold truncate">{emp.full_name}</span>
                   <span className={`text-[10px] font-semibold shrink-0 ${isOff ? 'text-destructive' : 'text-muted-foreground/50'}`}>
                     {isOff ? 'Nghỉ' : 'Làm'}
                   </span>
@@ -314,7 +379,7 @@ export default function AdminOffSchedule() {
               );
             })}
             {employees.length === 0 && (
-              <p className="text-center text-xs text-muted-foreground py-8">Chưa có nhân viên</p>
+              <p className="text-center text-xs text-muted-foreground py-8">Chưa có nhân viên bếp</p>
             )}
           </div>
         </div>
