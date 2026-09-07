@@ -95,24 +95,6 @@ export default function Index() {
     return <AppBootState error={bootError} onRetry={() => setRetryKey(key => key + 1)} />;
   }
 
-  return (
-    <div className="min-h-screen bg-background px-4 py-12">
-      {noPeriod && (
-        <div className="glass-card p-8 text-center space-y-4">
-          <div>
-            <p className="text-muted-foreground">No working period is active.</p>
-            <p className="text-xs text-muted-foreground mt-1">Please contact your admin.</p>
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleLogout}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <LogOut size={18} />
-            Đăng xuất
-          </motion.button>
-        </div>
-      )}
-    </div>
-  );
+  // Every path above redirects (login / admin / dashboard); nothing to render here.
+  return null;
 }
