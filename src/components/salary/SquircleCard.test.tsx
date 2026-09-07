@@ -16,7 +16,7 @@ describe('SquircleCard - Focus and Review States', () => {
     clock_in: '17:00',
     clock_out: '21:00',
     total_hours: 4,
-    notes: null,
+    note: null,
     created_at: '2025-01-15T00:00:00Z',
     updated_at: '2025-01-15T00:00:00Z',
   };
@@ -136,7 +136,7 @@ describe('SquircleCard - Focus and Review States', () => {
       const { container } = render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps}
           state="review"
-          onEdit={onEdit}
+         
         />
       );
       
@@ -154,7 +154,7 @@ describe('SquircleCard - Focus and Review States', () => {
       const { container } = render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps}
           state="focus"
-          onEdit={onEdit}
+         
         />
       );
       
@@ -246,14 +246,14 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:00',
         total_hours: 4,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
       const { container } = render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={20}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -283,7 +283,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:00',
         total_hours: 4,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
@@ -293,7 +293,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
 
       render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={rate}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -319,7 +319,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:00',
         total_hours: 4,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
@@ -328,7 +328,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
 
       const { container } = render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={20}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -358,7 +358,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:00',
         total_hours: 4,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
@@ -370,7 +370,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
 
       render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={rate}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -398,14 +398,14 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:30', // 4.5 hours
         total_hours: null, // Force calculation from times
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
       render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={20}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -430,14 +430,14 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: null, // Use global clock-in
         clock_out: '21:00',
         total_hours: null,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
       render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={20}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -462,14 +462,14 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:00',
         total_hours: 4,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
       render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={20}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -495,7 +495,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:00',
         total_hours: 4,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
@@ -508,7 +508,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
 
       render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={rate}
+         
           globalClockIn="17:00"
           dailyBase={dailyBase}
           hourlyRate={hourlyRate}
@@ -537,14 +537,14 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_in: '17:00',
         clock_out: '21:00',
         total_hours: 4,
-        notes: null,
+        note: null,
         created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
       const { container } = render(
         <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
-          rate={20}
+         
           globalClockIn="17:00"
           dailyBase={200000}
           hourlyRate={50000}

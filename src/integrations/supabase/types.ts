@@ -483,6 +483,7 @@ export type Database = {
           salary_breakdown: Json | null
           status: string
           total_salary: number
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -493,6 +494,7 @@ export type Database = {
           salary_breakdown?: Json | null
           status?: string
           total_salary?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -503,6 +505,7 @@ export type Database = {
           salary_breakdown?: Json | null
           status?: string
           total_salary?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
