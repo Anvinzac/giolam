@@ -34,7 +34,7 @@ describe('SquircleCard - Focus and Review States', () => {
   describe('Requirement 2.2: Focus State - larger, interactive', () => {
     it('should apply scale-100 styling in focus state', () => {
       const { container } = render(
-        <SquircleCard {...defaultProps} state="focus" />
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="focus" />
       );
       
       const card = container.querySelector('.glass-card');
@@ -46,7 +46,7 @@ describe('SquircleCard - Focus and Review States', () => {
     });
 
     it('should render ClockOutChipGrid in focus state', () => {
-      render(<SquircleCard {...defaultProps} state="focus" />);
+      render(<SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="focus" />);
       
       // ClockOutChipGrid should be present (it renders time chips)
       const chipGrid = screen.getByTestId('clock-out-chip-grid');
@@ -56,8 +56,7 @@ describe('SquircleCard - Focus and Review States', () => {
     it('should be interactive in focus state', () => {
       const onClockOutSelect = vi.fn();
       render(
-        <SquircleCard
-          {...defaultProps}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps}
           state="focus"
           onClockOutSelect={onClockOutSelect}
         />
@@ -73,7 +72,7 @@ describe('SquircleCard - Focus and Review States', () => {
   describe('Requirement 2.3: Review State - smaller, read-only', () => {
     it('should apply scale-90 and opacity-80 styling in review state', () => {
       const { container } = render(
-        <SquircleCard {...defaultProps} state="review" />
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="review" />
       );
       
       const card = container.querySelector('.glass-card');
@@ -86,7 +85,7 @@ describe('SquircleCard - Focus and Review States', () => {
     });
 
     it('should NOT render ClockOutChipGrid in review state', () => {
-      render(<SquircleCard {...defaultProps} state="review" />);
+      render(<SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="review" />);
       
       // ClockOutChipGrid should not be present
       const chipGrid = screen.queryByTestId('clock-out-chip-grid');
@@ -96,8 +95,7 @@ describe('SquircleCard - Focus and Review States', () => {
     it('should be read-only (no chip interaction) in review state', () => {
       const onClockOutSelect = vi.fn();
       render(
-        <SquircleCard
-          {...defaultProps}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps}
           state="review"
           onClockOutSelect={onClockOutSelect}
         />
@@ -111,7 +109,7 @@ describe('SquircleCard - Focus and Review States', () => {
 
   describe('Requirement 5.1: Display previously entered clock-out time', () => {
     it('should display clock-out time in review state', () => {
-      render(<SquircleCard {...defaultProps} state="review" />);
+      render(<SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="review" />);
       
       // Should show the clock-out time
       expect(screen.getByText('21:00')).toBeInTheDocument();
@@ -120,7 +118,7 @@ describe('SquircleCard - Focus and Review States', () => {
 
     it('should display clock-out time prominently (large text)', () => {
       const { container } = render(
-        <SquircleCard {...defaultProps} state="review" />
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="review" />
       );
       
       // Find the clock-out time display
@@ -136,8 +134,7 @@ describe('SquircleCard - Focus and Review States', () => {
       const onEdit = vi.fn();
       
       const { container } = render(
-        <SquircleCard
-          {...defaultProps}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps}
           state="review"
           onEdit={onEdit}
         />
@@ -155,8 +152,7 @@ describe('SquircleCard - Focus and Review States', () => {
       const onEdit = vi.fn();
       
       const { container } = render(
-        <SquircleCard
-          {...defaultProps}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps}
           state="focus"
           onEdit={onEdit}
         />
@@ -173,8 +169,7 @@ describe('SquircleCard - Focus and Review States', () => {
       const user = userEvent.setup();
       
       const { container } = render(
-        <SquircleCard
-          {...defaultProps}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps}
           state="review"
           // onEdit not provided
         />
@@ -192,10 +187,10 @@ describe('SquircleCard - Focus and Review States', () => {
   describe('Visual State Differences', () => {
     it('should have different visual appearance between focus and review', () => {
       const { container: focusContainer } = render(
-        <SquircleCard {...defaultProps} state="focus" />
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="focus" />
       );
       const { container: reviewContainer } = render(
-        <SquircleCard {...defaultProps} state="review" />
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="review" />
       );
       
       const focusCard = focusContainer.querySelector('.glass-card');
@@ -215,7 +210,7 @@ describe('SquircleCard - Focus and Review States', () => {
   describe('Transition Prevention', () => {
     it('should add pointer-events-none when transitioning', () => {
       const { container } = render(
-        <SquircleCard {...defaultProps} state="focus" isTransitioning={true} />
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="focus" isTransitioning={true} />
       );
       
       const card = container.querySelector('.glass-card');
@@ -224,7 +219,7 @@ describe('SquircleCard - Focus and Review States', () => {
 
     it('should NOT add pointer-events-none when not transitioning', () => {
       const { container } = render(
-        <SquircleCard {...defaultProps} state="focus" isTransitioning={false} />
+        <SquircleCard specialRate={null} isGlobalOffDay={false} {...defaultProps} state="focus" isTransitioning={false} />
       );
       
       const card = container.querySelector('.glass-card');
@@ -243,7 +238,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should display base wage (dailyBase)', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -257,8 +252,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       };
 
       const { container } = render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={20}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -281,7 +275,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should display allowance amount', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -298,8 +292,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       const expectedAllowance = Math.round((dailyBase * rate) / 100 / 1000) * 1000;
 
       render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={rate}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -318,7 +311,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should display overtime wage when hours > 0', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -334,8 +327,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       const expectedExtraWage = Math.round((4 * hourlyRate) / 1000) * 1000;
 
       const { container } = render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={20}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -358,7 +350,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should display total wage', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -377,8 +369,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       const expectedTotal = dailyBase + allowance + extraWage;
 
       render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={rate}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -399,7 +390,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should calculate hours from clock times when total_hours is null', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -413,8 +404,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       };
 
       render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={20}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -432,7 +422,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should use globalClockIn when entry.clock_in is null', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -446,8 +436,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       };
 
       render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={20}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -465,7 +454,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should show 0 total for off-days', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -479,8 +468,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       };
 
       render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={20}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -499,7 +487,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should round to nearest 1000 VND', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -519,8 +507,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       const total = dailyBase + allowance + extraWage;
 
       render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={rate}
           globalClockIn="17:00"
           dailyBase={dailyBase}
@@ -542,7 +529,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
     it('should format currency values as "Xk" (thousands)', () => {
       const mockEntry: SalaryEntry = {
         id: '1',
-        employee_id: 'emp1',
+        user_id: 'emp1',
         period_id: 'period1',
         entry_date: '2025-01-15',
         sort_order: 1,
@@ -556,8 +543,7 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
       };
 
       const { container } = render(
-        <SquircleCard
-          entry={mockEntry}
+        <SquircleCard specialRate={null} isGlobalOffDay={false} entry={mockEntry}
           rate={20}
           globalClockIn="17:00"
           dailyBase={200000}

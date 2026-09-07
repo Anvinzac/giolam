@@ -57,7 +57,7 @@ describe('ImmersiveInputTypeB - Working Days Filtering', () => {
       createMockEntry('2025-01-05', false, 5), // Working day
     ];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display the first working day (2025-01-01)
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('ImmersiveInputTypeB - Working Days Filtering', () => {
       createMockEntry('2025-01-03', true, 3),
     ];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display a message indicating no working days
     expect(screen.getByText(/Không có ngày làm việc trong kỳ này/i)).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe('ImmersiveInputTypeB - Working Days Filtering', () => {
       createMockEntry('2025-01-03', false, 3),
     ];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display the first working day
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe('ImmersiveInputTypeB - Working Days Filtering', () => {
   it('should handle empty entries array', () => {
     const entries: SalaryEntry[] = [];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display a message indicating no working days
     expect(screen.getByText(/Không có ngày làm việc trong kỳ này/i)).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('ImmersiveInputTypeB - Working Days Filtering', () => {
       createMockEntry('2025-01-07', false, 7), // Working
     ];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display the first working day (day 1)
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -130,7 +130,7 @@ describe('ImmersiveInputTypeB - Working Days Filtering', () => {
       createMockEntry('2025-01-04', true, 4),  // Off
     ];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display the first working day by sort order (day 1)
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe('ImmersiveInputTypeB - Two-Panel Layout', () => {
       createMockEntry('2025-01-01', false, 1),
     ];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display the day
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -173,7 +173,7 @@ describe('ImmersiveInputTypeB - Two-Panel Layout', () => {
       createMockEntry('2025-01-03', false, 3),
     ];
 
-    render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should display day 1 (focus state)
     expect(screen.getByText('1')).toBeInTheDocument();
@@ -185,7 +185,7 @@ describe('ImmersiveInputTypeB - Two-Panel Layout', () => {
       createMockEntry('2025-01-02', false, 2),
     ];
 
-    const { container } = render(<ImmersiveInputTypeB {...mockProps} entries={entries} />);
+    const { container } = render(<ImmersiveInputTypeB offDays={[]} {...mockProps} entries={entries} />);
 
     // Should have the main container with proper height
     const mainContainer = container.querySelector('.relative');
@@ -232,8 +232,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -264,8 +263,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -296,8 +294,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -327,8 +324,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -363,8 +359,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -408,8 +403,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -442,8 +436,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -480,8 +473,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -512,8 +504,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -543,8 +534,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -577,8 +567,7 @@ describe('ImmersiveInputTypeB - Clock-Out Selection Integration', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -638,8 +627,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -686,8 +674,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -740,8 +727,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -794,8 +780,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -824,8 +809,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -895,8 +879,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -943,8 +926,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
@@ -1014,8 +996,7 @@ describe('ImmersiveInputTypeB - Previous Day Correction Flow', () => {
     ];
 
     render(
-      <ImmersiveInputTypeB
-        {...mockProps}
+      <ImmersiveInputTypeB offDays={[]} {...mockProps}
         entries={entries}
         onEntryUpdate={mockOnEntryUpdate}
       />
