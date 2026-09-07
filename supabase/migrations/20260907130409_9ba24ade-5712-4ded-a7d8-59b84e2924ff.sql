@@ -16,12 +16,14 @@ GRANT ALL ON public.employee_off_days TO service_role;
 
 ALTER TABLE public.employee_off_days ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage employee off days" ON public.employee_off_days;
 CREATE POLICY "Admins can manage employee off days"
   ON public.employee_off_days
   FOR ALL
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Users can view own off days" ON public.employee_off_days;
 CREATE POLICY "Users can view own off days"
   ON public.employee_off_days
   FOR SELECT
