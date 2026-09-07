@@ -17,6 +17,12 @@ describe('SquircleCard - Focus and Review States', () => {
     clock_out: '21:00',
     total_hours: 4,
     note: null,
+    off_percent: 0,
+    allowance_rate_override: null,
+    base_daily_wage: 0,
+    allowance_amount: 0,
+    extra_wage: 0,
+    total_daily_wage: 0,
   };
 
   const defaultProps = {
@@ -245,6 +251,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       const { container } = render(
@@ -280,6 +292,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       const rate = 20; // 20% allowance
@@ -314,6 +332,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       const expectedExtraWage = Math.round((4 * hourlyRate) / 1000) * 1000;
@@ -351,6 +375,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       const rate = 20;
@@ -389,6 +419,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:30', // 4.5 hours
         total_hours: null, // Force calculation from times
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       render(
@@ -419,6 +455,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: null,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       render(
@@ -449,6 +491,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       render(
@@ -480,6 +528,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       const rate = 15; // 15% allowance
@@ -520,6 +574,12 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
+        off_percent: 0,
+        allowance_rate_override: null,
+        base_daily_wage: 0,
+        allowance_amount: 0,
+        extra_wage: 0,
+        total_daily_wage: 0,
       };
 
       const { container } = render(
