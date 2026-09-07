@@ -408,6 +408,72 @@ export type Database = {
           },
         ]
       }
+      salary_published_snapshots: {
+        Row: {
+          allowances: Json
+          breakdown: Json | null
+          created_at: string
+          entries: Json
+          id: string
+          period_id: string
+          period_info: Json | null
+          profile_info: Json | null
+          published_at: string
+          rates: Json
+          salary_record_id: string
+          total_salary: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowances?: Json
+          breakdown?: Json | null
+          created_at?: string
+          entries?: Json
+          id?: string
+          period_id: string
+          period_info?: Json | null
+          profile_info?: Json | null
+          published_at?: string
+          rates?: Json
+          salary_record_id: string
+          total_salary?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowances?: Json
+          breakdown?: Json | null
+          created_at?: string
+          entries?: Json
+          id?: string
+          period_id?: string
+          period_info?: Json | null
+          profile_info?: Json | null
+          published_at?: string
+          rates?: Json
+          salary_record_id?: string
+          total_salary?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_published_snapshots_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_published_snapshots_salary_record_id_fkey"
+            columns: ["salary_record_id"]
+            isOneToOne: false
+            referencedRelation: "salary_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_records: {
         Row: {
           created_at: string
