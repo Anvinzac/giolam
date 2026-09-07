@@ -82,6 +82,8 @@ const HEADERS: Record<EmployeeShiftType, string[]> = {
   basic: ['date', 'note', 'is_day_off', 'off_percent', 'rate_override'],
   overtime: ['date', 'note', 'clock_out', 'is_day_off'],
   notice_only: ['date', 'note', 'clock_in', 'clock_out', 'is_day_off'],
+  lunar_rate: ['date', 'note', 'is_day_off'],
+  daily: ['date', 'note', 'is_day_off'],
 };
 
 const HEADER_ALIASES: Record<string, string> = {
