@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut } from "lucide-react";
 import AppBootState from "@/components/AppBootState";
 import { withTimeout } from "@/lib/withTimeout";
 
@@ -85,11 +83,6 @@ export default function Index() {
       subscription.unsubscribe();
     };
   }, [navigate, retryKey]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/login");
-  };
 
   if (loading || bootError) {
     return <AppBootState error={bootError} onRetry={() => setRetryKey(key => key + 1)} />;
