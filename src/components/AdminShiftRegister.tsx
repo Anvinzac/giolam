@@ -38,8 +38,7 @@ function getPersonColor(userId: string): string {
 }
 
 interface DayShifts {
-  morning: ShiftSlot[];
-  afternoon: ShiftSlot[];
+  [slot: string]: ShiftSlot[];
 }
 
 interface Props {
