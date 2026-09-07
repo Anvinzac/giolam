@@ -17,7 +17,6 @@ describe('SquircleCard - Focus and Review States', () => {
     clock_out: '21:00',
     total_hours: 4,
     note: null,
-    created_at: '2025-01-15T00:00:00Z',
     updated_at: '2025-01-15T00:00:00Z',
   };
 
@@ -247,7 +246,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -284,7 +282,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -320,7 +317,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -359,7 +355,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -399,7 +394,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:30', // 4.5 hours
         total_hours: null, // Force calculation from times
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -431,7 +425,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: null,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -463,7 +456,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -496,7 +488,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
@@ -538,7 +529,6 @@ describe('SquircleCard - Daily Wage Calculation (Task 3.3)', () => {
         clock_out: '21:00',
         total_hours: 4,
         note: null,
-        created_at: '2025-01-15T00:00:00Z',
         updated_at: '2025-01-15T00:00:00Z',
       };
 
