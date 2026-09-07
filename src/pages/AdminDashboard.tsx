@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign, Database, Terminal, Wand2, Package, Check, X as XIcon } from "lucide-react";
+import { ArrowLeft, Plus, Users, Calendar, Trash2, Table2, LogOut, Bell, DollarSign, Database, Terminal, Wand2, Package, Check, X as XIcon, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { SpecialDayRate, DayType, DAY_TYPE_LABELS, DEFAULT_RATES } from "@/types/salary";
 import { generateDefaultSpecialDays, getVietnameseDescription, formatDateViet } from "@/lib/salaryCalculations";
@@ -15,6 +15,7 @@ import AdminIngredientEditor from "@/components/AdminIngredientEditor";
 import AdminStockReports from "@/components/AdminStockReports";
 import DemoEmployeeStockView from "@/components/DemoEmployeeStockView";
 import AdminShiftRegister from "@/components/AdminShiftRegister";
+import AdminOffSchedule from "@/components/AdminOffSchedule";
 import AppBootState from "@/components/AppBootState";
 import { withTimeout } from "@/lib/withTimeout";
 
@@ -78,7 +79,7 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [periods, setPeriods] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations' | 'ingredients' | 'stock-reports' | 'shift-register'>('shifts');
+  const [tab, setTab] = useState<'periods' | 'employees' | 'shifts' | 'changes' | 'registrations' | 'ingredients' | 'stock-reports' | 'shift-register' | 'off-schedule'>('shifts');
   const [changesBadge, setChangesBadge] = useState(0);
   const [isSeeding, setIsSeeding] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -290,7 +291,7 @@ export default function AdminDashboard() {
           <button
             onClick={() => navigate('/admin/salary')}
             className="flex flex-col items-center justify-center gap-0.5 h-11 rounded-lg transition-all text-amber-400 hover:text-amber-300"
-            style={{ width: `${100 / 9}%` }}
+            style={{ width: `${100 / 10}%` }}
             title="Lương"
           >
             <DollarSign size={18} />
@@ -298,6 +299,7 @@ export default function AdminDashboard() {
 {[
              { key: 'shifts' as const, label: 'Bảng công', icon: Table2, badge: 0 },
              { key: 'shift-register' as const, label: 'Đăng ký ca', icon: Calendar, badge: 0 },
+             { key: 'off-schedule' as const, label: 'Lịch nghỉ', icon: UserX, badge: 0 },
              { key: 'registrations' as const, label: 'Đăng ký', icon: Calendar, badge: regBadge },
              { key: 'changes' as const, label: 'Thay đổi', icon: Bell, badge: changesBadge },
              { key: 'periods' as const, label: 'Kỳ làm việc', icon: Calendar, badge: 0 },
@@ -311,7 +313,7 @@ export default function AdminDashboard() {
               className={`relative flex flex-col items-center justify-center gap-0.5 h-11 rounded-lg transition-all ${
                 tab === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
-              style={{ width: `${100 / 9}%` }}
+              style={{ width: `${100 / 10}%` }}
               title={label}
             >
               <Icon size={18} />
@@ -361,6 +363,10 @@ export default function AdminDashboard() {
 
         {tab === 'registrations' && (
           <AdminRegistrations onBadgeCount={setRegBadge} />
+        )}
+
+        {tab === 'off-schedule' && (
+          <AdminOffSchedule />
         )}
 
         {tab === 'changes' && (

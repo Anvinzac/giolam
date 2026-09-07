@@ -135,6 +135,30 @@ export type Database = {
           },
         ]
       }
+      employee_off_days: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          off_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          off_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          off_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
