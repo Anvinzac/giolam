@@ -26,6 +26,9 @@ export default function TestTypeC() {
         onAllowanceUpdate={() => {}}
         onHourlyRateChange={() => {}}
         onCustomDateChange={() => {}}
+        offDays={[]}
+        onEntryDateChange={() => {}}
+        onAddRowAtDate={() => {}}
         breakdown={{
           base_salary: 0,
           daily_base: 0,

@@ -70,7 +70,7 @@ function SquircleCard({
       filter: 'saturate(1)',
       transition: {
         duration: prefersReducedMotion ? 0.01 : 0.45,
-        ease: [0.4, 0.0, 0.2, 1],
+        ease: [0.4, 0.0, 0.2, 1] as [number, number, number, number],
       },
     },
     review: {
@@ -80,7 +80,7 @@ function SquircleCard({
       filter: 'saturate(0.85)',
       transition: {
         duration: prefersReducedMotion ? 0.01 : 0.45,
-        ease: [0.4, 0.0, 0.2, 1],
+        ease: [0.4, 0.0, 0.2, 1] as [number, number, number, number],
       },
     },
   }), [prefersReducedMotion]);

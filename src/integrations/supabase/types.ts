@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -29,6 +29,48 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      custom_depletion_notices: {
+        Row: {
+          dismissed_at: string | null
+          dismissed_by: string | null
+          id: string
+          ingredient_name: string
+          needs_purchase: boolean
+          note: string | null
+          quantity: string | null
+          reported_at: string
+          reported_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          ingredient_name: string
+          needs_purchase?: boolean
+          note?: string | null
+          quantity?: string | null
+          reported_at?: string
+          reported_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          ingredient_name?: string
+          needs_purchase?: boolean
+          note?: string | null
+          quantity?: string | null
+          reported_at?: string
+          reported_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
         }
         Relationships: []
       }
@@ -135,6 +177,41 @@ export type Database = {
           },
         ]
       }
+      employee_ingredients: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          ingredient_id: string
+          report_weekdays: number[] | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          ingredient_id: string
+          report_weekdays?: number[] | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          ingredient_id?: string
+          report_weekdays?: number[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_off_days: {
         Row: {
           created_at: string
@@ -156,6 +233,45 @@ export type Database = {
           id?: string
           off_date?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      ingredients: {
+        Row: {
+          category: string
+          created_at: string
+          emoji: string
+          id: string
+          name: string
+          reference_price: number | null
+          subcategory: string | null
+          supplier: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          emoji: string
+          id: string
+          name: string
+          reference_price?: number | null
+          subcategory?: string | null
+          supplier?: string | null
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          name?: string
+          reference_price?: number | null
+          subcategory?: string | null
+          supplier?: string | null
+          unit?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -292,6 +408,72 @@ export type Database = {
           },
         ]
       }
+      salary_published_snapshots: {
+        Row: {
+          allowances: Json
+          breakdown: Json | null
+          created_at: string
+          entries: Json
+          id: string
+          period_id: string
+          period_info: Json | null
+          profile_info: Json | null
+          published_at: string
+          rates: Json
+          salary_record_id: string
+          total_salary: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowances?: Json
+          breakdown?: Json | null
+          created_at?: string
+          entries?: Json
+          id?: string
+          period_id: string
+          period_info?: Json | null
+          profile_info?: Json | null
+          published_at?: string
+          rates?: Json
+          salary_record_id: string
+          total_salary?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowances?: Json
+          breakdown?: Json | null
+          created_at?: string
+          entries?: Json
+          id?: string
+          period_id?: string
+          period_info?: Json | null
+          profile_info?: Json | null
+          published_at?: string
+          rates?: Json
+          salary_record_id?: string
+          total_salary?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_published_snapshots_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "working_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_published_snapshots_salary_record_id_fkey"
+            columns: ["salary_record_id"]
+            isOneToOne: false
+            referencedRelation: "salary_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_records: {
         Row: {
           created_at: string
@@ -301,6 +483,7 @@ export type Database = {
           salary_breakdown: Json | null
           status: string
           total_salary: number
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -311,6 +494,7 @@ export type Database = {
           salary_breakdown?: Json | null
           status?: string
           total_salary?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -321,6 +505,7 @@ export type Database = {
           salary_breakdown?: Json | null
           status?: string
           total_salary?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -345,6 +530,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           shift_date: string
+          shift_slot: string
           status: Database["public"]["Enums"]["registration_status"]
           updated_at: string
           user_id: string
@@ -360,6 +546,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           shift_date: string
+          shift_slot?: string
           status?: Database["public"]["Enums"]["registration_status"]
           updated_at?: string
           user_id: string
@@ -375,6 +562,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           shift_date?: string
+          shift_slot?: string
           status?: Database["public"]["Enums"]["registration_status"]
           updated_at?: string
           user_id?: string
@@ -395,6 +583,7 @@ export type Database = {
           overtime_clock_out: string | null
           period_id: string
           shift_date: string
+          shift_slot: string
           updated_at: string
           user_id: string
         }
@@ -411,6 +600,7 @@ export type Database = {
           overtime_clock_out?: string | null
           period_id: string
           shift_date: string
+          shift_slot?: string
           updated_at?: string
           user_id: string
         }
@@ -427,6 +617,7 @@ export type Database = {
           overtime_clock_out?: string | null
           period_id?: string
           shift_date?: string
+          shift_slot?: string
           updated_at?: string
           user_id?: string
         }
@@ -481,6 +672,50 @@ export type Database = {
           },
         ]
       }
+      stock_reports: {
+        Row: {
+          id: string
+          ingredient_id: string
+          is_low_stock: boolean
+          remaining_quantity: number | null
+          reported_at: string
+          reported_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+          warning_message: string | null
+        }
+        Insert: {
+          id?: string
+          ingredient_id: string
+          is_low_stock?: boolean
+          remaining_quantity?: number | null
+          reported_at?: string
+          reported_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          warning_message?: string | null
+        }
+        Update: {
+          id?: string
+          ingredient_id?: string
+          is_low_stock?: boolean
+          remaining_quantity?: number | null
+          reported_at?: string
+          reported_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          warning_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reports_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -505,6 +740,7 @@ export type Database = {
           created_by: string | null
           end_date: string
           id: string
+          is_archived: boolean
           off_days: string[]
           start_date: string
         }
@@ -513,6 +749,7 @@ export type Database = {
           created_by?: string | null
           end_date: string
           id?: string
+          is_archived?: boolean
           off_days?: string[]
           start_date: string
         }
@@ -521,6 +758,7 @@ export type Database = {
           created_by?: string | null
           end_date?: string
           id?: string
+          is_archived?: boolean
           off_days?: string[]
           start_date?: string
         }
@@ -548,6 +786,7 @@ export type Database = {
         | "rejected"
         | "modified"
         | "unapproved"
+        | "assigned"
       shift_type: "basic" | "overtime" | "notice_only"
     }
     CompositeTypes: {
@@ -564,12 +803,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -593,11 +832,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -618,11 +857,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -643,11 +882,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -660,11 +899,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -683,6 +922,7 @@ export const Constants = {
         "rejected",
         "modified",
         "unapproved",
+        "assigned",
       ],
       shift_type: ["basic", "overtime", "notice_only"],
     },
