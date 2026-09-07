@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { SalaryRecord, SalaryBreakdown } from '@/types/salary';
+import type { Json } from '@/integrations/supabase/types';
 
 export function useSalaryRecord(userId: string | null, periodId: string | null) {
   const [record, setRecord] = useState<SalaryRecord | null>(null);
@@ -52,7 +53,7 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
           user_id: userId,
           period_id: periodId,
           total_salary: totalSalary,
-          salary_breakdown: breakdown as unknown as Record<string, unknown>,
+          salary_breakdown: breakdown as unknown as Json,
           status: 'draft',
         },
         { onConflict: 'user_id,period_id' }
@@ -153,13 +154,13 @@ export function useSalaryRecord(userId: string | null, periodId: string | null) 
         period_id: periodId,
         published_at: publishedAt,
         total_salary: totalSalary,
-        breakdown: breakdown as unknown as Record<string, unknown>,
+        breakdown: breakdown as unknown as Json,
         entries: entriesRes.data || [],
         allowances: allowancesRes.data || [],
         rates: ratesRes.data || [],
         period_info: periodRes.data || null,
         profile_info: profileRes.data || null,
-      } as Record<string, unknown>,
+      },
       { onConflict: 'user_id,period_id' }
     );
     if (snapErr) {
