@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
 import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Plus, Check, Download, Copy, Eye, Settings2, Undo2 } from 'lucide-react';
 import LunarBonusTable from '@/components/salary/LunarBonusTable';
+import FixedRateTable from '@/components/salary/FixedRateTable';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -387,7 +388,7 @@ export default function SalaryAdmin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [tab, setTab] = useState<'rates' | 'employees' | 'lunar'>('employees');
+  const [tab, setTab] = useState<'rates' | 'employees' | 'lunar' | 'fixed'>('employees');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -1371,22 +1372,31 @@ export default function SalaryAdmin() {
         )}
 
         {/* Tabs */}
-        {!selectedEmployee && (
-          <div className="flex gap-2">
-            {[
-              { key: 'employees' as const, label: 'Nhân viên', icon: Users },
-              { key: 'rates' as const, label: 'Bảng phụ cấp', icon: Table2 },
-              { key: 'lunar' as const, label: 'Lunar bonus', icon: Moon },
-            ].map(({ key, label, icon: Icon }) => (
-              <button key={key} onClick={() => setTab(key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  tab === key ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}>
-                <Icon size={16} />{label}
-              </button>
-            ))}
-          </div>
-        )}
+        {!selectedEmployee && (() => {
+          // Check if selected period covers Aug 11-13, 2026 (Jul 26 - Aug 23 period)
+          const isAugCorrectionPeriod = selectedPeriod?.start_date === '2026-07-26' && selectedPeriod?.end_date === '2026-08-23';
+          const tabs: { key: 'employees' | 'rates' | 'lunar' | 'fixed'; label: string; icon: typeof Users }[] = [
+            { key: 'employees', label: 'Nhân viên', icon: Users },
+            { key: 'rates', label: 'Bảng phụ cấp', icon: Table2 },
+          ];
+          // Only show lunar correction tabs for the Jul 26 - Aug 23 period
+          if (isAugCorrectionPeriod) {
+            tabs.push({ key: 'lunar', label: 'Điều chỉnh 11–13/08', icon: Moon });
+            tabs.push({ key: 'fixed', label: 'Fixed Rate', icon: DollarSign });
+          }
+          return (
+            <div className="flex gap-2">
+              {tabs.map(({ key, label, icon: Icon }) => (
+                <button key={key} onClick={() => setTab(key)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    tab === key ? 'gradient-gold text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}>
+                  <Icon size={16} />{label}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </header>
 
       <div className="px-4 space-y-4">
@@ -1401,12 +1411,23 @@ export default function SalaryAdmin() {
           />
         )}
 
-        {/* Lunar bonus tab — Loại D hourly bonus breakdown */}
-        {!selectedEmployee && tab === 'lunar' && selectedPeriodId && (
+        {/* Correction tab — take-back 40% 12/08 & 15% 11/08, add 15% 12/08 & 40% 13/08 */}
+        {!selectedEmployee && tab === 'lunar' && selectedPeriodId && selectedPeriod && (
           <LunarBonusTable
-            employees={employees.filter(e => e.shift_type === 'lunar_rate')}
-            rates={rates}
+            employees={employees}
             periodId={selectedPeriodId}
+            periodStart={selectedPeriod.start_date}
+            periodEnd={selectedPeriod.end_date}
+          />
+        )}
+
+        {/* Fixed Rate tab — shows old vs new salary with corrected rates */}
+        {!selectedEmployee && tab === 'fixed' && selectedPeriodId && selectedPeriod && (
+          <FixedRateTable
+            employees={employees}
+            periodId={selectedPeriodId}
+            periodStart={selectedPeriod.start_date}
+            periodEnd={selectedPeriod.end_date}
           />
         )}
 
