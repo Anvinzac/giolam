@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from '@/hooks/useTheme';
 import { ArrowLeft, LogOut, DollarSign, Users, Table2, ChevronLeft, Sun, Moon, Upload, Plus, Check, Download, Copy, Eye, Settings2, Undo2 } from 'lucide-react';
+import LunarBonusTable from '@/components/salary/LunarBonusTable';
 import { toast } from 'sonner';
 import GlobalRateTable from '@/components/salary/GlobalRateTable';
 import SalaryTableTypeA from '@/components/salary/SalaryTableTypeA';
@@ -386,7 +387,7 @@ export default function SalaryAdmin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [tab, setTab] = useState<'rates' | 'employees'>('employees');
+  const [tab, setTab] = useState<'rates' | 'employees' | 'lunar'>('employees');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -1375,6 +1376,7 @@ export default function SalaryAdmin() {
             {[
               { key: 'employees' as const, label: 'Nhân viên', icon: Users },
               { key: 'rates' as const, label: 'Bảng phụ cấp', icon: Table2 },
+              { key: 'lunar' as const, label: 'Lunar bonus', icon: Moon },
             ].map(({ key, label, icon: Icon }) => (
               <button key={key} onClick={() => setTab(key)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -1395,6 +1397,15 @@ export default function SalaryAdmin() {
             onUpdate={updateRate}
             onAdd={addRate}
             onRemove={removeRate}
+            periodId={selectedPeriodId}
+          />
+        )}
+
+        {/* Lunar bonus tab — Loại D hourly bonus breakdown */}
+        {!selectedEmployee && tab === 'lunar' && selectedPeriodId && (
+          <LunarBonusTable
+            employees={employees.filter(e => e.shift_type === 'lunar_rate')}
+            rates={rates}
             periodId={selectedPeriodId}
           />
         )}
