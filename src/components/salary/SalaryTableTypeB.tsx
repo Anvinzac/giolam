@@ -1096,7 +1096,7 @@ export default function SalaryTableTypeB({
         {pages.length > 0 ? (
           <SwipeablePages
             pages={pages.map(p => renderPage(p))}
-            labels={pages.map(p => dateRangePageLabel(p.startDate, p.endDate, pages.length))}
+            labels={pages.map(p => dateRangePageLabel(p.startDate, p.endDate, pages.length > 1))}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
           />
