@@ -193,22 +193,27 @@ export default function FixedRateTable({
       let premiumDiff = 0;
       const isTypeD = emp.shift_type === 'lunar_rate';
 
-      // Aug 11: wrong = 15%, correct = 0% → take back 15%
-      const aug11Entries = empEntries.filter(e => e.entry_date === '2026-08-11');
-      for (const e of aug11Entries) {
-        premiumDiff -= calcEntryPremium(e, emp, 15);
+      // Type D uses a flat hourly rate (27k normal, 35k on lunar days) —
+      // no percentage-based allowance applies, so Aug 11 and Aug 12 corrections are 0.
+      // Only Aug 13 (new moon) matters for Type D: +8.000đ/h (35k − 27k).
+      if (!isTypeD) {
+        // Aug 11: wrong = 15%, correct = 0% → take back 15%
+        const aug11Entries = empEntries.filter(e => e.entry_date === '2026-08-11');
+        for (const e of aug11Entries) {
+          premiumDiff -= calcEntryPremium(e, emp, 15);
+        }
+
+        // Aug 12: wrong = 40%, correct = 15% → take back 25%
+        const aug12Entries = empEntries.filter(e => e.entry_date === '2026-08-12');
+        for (const e of aug12Entries) {
+          premiumDiff -= calcEntryPremium(e, emp, 25); // 40% - 15% = 25% to take back
+        }
       }
 
-      // Aug 12: wrong = 40%, correct = 15% → take back 25%
-      const aug12Entries = empEntries.filter(e => e.entry_date === '2026-08-12');
-      for (const e of aug12Entries) {
-        premiumDiff -= calcEntryPremium(e, emp, 25); // 40% - 15% = 25% to take back
-      }
-
-      // Aug 13: wrong = 0%, correct = 40% → add 40%
+      // Aug 13: wrong = 0%, correct = depends on type
       const aug13Entries = empEntries.filter(e => e.entry_date === '2026-08-13');
       if (isTypeD) {
-        // Type D gets +8.000đ/h lunar bonus instead of percentage
+        // Type D gets +8.000đ/h lunar bonus (35k flat rate instead of 27k)
         premiumDiff += calcTypeDBonusAug13(aug13Entries);
       } else {
         for (const e of aug13Entries) {
@@ -239,8 +244,11 @@ export default function FixedRateTable({
       // New salary = current + difference
       const newSalary = currentSalary + premiumDiff;
 
-      // Only include if there's a difference
-      if (premiumDiff !== 0 || aug11Entries.length > 0 || aug12Entries.length > 0 || aug13Entries.length > 0) {
+      // Only include if there's a difference or the employee worked on correction dates
+      const hasCorrectionDayEntries = empEntries.some(e =>
+        e.entry_date === '2026-08-11' || e.entry_date === '2026-08-12' || e.entry_date === '2026-08-13'
+      );
+      if (premiumDiff !== 0 || hasCorrectionDayEntries) {
         out.push({
           user_id: emp.user_id,
           fullName: emp.full_name,
