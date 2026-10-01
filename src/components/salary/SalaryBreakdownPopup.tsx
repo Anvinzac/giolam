@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import { AllowanceKey, SalaryBreakdown } from '@/types/salary';
@@ -74,7 +75,9 @@ export default function SalaryBreakdownPopup({
     onClose();
   };
 
-  return (
+  // Portaled to <body>: a transformed ancestor (framer-motion layout/page
+  // animations) would otherwise turn `fixed` into scroll-relative positioning.
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         /* No backdrop — floats above content, table stays interactive */
@@ -83,7 +86,7 @@ export default function SalaryBreakdownPopup({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 80 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-0 left-0 right-0 z-40 p-4 pointer-events-none flex justify-center"
+          className="fixed bottom-0 left-0 right-0 z-[60] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none flex justify-center"
         >
           <div
             className="glass-card p-5 space-y-4 pointer-events-auto shadow-2xl w-fit min-w-[240px] max-w-[90vw]"
@@ -107,38 +110,31 @@ export default function SalaryBreakdownPopup({
               </button>
             </div>
 
-            {/* Expression split into rows of max 7 numbers, no mid-number breaks */}
+            {/* 5 numbers per row; each number is followed by the next term's
+                operator so every row starts with a number and columns align. */}
             <div
               onClick={handleCopy}
-              className="rounded-xl bg-muted/60 border border-border/40 px-4 py-3 font-mono text-[13px] leading-relaxed text-foreground active:bg-muted transition-colors cursor-pointer max-h-[30vh] overflow-y-auto space-y-0.5 w-fit"
+              className="rounded-xl bg-muted/60 border border-border/40 px-4 py-3 font-mono text-[13px] leading-relaxed text-foreground active:bg-muted transition-colors cursor-pointer max-h-[30vh] overflow-y-auto w-fit grid gap-y-0.5 whitespace-pre"
+              style={{ gridTemplateColumns: 'repeat(5, auto auto)' }}
             >
               {(() => {
-                // Parse expression into tokens: each number with its leading sign
-                const tokens: string[] = [];
                 const allParts = [...parts, ...depositParts.map(k => -k)];
-                allParts.forEach((v, i) => {
-                  if (i === 0) tokens.push(`${v}`);
-                  else tokens.push(v < 0 ? `${v}` : `+${v}`);
+                return allParts.flatMap((v, i) => {
+                  const next = allParts[i + 1];
+                  const isNegative = v < 0;
+                  const shown = i === 0 ? `${v}` : `${Math.abs(v)}`;
+                  return [
+                    <span key={`n${i}`} className={`text-right ${isNegative ? 'text-destructive font-bold' : ''}`}>
+                      {shown}
+                    </span>,
+                    <span
+                      key={`o${i}`}
+                      className={next === undefined ? '' : next < 0 ? 'text-destructive font-bold' : 'opacity-35'}
+                    >
+                      {next === undefined ? '' : next < 0 ? ' - ' : ' + '}
+                    </span>,
+                  ];
                 });
-
-                // Group into rows of max 7
-                const rows: string[][] = [];
-                for (let i = 0; i < tokens.length; i += 7) {
-                  rows.push(tokens.slice(i, i + 7));
-                }
-
-                return rows.map((row, ri) => (
-                  <div key={ri} className="whitespace-nowrap w-fit">
-                    {row.map((tok, ti) => {
-                      const isNegative = tok.startsWith('-');
-                      return (
-                        <span key={ti} className={isNegative ? 'text-destructive font-bold' : ''}>
-                          {tok}
-                        </span>
-                      );
-                    })}
-                  </div>
-                ));
               })()}
             </div>
 
@@ -189,6 +185,7 @@ export default function SalaryBreakdownPopup({
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

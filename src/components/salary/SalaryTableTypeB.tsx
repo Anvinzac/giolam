@@ -125,7 +125,7 @@ export default function SalaryTableTypeB({
   // Date | note (expands left half) | Ra Giờ Lương PC Tổng packed into the
   // right half so notice text has room to wrap fully. Chips still start on
   // the Ra (clock-out) track via col-span-5.
-  const tableGridClass = 'sm:grid-cols-[3.25rem_minmax(0,1fr)_repeat(5,2.55rem)]';
+  const tableGridClass = 'sm:grid-cols-[4.25rem_minmax(0,1fr)_repeat(5,2.55rem)]';
   const tableGapClass = 'sm:gap-x-0.5 sm:gap-y-1 sm:px-1';
   const mobileGridClass = 'grid grid-cols-[minmax(0,1fr)_repeat(5,minmax(1.85rem,2.35rem))] gap-x-0.5 pl-3 pr-2 items-center';
   const mobileNumClass = 'col-span-5 min-w-0';
@@ -608,13 +608,13 @@ export default function SalaryTableTypeB({
       } ${isMoonDay ? 'moon-accent-row' : ''}`}>
         <button
           onClick={() => activateEmptyDay(dateStr)}
-          className={`text-left font-semibold text-[14px] ${getDayColor(dateStr)} ${!readOnly ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
+          className={`min-w-0 overflow-hidden whitespace-nowrap text-left font-semibold text-[14px] ${getDayColor(dateStr)} ${!readOnly ? 'hover:underline cursor-pointer' : 'cursor-default'}`}
         >
           {formatDateViet(dateStr).split(' ')[0]}
         </button>
         <button
           onClick={() => activateEmptyDay(dateStr)}
-          className={`text-left text-sm leading-snug break-words whitespace-normal ${
+          className={`min-w-0 pl-2 text-left text-sm leading-snug break-words whitespace-normal ${
             isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
           } ${!readOnly ? 'hover:text-foreground transition-colors' : 'cursor-default'}`}
         >
@@ -717,7 +717,7 @@ export default function SalaryTableTypeB({
           <span>Ngày</span>
           <Plus size={10} />
         </button>
-        <span className="text-left">Ghi chú</span>
+        <span className="text-left pl-2">Ghi chú</span>
         <span className="text-right">Ra</span>
         <span className="text-right">Giờ</span>
         <span className="text-right">Lương</span>
@@ -764,13 +764,13 @@ export default function SalaryTableTypeB({
               {/* ── Mobile row ─────────────────────────────────────────────── */}
               <div
                 className={`${mobileGridClass} relative min-h-[52px] py-2.5 text-[14px] border-b border-border/20 sm:hidden overflow-hidden ${
-                  isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
+                  isOutOfRange ? 'bg-sky-500/8 shadow-[inset_4px_0_0_theme(colors.sky.500)]' : ''
                 } ${
                   e.is_day_off ? 'opacity-40' : ''
                 } ${idx % 2 !== 0 && !isPending && !isOutOfRange ? 'bg-muted/20' : ''} ${
                   isMoonDay ? 'moon-accent-row' : ''
-                } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${
-                  isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''
+                } ${isPending ? 'shadow-[inset_4px_0_0_theme(colors.amber.400)] bg-amber-500/5' : ''} ${
+                  isNegativeRow ? 'shadow-[inset_4px_0_0_hsl(var(--destructive)/0.6)] bg-destructive/5' : ''
                 }`}
               >
                 {/* Date + note stay in column 1. Chips occupy Ra→Tổng (col-span-5)
@@ -890,16 +890,16 @@ export default function SalaryTableTypeB({
 
               {/* ── Desktop row ────────────────────────────────────────────── */}
               <div className={`hidden sm:grid ${tableGridClass} ${tableGapClass} py-3.5 items-center text-[14px] border-b border-border/20 ${
-                isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
+                isOutOfRange ? 'bg-sky-500/8 shadow-[inset_4px_0_0_theme(colors.sky.500)]' : ''
               } ${
                 e.is_day_off ? 'opacity-40' : ''
               } ${idx % 2 !== 0 && !isPending && !isOutOfRange ? 'bg-muted/20' : ''} ${
                 isMoonDay ? 'moon-accent-row' : ''
-              } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${
-                isNegativeRow ? 'border-l-4 border-l-destructive/60 bg-destructive/5' : ''
+              } ${isPending ? 'shadow-[inset_4px_0_0_theme(colors.amber.400)] bg-amber-500/5' : ''} ${
+                isNegativeRow ? 'shadow-[inset_4px_0_0_hsl(var(--destructive)/0.6)] bg-destructive/5' : ''
               } ${showWeekSep ? 'relative' : ''}`}>
                 {/* Date */}
-                <div className="pr-4 sm:pr-2">
+                <div className="min-w-0 overflow-hidden whitespace-nowrap pr-4 sm:pr-2">
                   <div className="flex items-start gap-1">
                     {!readOnly && (
                       isDupe ? (
@@ -930,7 +930,7 @@ export default function SalaryTableTypeB({
 
                 {/* Note */}
                 {editingCell === `${cellKey}-note` && !readOnly && !e.is_day_off ? (
-                  <div className="relative min-w-0">
+                  <div className="relative min-w-0 pl-2">
                     <input
                       value={cellValue}
                       onChange={ev => setCellValue(ev.target.value)}
@@ -950,7 +950,7 @@ export default function SalaryTableTypeB({
                 ) : (
                   <button
                     onClick={() => !readOnly && !e.is_day_off && startCellEdit(`${cellKey}-note`, e.note || '')}
-                    className={`text-left text-sm leading-snug break-words whitespace-normal transition-colors ${
+                    className={`min-w-0 pl-2 text-left text-sm leading-snug break-words whitespace-normal transition-colors ${
                       isMoonDay ? 'moon-accent-text' : 'text-muted-foreground'
                     } ${
                       !readOnly && !e.is_day_off ? 'hover:text-foreground' : 'cursor-default'
