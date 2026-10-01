@@ -569,9 +569,12 @@ export function computeTotalSalaryTypeD(
   for (const e of entries) {
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in, e.clock_out) ?? 0;
     
-    // Check if this is a lunar day (new moon or full moon)
+    // Check if this is a lunar day (new moon or full moon only — Type D does NOT get special rate on "ngày chay" days).
+    // Use both DB day_type and lunarUtils fallback since they can disagree due to the known off-by-one bug.
     const matchedRate = rates.find(r => r.special_date === e.entry_date);
-    const isLunarDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    const dbIsLunar = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    const lunarFnIsLunar = isFullMoon(new Date(e.entry_date + 'T12:00:00')) || isNewMoon(new Date(e.entry_date + 'T12:00:00'));
+    const isLunarDay = dbIsLunar || lunarFnIsLunar;
     
     const hourlyRate = isLunarDay ? lunarHourlyRate : normalHourlyRate;
     const baseWage = roundToThousand(hours * hourlyRate);

@@ -227,7 +227,12 @@ export default function SalaryTableTypeC({
   //     columns from her Type C period.)
   const computeRow = (e: SalaryEntry) => {
     const matchedRate = rates.find(r => r.special_date === e.entry_date);
-    const isLunarDay = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    // Type D lunar day check: DB day_type OR lunarUtils fallback (they can disagree
+    // due to the known off-by-one bug in lunarUtils.ts for some months).
+    // Only new_moon / full_moon qualify — NOT the "ngày chay" day-before types.
+    const dbIsLunar = matchedRate?.day_type === 'new_moon' || matchedRate?.day_type === 'full_moon';
+    const lunarFnIsLunar = isFullMoon(new Date(e.entry_date + 'T12:00:00')) || isNewMoon(new Date(e.entry_date + 'T12:00:00'));
+    const isLunarDay = dbIsLunar || lunarFnIsLunar;
     const isTypeD = shiftType === 'lunar_rate';
     const effectiveHourly = isTypeD ? (isLunarDay ? 35000 : 27000) : hourlyRate;
     const rate = isTypeD ? 0 : getRateForDate(e.entry_date, rates, e.allowance_rate_override);
@@ -235,7 +240,7 @@ export default function SalaryTableTypeC({
     const baseWage = roundToThousand(hours * effectiveHourly);
     const allowanceAmt = isTypeD ? 0 : roundToThousand(baseWage * rate / 100);
     const total = e.is_day_off ? 0 : baseWage + allowanceAmt;
-    return { rate, hours, baseWage, allowanceAmt, total };
+    return { rate, hours, baseWage, allowanceAmt, total, effectiveHourly };
   };
 
   const dailyTotals = useMemo(() =>
@@ -301,10 +306,11 @@ export default function SalaryTableTypeC({
     if (a === '—' || b === '—') return null;
     return `${b} − ${a}`;
   };
-  const formulaWage = (hours: number): string | null => {
-    if (hours <= 0 || hourlyRate <= 0) return null;
+  const formulaWage = (hours: number, effectiveRate?: number): string | null => {
+    const rate = effectiveRate ?? hourlyRate;
+    if (hours <= 0 || rate <= 0) return null;
     const hoursStr = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
-    const rateK = hourlyRate / 1000;
+    const rateK = rate / 1000;
     const rateStr = Number.isInteger(rateK) ? `${rateK}` : rateK.toFixed(1);
     return `${hoursStr} × ${rateStr}`;
   };
@@ -312,14 +318,15 @@ export default function SalaryTableTypeC({
     if (baseWage <= 0 || rate <= 0) return null;
     return `${rate}% × ${formatK(baseWage)}`;
   };
-  const formulaTotal = (baseWage: number, allowanceAmt: number, hours?: number): string | null => {
+  const formulaTotal = (baseWage: number, allowanceAmt: number, hours?: number, effectiveRate?: number): string | null => {
     if (baseWage <= 0) return null;
     // When both wage and allowance exist, show the sum
     if (allowanceAmt > 0) return `${formatK(baseWage)} + ${formatK(allowanceAmt)}`;
     // No allowance — show the wage derivation (hours × rate) instead
-    if (hours && hours > 0 && hourlyRate > 0) {
+    const rate = effectiveRate ?? hourlyRate;
+    if (hours && hours > 0 && rate > 0) {
       const hoursStr = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
-      const rateK = hourlyRate / 1000;
+      const rateK = rate / 1000;
       const rateStr = Number.isInteger(rateK) ? `${rateK}` : rateK.toFixed(1);
       return `${hoursStr} × ${rateStr}`;
     }
@@ -535,7 +542,7 @@ export default function SalaryTableTypeC({
   };
 
   const renderRow = (e: SalaryEntry, idx?: number, allEntries?: SalaryEntry[]) => {
-    const { rate, hours, baseWage, allowanceAmt, total } = computeRow(e);
+    const { rate, hours, baseWage, allowanceAmt, total, effectiveHourly } = computeRow(e);
     const isOutOfRange = e.entry_date < periodStart || e.entry_date > periodEnd;
     const matchedRate = rates.find(r => r.special_date === e.entry_date);
     
@@ -941,13 +948,13 @@ export default function SalaryTableTypeC({
           <FormulaTooltip formula={formulaHours(e)} className="num-cell w-[24px] text-right font-semibold text-[13px]">
             {formatHours(hours)}
           </FormulaTooltip>
-          <FormulaTooltip formula={formulaWage(hours)} className="num-cell w-[34px] text-right font-medium text-[13px] text-foreground/70">
+          <FormulaTooltip formula={formulaWage(hours, effectiveHourly)} className="num-cell w-[34px] text-right font-medium text-[13px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </FormulaTooltip>
           <FormulaTooltip formula={formulaAllowance(rate, baseWage)} className="num-cell w-[30px] text-right allowance-amt font-semibold text-[13px]">
             {allowanceAmt > 0 ? (allowanceAmt / 1000).toFixed(0) : ''}
           </FormulaTooltip>
-          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt, hours)} className="num-cell-lg w-[40px] text-right font-bold text-[14px]">
+          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt, hours, effectiveHourly)} className="num-cell-lg w-[40px] text-right font-bold text-[14px]">
             {total > 0 ? (total / 1000).toFixed(0) : '—'}
           </FormulaTooltip>
         </div>
@@ -1180,7 +1187,7 @@ export default function SalaryTableTypeC({
 
         {/* Wage (hours × rate) */}
         <div className="justify-self-end flex items-center h-full">
-          <FormulaTooltip formula={formulaWage(hours)} className="num-cell-sm text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
+          <FormulaTooltip formula={formulaWage(hours, effectiveHourly)} className="num-cell-sm text-right font-medium text-[13px] sm:text-[14px] text-foreground/70">
             {baseWage > 0 ? (baseWage / 1000).toFixed(0) : '—'}
           </FormulaTooltip>
         </div>
@@ -1194,7 +1201,7 @@ export default function SalaryTableTypeC({
 
         {/* Total */}
         <div className="justify-self-end flex items-center h-full">
-          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt, hours)} className="num-cell-xl text-right font-bold text-[14px] sm:text-[16px]">
+          <FormulaTooltip formula={formulaTotal(baseWage, allowanceAmt, hours, effectiveHourly)} className="num-cell-xl text-right font-bold text-[14px] sm:text-[16px]">
             {total > 0 ? (total / 1000).toFixed(0) : '—'}
           </FormulaTooltip>
         </div>

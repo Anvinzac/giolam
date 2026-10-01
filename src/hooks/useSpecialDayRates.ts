@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { SpecialDayRate } from '@/types/salary';
 import { generateDefaultSpecialDays } from '@/lib/salaryCalculations';
-import { isFullMoon, isNewMoon, isDayBeforeFullMoon, isDayBeforeNewMoon } from '@/lib/lunarUtils';
 
 export function useSpecialDayRates(
   periodId: string | null,
@@ -26,26 +25,12 @@ export function useSpecialDayRates(
     if (error) { console.error('Failed to fetch rates:', error); setLoading(false); return; }
 
     if (data && data.length > 0) {
-      // Off-days from `working_periods.off_days` are deliberately NOT
-      // mirrored into special_day_rates anymore — they have no allowance
-      // attached and only polluted the Type A view (and the rates list)
-      // with empty 0% "Quán nghỉ" rows. Off-days continue to flow
-      // through the dedicated `offDays` prop wherever a renderer needs
-      // them (Type C scheduledOffDays, EmployeeAllowanceEditor).
-      const lunarOk = (r: SpecialDayRate) => {
-        const d = new Date(r.special_date + 'T12:00:00');
-        if (r.day_type === 'full_moon') return isFullMoon(d);
-        if (r.day_type === 'new_moon') return isNewMoon(d);
-        if (r.day_type === 'day_before_full_moon') return isDayBeforeFullMoon(d);
-        if (r.day_type === 'day_before_new_moon') return isDayBeforeNewMoon(d);
-        return true;
-      };
-      const stale = (data as SpecialDayRate[]).filter(r => !lunarOk(r));
-      const fresh = (data as SpecialDayRate[]).filter(r => lunarOk(r));
-      if (stale.length > 0) {
-        void supabase.from('special_day_rates').delete().in('id', stale.map(r => r.id).filter(Boolean) as string[]);
-      }
-      setRates(fresh);
+      // The database is the source of truth for special_day_rates.
+      // Do NOT filter or delete entries based on the lunarUtils.ts
+      // calculation — it has a known off-by-one bug for some months
+      // (e.g. Aug 2026) and would silently remove valid, manually
+      // corrected rows. All stored rates are used as-is.
+      setRates(data as SpecialDayRate[]);
       setLoading(false);
       return;
     }
