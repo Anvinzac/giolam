@@ -239,7 +239,7 @@ export default function SalaryTableTypeB({
     if (e.is_day_off) {
       // Global off-day: no deduction. Personal off-day: deduct dailyBase.
       const deduction = globalOffDaySet.has(e.entry_date) ? 0 : dailyBase;
-      return { rate: 0, allowance: 0, hours: 0, extraWage: 0, total: -deduction };
+      return { rate: 0, allowance: 0, hours: 0, extraWage: 0, bonusBase: 0, total: -deduction };
     }
     const rate = getRateForDate(e.entry_date, rates, e.allowance_rate_override);
     const hours = e.total_hours ?? calcHoursFromTimes(e.clock_in || globalClockIn, e.clock_out) ?? 0;
@@ -248,8 +248,14 @@ export default function SalaryTableTypeB({
     // Allowance is applied only on the extra wage itself, not on (dailyBase + extraWage).
     const allowanceBase = e.sort_order > 0 ? extraWage : (dailyBase + extraWage);
     const allowance = roundToThousand(allowanceBase * rate / 100);
-    const total = extraWage + allowance;
-    return { rate, allowance, hours, extraWage, total };
+    // Mirrors computeTotalSalaryTypeB: out-of-range primary days without
+    // overtime are paid dailyBase on top of the monthly base salary.
+    const isOutOfRange = e.entry_date < periodStart || e.entry_date > periodEnd;
+    const bonusBase = isOutOfRange && e.sort_order === 0 && !e.total_hours &&
+      (!e.clock_out || e.clock_out === (e.clock_in || globalClockIn))
+      ? dailyBase : 0;
+    const total = bonusBase + extraWage + allowance;
+    return { rate, allowance, hours, extraWage, bonusBase, total };
   };
 
   const dailyTotals = useMemo(() => {
@@ -262,12 +268,11 @@ export default function SalaryTableTypeB({
         if (total !== 0) parts.push(total); // negative deduction for personal off-day
         continue;
       }
-      const { extraWage, allowance } = computeRow(e);
-      const dayExtra = extraWage + allowance;
+      const { total: dayExtra } = computeRow(e);
       if (dayExtra !== 0) parts.push(dayExtra); // include negative deltas from added rows
     }
     return parts;
-  }, [entries, dailyBase, rates, hourlyRate, globalClockIn, baseSalary, globalOffDaySet]);
+  }, [entries, dailyBase, rates, hourlyRate, globalClockIn, baseSalary, globalOffDaySet, periodStart, periodEnd]);
 
   const formatK = (n: number) => Math.round(n / 1000).toString();
   const formulaHours = (e: SalaryEntry): string | null => {
@@ -725,7 +730,7 @@ export default function SalaryTableTypeB({
         {pageRows.map((row, idx) => {
           if (!row.entry) return renderEmptyRow(row.dateStr, idx);
           const e = row.entry;
-          const { rate, allowance, hours, extraWage, total } = computeRow(e);
+          const { rate, allowance, hours, extraWage, bonusBase, total } = computeRow(e);
           const cellKey = `${e.entry_date}-${e.sort_order}`;
           const isDupe = e.sort_order > 0;
           const isOutOfRange = e.entry_date < periodStart || e.entry_date > periodEnd;
@@ -866,7 +871,7 @@ export default function SalaryTableTypeB({
                       </button>
                       <FormulaTooltip formula={formulaHours(e)} className="block w-full min-w-0 text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
                       <FormulaTooltip formula={formulaWage(hours)} className="block w-full min-w-0 text-right font-medium text-[12px] text-foreground/70">
-                        {extraWage > 0 ? formatCompact(extraWage) : '—'}
+                        {bonusBase + extraWage > 0 ? formatCompact(bonusBase + extraWage) : '—'}
                       </FormulaTooltip>
                       <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="block w-full min-w-0 text-right allowance-amt font-semibold text-[12px]">
                         {allowance !== 0 ? formatCompact(allowance) : ''}
@@ -1043,7 +1048,7 @@ export default function SalaryTableTypeB({
 
                     {/* Wage */}
                     <FormulaTooltip formula={formulaWage(hours)} className="justify-self-end text-right font-medium text-[13px] text-foreground/70">
-                      {extraWage > 0 ? formatCompact(extraWage) : '—'}
+                      {bonusBase + extraWage > 0 ? formatCompact(bonusBase + extraWage) : '—'}
                     </FormulaTooltip>
 
                     {/* Allowance */}
