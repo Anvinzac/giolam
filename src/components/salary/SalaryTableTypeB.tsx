@@ -301,7 +301,13 @@ export default function SalaryTableTypeB({
     if ((dailyBase + extraWage) <= 0) return null;
     return `${rate}% × (${formatK(dailyBase)}+${formatK(extraWage)})`;
   };
-  const formulaTotal = (e: SalaryEntry, extraWage: number, allowance: number, hours: number): string | null => {
+  const formulaTotal = (e: SalaryEntry, extraWage: number, allowance: number, hours: number, bonusBase: number): string | null => {
+    if (bonusBase > 0) {
+      const parts = [formatK(bonusBase)];
+      if (allowance !== 0) parts.push(formatK(allowance));
+      if (extraWage !== 0) parts.push(formatK(extraWage));
+      return `${parts.join(' + ')} = ${formatK(bonusBase + allowance + extraWage)}`;
+    }
     if (e.sort_order > 0) {
       // Added row: just show extraWage + allowance delta, no dailyBase
       const parts: string[] = [];
@@ -876,7 +882,7 @@ export default function SalaryTableTypeB({
                       <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="block w-full min-w-0 text-right allowance-amt font-semibold text-[12px]">
                         {allowance !== 0 ? formatCompact(allowance) : ''}
                       </FormulaTooltip>
-                      <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`block w-full min-w-0 text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
+                      <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours, bonusBase)} className={`block w-full min-w-0 text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
                         {formatCompact(total)}
                       </FormulaTooltip>
                     </motion.div>
@@ -1057,7 +1063,7 @@ export default function SalaryTableTypeB({
                     </FormulaTooltip>
 
                     {/* Total */}
-                    <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours)} className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
+                    <FormulaTooltip formula={formulaTotal(e, extraWage, allowance, hours, bonusBase)} className={`justify-self-end text-right font-bold text-[14px] ${total === 0 ? 'text-muted-foreground' : total < 0 ? 'text-destructive' : ''}`}>
                       {formatCompact(total)}
                     </FormulaTooltip>
                   </>
