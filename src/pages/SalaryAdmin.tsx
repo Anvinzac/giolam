@@ -172,12 +172,29 @@ function DepartmentEmployeePages({ employees, onSelectEmployee, pendingCounts, p
               key={emp.user_id}
               whileTap={{ scale: 0.98 }}
               onClick={() => onSelectEmployee(emp)}
-              className="w-full glass-card p-3 flex items-center justify-between text-left"
+              className="relative w-full glass-card p-3 flex items-center justify-between text-left"
             >
+              {/* Checkbox hit zone: full height, left edge → name label
+                  (p-3 + w-5 box + gap-2.5 = 42px), so near-misses toggle
+                  selection instead of opening the employee. */}
+              <span
+                role="checkbox"
+                aria-checked={isSelected}
+                aria-label={`Chọn ${emp.full_name}`}
+                onClick={(e) => { e.stopPropagation(); onToggleSelect(emp.user_id); }}
+                ref={(el) => {
+                  // Native listener: framer-motion's whileTap binds natively on the
+                  // card, so React's stopPropagation would fire too late.
+                  if (el && !el.dataset.tapGuard) {
+                    el.dataset.tapGuard = '1';
+                    el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+                  }
+                }}
+                className="absolute inset-y-0 left-0 w-[42px] z-10 cursor-pointer"
+              />
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <span
-                  onClick={(e) => { e.stopPropagation(); onToggleSelect(emp.user_id); }}
-                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors ${
+                  className={`pointer-events-none w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                     isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30'
                   }`}
                 >
