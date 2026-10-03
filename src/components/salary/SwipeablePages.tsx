@@ -22,13 +22,11 @@ export function dateRangePageLabel(startDate: string, endDate: string, pageCount
   if (pageCount < 4) {
     return <span className="whitespace-nowrap">{range}</span>;
   }
+  // 4+ pills don't fit a phone width with "dd/mm - dd/mm"; drop the month on mobile.
   return (
     <>
       <span className="hidden whitespace-nowrap sm:inline">{range}</span>
-      <span className="flex flex-col items-center leading-tight sm:hidden">
-        <span className="text-[9px] font-medium opacity-60">{start}</span>
-        <span className="text-[11px] font-semibold">{end}</span>
-      </span>
+      <span className="whitespace-nowrap sm:hidden">{`${start.slice(0, 2)} - ${end.slice(0, 2)}`}</span>
     </>
   );
 }
@@ -87,13 +85,13 @@ export default function SwipeablePages({ pages, labels, currentPage, onPageChang
 
       {/* Page bar — bottom, wrap around text */}
       {pages.length > 1 && (
-        <div className="flex justify-center gap-2 px-1">
+        <div className={`flex justify-center px-1 ${pages.length >= 4 ? 'gap-1.5 sm:gap-2' : 'gap-2'}`}>
           {pages.map((_, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => handlePageChange(idx)}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
+              className={`${pages.length >= 4 ? 'px-2.5 sm:px-3' : 'px-3'} py-1.5 rounded-full text-[11px] font-semibold transition-all duration-200 ${
                 idx === currentPage
                   ? 'gradient-gold text-primary-foreground'
                   : 'bg-muted/60 text-muted-foreground hover:bg-muted'
