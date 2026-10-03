@@ -367,6 +367,8 @@ export default function SalaryTableTypeA({
             const isEditing = editingRow === key && !readOnly;
             const isOff = e.is_day_off;
             const isSupplemental = isTypeASupplementalEntry(e);
+            // Negative added rows (e.g. -4h) read as deductions, styled like off days.
+            const offStyle = isOff || (isSupplemental && displayAmount < 0);
             const isOutOfRange = (periodStart && e.entry_date < periodStart) || (coveragePeriodEnd ? e.entry_date > coveragePeriodEnd : (periodEnd ? e.entry_date > periodEnd : false));
             const matchedRate = rates.find(r => r.special_date === e.entry_date);
             const rateDesc = matchedRate?.description_vi || getRateDescriptionForDate(e.entry_date, rates, e.allowance_rate_override);
@@ -384,12 +386,12 @@ export default function SalaryTableTypeA({
                   className={`flex items-center gap-2 pl-3 pr-3 py-3.5 border-b border-border/20 ${
                     isOutOfRange ? 'bg-sky-500/8 border-l-4 border-l-sky-500' : ''
                   } ${
-                    isOff ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
-                  } ${isSupplemental && !isOff && !isOutOfRange ? 'relative overflow-hidden border-l-2 border-l-primary/45 shadow-[inset_0_1px_0_hsl(var(--primary)/0.10)]' : ''} ${
-                    isSupplemental && isOff ? 'border-l-2 border-l-primary/35' : ''
-                  } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !isOff && !isPending && !isOutOfRange ? 'bg-muted/20' : ''}`}
+                    offStyle ? 'bg-red-950/25 border-l-2 border-l-red-800/40' : ''
+                  } ${isSupplemental && !offStyle && !isOutOfRange ? 'relative overflow-hidden border-l-2 border-l-primary/45 shadow-[inset_0_1px_0_hsl(var(--primary)/0.10)]' : ''} ${
+                    isSupplemental && offStyle ? 'border-l-2 border-l-primary/35' : ''
+                  } ${isPending ? 'border-l-4 border-l-amber-400 bg-amber-500/5' : ''} ${isEditing ? 'ring-1 ring-primary/30 bg-primary/8 rounded-lg' : ''} ${idx % 2 !== 0 && !offStyle && !isPending && !isOutOfRange ? 'bg-muted/20' : ''}`}
                 >
-                  {isSupplemental && !isOff && (
+                  {isSupplemental && !offStyle && (
                     <div
                       aria-hidden
                       className="pointer-events-none absolute inset-y-0 left-0 w-28"
@@ -484,7 +486,7 @@ export default function SalaryTableTypeA({
                           : null)
                       : formulaAllowance(rate)}
                     className={`w-[72px] text-right text-[14px] font-semibold ${
-                    isOff ? 'text-destructive' : 'text-foreground'
+                    offStyle ? 'text-destructive' : 'text-foreground'
                   }`}
                   >
                     {isOff ? formatCompact(-deduction) : (displayAmount !== 0 ? formatCompact(displayAmount) : '—')}
