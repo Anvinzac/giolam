@@ -157,7 +157,7 @@ export default function SalaryTableTypeA({
         continue;
       }
 
-      if (supplemental) {
+      if (supplemental || extraWage < 0) {
         // displayAmount = extraWage + extraAllowance — push as one slot.
         // Use !== 0 (not > 0) so a negative supplemental wage (e.g. a
         // stray negative total_hours on a user-added row) still shows
@@ -367,8 +367,8 @@ export default function SalaryTableTypeA({
             const isEditing = editingRow === key && !readOnly;
             const isOff = e.is_day_off;
             const isSupplemental = isTypeASupplementalEntry(e);
-            // Negative added rows (e.g. -4h) read as deductions, styled like off days.
-            const offStyle = isOff || (isSupplemental && displayAmount < 0);
+            // Negative-amount rows (e.g. -4h) read as deductions, styled like off days.
+            const offStyle = isOff || displayAmount < 0;
             const isOutOfRange = (periodStart && e.entry_date < periodStart) || (coveragePeriodEnd ? e.entry_date > coveragePeriodEnd : (periodEnd ? e.entry_date > periodEnd : false));
             const matchedRate = rates.find(r => r.special_date === e.entry_date);
             const rateDesc = matchedRate?.description_vi || getRateDescriptionForDate(e.entry_date, rates, e.allowance_rate_override);
@@ -480,7 +480,11 @@ export default function SalaryTableTypeA({
 
                   {/* Allowance */}
                   <FormulaTooltip
-                    formula={isTypeASupplementalEntry(e)
+                    formula={extraWage < 0
+                      ? (allowance !== 0
+                          ? `${formatK(extraWage)} − ${formatK(-allowance)} (${rate}%)`
+                          : `${formatK(extraWage)}`)
+                      : isTypeASupplementalEntry(e)
                       ? (extraWage !== 0
                           ? `${formatK(extraWage)} + ${formatK(allowance)}`
                           : null)

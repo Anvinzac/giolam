@@ -241,6 +241,21 @@ export function computeTypeARowAmounts(
     };
   }
 
+  // Negative hours are a standalone deduction row: the day's rate applies to
+  // the negative wage (making it more negative), never offset by baseAllowance.
+  if (extraWage < 0) {
+    const negAllowance = roundToThousand(extraWage * rate / 100);
+    const total = extraWage + negAllowance;
+    return {
+      rate,
+      allowance: negAllowance,
+      extraWage,
+      deduction: 0,
+      total,
+      displayAmount: total,
+    };
+  }
+
   if (isTypeASupplementalEntry(entry)) {
     const total = extraWage + extraAllowance;
     return {
