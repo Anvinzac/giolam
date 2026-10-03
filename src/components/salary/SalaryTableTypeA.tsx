@@ -261,18 +261,20 @@ export default function SalaryTableTypeA({
       updates.allowance_rate_override = parseFloat(editRate);
     }
     const parsedHours = parseFloat(editHours);
-    updates.total_hours = (!editHours || isNaN(parsedHours) || parsedHours <= 0) ? null : parsedHours;
-    // Extra-work rows should behave like supplemental earnings, not a
-    // second full workday. Hours simply make the row active again if it
-    // had been marked off; the day's existing allowance rate still applies.
+    const hasHours = !!editHours && !isNaN(parsedHours) && parsedHours !== 0;
+    updates.total_hours = hasHours ? parsedHours : null;
+    // A custom hour value (positive or negative) replaces the off
+    // percentage entirely; the day's allowance rate still applies.
+    if (hasHours) {
+      updates.is_day_off = false;
+      updates.off_percent = 0;
+    }
     if (parsedHours > 0) {
-      if (e.is_day_off) {
-        updates.is_day_off = false;
-        updates.off_percent = 0;
-      }
       if (!nextNote || isAutoExtraHoursNote(e.note)) {
         updates.note = formatExtraHoursNote(parsedHours);
       }
+    } else if (parsedHours < 0) {
+      if (isAutoExtraHoursNote(nextNote)) updates.note = null;
     } else if (!nextNote && isAutoExtraHoursNote(e.note)) {
       updates.note = null;
     }
@@ -509,32 +511,29 @@ export default function SalaryTableTypeA({
                       <span className="text-[11px] text-muted-foreground shrink-0">Giờ thêm</span>
                       <input
                         type="number"
-                        min="0"
                         step="0.5"
                         value={editHours}
                         onChange={ev => {
                           const next = ev.target.value;
                           setEditHours(next);
-                          // Typing any positive number of hours means the
-                          // user is converting this slot into actual work
-                          // time, not a partial absence — flip the row
-                          // out of off-mode immediately so the snapper and
-                          // the live amount preview agree with the hours
-                          // they're entering. Zero/blank leaves the off
-                          // state untouched.
+                          // Any non-zero hours (including negative) replaces
+                          // the off percentage. Zero/blank leaves it untouched.
                           const parsed = parseFloat(next);
-                          if (!isNaN(parsed) && parsed > 0 && e.is_day_off) {
-                            onEntryUpdate(e.entry_date, e.sort_order, {
-                              is_day_off: false,
-                              off_percent: 0,
-                            });
+                          if (!isNaN(parsed) && parsed !== 0) {
+                            if (e.is_day_off || e.off_percent !== 0) {
+                              onEntryUpdate(e.entry_date, e.sort_order, {
+                                is_day_off: false,
+                                off_percent: 0,
+                              });
+                            }
+                            setSnapperVisible(prev => ({ ...prev, [key]: false }));
                           }
                         }}
                         placeholder="0"
                         className="w-[64px] px-2 py-1 rounded bg-background border border-border text-[13px] text-right"
                       />
                       <span className="text-[11px] text-muted-foreground">giờ</span>
-                      {editHours && parseFloat(editHours) > 0 && (() => {
+                      {editHours && !isNaN(parseFloat(editHours)) && parseFloat(editHours) !== 0 && (() => {
                         // Show the actual contribution this row will add to
                         // the total: base extra wage plus the special-day
                         // allowance (if the date carries a rate). Without
