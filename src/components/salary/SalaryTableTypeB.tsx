@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Plus, Trash2, Clock, Check } from 'lucide-react';
 import { SalaryEntry, SalaryPage, SpecialDayRate, EmployeeAllowance, AllowanceKey, SalaryBreakdown } from '@/types/salary';
-import { roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, getRateDescriptionForDate, formatDateViet, formatVND } from '@/lib/salaryCalculations';
+import { alwaysPaysBonusBase, roundToThousand, calcDailyBase, calcHoursFromTimes, getRateForDate, getRateDescriptionForDate, formatDateViet, formatVND } from '@/lib/salaryCalculations';
 import { isFullMoon, isNewMoon } from '@/lib/lunarUtils';
 import { DAYS_PER_PAGE, generateDateRange, splitIntoPages } from '@/lib/salaryPaging';
 import SwipeablePages, { dateRangePageLabel } from './SwipeablePages';
@@ -251,8 +251,8 @@ export default function SalaryTableTypeB({
     // Mirrors computeTotalSalaryTypeB: out-of-range primary days without
     // overtime are paid dailyBase on top of the monthly base salary.
     const isOutOfRange = e.entry_date < periodStart || e.entry_date > periodEnd;
-    const bonusBase = isOutOfRange && e.sort_order === 0 && !e.total_hours &&
-      (!e.clock_out || e.clock_out === (e.clock_in || globalClockIn))
+    const bonusBase = isOutOfRange && e.sort_order === 0 && (alwaysPaysBonusBase(e) || (!e.total_hours &&
+      (!e.clock_out || e.clock_out === (e.clock_in || globalClockIn))))
       ? dailyBase : 0;
     const total = bonusBase + extraWage + allowance;
     return { rate, allowance, hours, extraWage, bonusBase, total };
@@ -876,7 +876,7 @@ export default function SalaryTableTypeB({
                         {formatClockOut(e)}
                       </button>
                       <FormulaTooltip formula={formulaHours(e)} className="block w-full min-w-0 text-right font-semibold text-[12px]">{formatHours(hours)}</FormulaTooltip>
-                      <FormulaTooltip formula={formulaWage(hours)} className="block w-full min-w-0 text-right font-medium text-[12px] text-foreground/70">
+                      <FormulaTooltip formula={bonusBase > 0 && formulaWage(hours) ? `${formatK(bonusBase)} + ${formulaWage(hours)}` : formulaWage(hours)} className="block w-full min-w-0 text-right font-medium text-[12px] text-foreground/70">
                         {bonusBase + extraWage > 0 ? formatCompact(bonusBase + extraWage) : '—'}
                       </FormulaTooltip>
                       <FormulaTooltip formula={formulaAllowance(e, rate, extraWage)} className="block w-full min-w-0 text-right allowance-amt font-semibold text-[12px]">
@@ -1053,7 +1053,7 @@ export default function SalaryTableTypeB({
                     </FormulaTooltip>
 
                     {/* Wage */}
-                    <FormulaTooltip formula={formulaWage(hours)} className="justify-self-end text-right font-medium text-[13px] text-foreground/70">
+                    <FormulaTooltip formula={bonusBase > 0 && formulaWage(hours) ? `${formatK(bonusBase)} + ${formulaWage(hours)}` : formulaWage(hours)} className="justify-self-end text-right font-medium text-[13px] text-foreground/70">
                       {bonusBase + extraWage > 0 ? formatCompact(bonusBase + extraWage) : '—'}
                     </FormulaTooltip>
 

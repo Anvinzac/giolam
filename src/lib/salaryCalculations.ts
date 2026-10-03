@@ -430,6 +430,17 @@ export function computeTotalSalaryTypeE(
   };
 }
 
+// Type B out-of-range days normally earn dailyBase only while no hours are
+// entered. These employee:period pairs earn dailyBase on every out-of-range
+// primary day, on top of any clocked hours (chithu, Aug 24 – Sep 23 2026).
+const ALWAYS_PAY_BONUS_BASE = new Set([
+  '60ac5492-b820-41de-9151-eb1c7aeb7bff:5f5813d6-7fd3-4e80-9345-f17c62037920',
+]);
+
+export function alwaysPaysBonusBase(e: Pick<SalaryEntry, 'user_id' | 'period_id'>): boolean {
+  return ALWAYS_PAY_BONUS_BASE.has(`${e.user_id}:${e.period_id}`);
+}
+
 export function computeTotalSalaryTypeB(
   entries: SalaryEntry[],
   allowances: EmployeeAllowance[],
@@ -466,7 +477,7 @@ export function computeTotalSalaryTypeB(
 
     if (isBonusDay) {
       bonusWorkedDays++;
-      if (e.sort_order === 0 && (!e.total_hours || e.total_hours === 0) && (!e.clock_out || e.clock_out === (e.clock_in || globalClockIn))) {
+      if (e.sort_order === 0 && (alwaysPaysBonusBase(e) || ((!e.total_hours || e.total_hours === 0) && (!e.clock_out || e.clock_out === (e.clock_in || globalClockIn))))) {
         totalBonusDayBaseWages += dailyBase;
       }
     }
