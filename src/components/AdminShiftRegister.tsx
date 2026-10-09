@@ -96,7 +96,10 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
       const [{ data: profiles }, { data: departments }, { data: shifts }, { data: registrations }] = await Promise.all([
         supabase.from('profiles').select('user_id, full_name, work_shift, shift_type, department_id, include_in_shift_register').eq('include_in_shift_register', true),
         supabase.from('departments').select('id, name'),
-        supabase.from('shifts').select('*').eq('period_id', periodId),
+        // By visible week, not period: a week can straddle two periods.
+        supabase.from('shifts').select('*')
+          .gte('shift_date', formatLocalDate(weekDates[0]))
+          .lte('shift_date', formatLocalDate(weekDates[6])),
         supabase.from('shift_registrations').select('user_id, status').eq('status', 'pending'),
       ]);
 
@@ -243,7 +246,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
         if (existingSlot) {
           const { error: shiftErr } = await supabase.from('shifts')
             .delete()
-            .eq('period_id', periodId)
             .eq('user_id', activeEmployee)
             .eq('shift_date', dateStr)
             .eq('shift_slot', shiftKey);
@@ -338,7 +340,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
     for (const userId of toRemove) {
       const { error } = await supabase.from('shifts')
         .delete()
-        .eq('period_id', periodId)
         .eq('user_id', userId)
         .eq('shift_date', pickerOpen.date)
         .eq('shift_slot', pickerOpen.shift);
@@ -439,7 +440,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
 
     const { error } = await supabase.from('shifts')
       .delete()
-      .eq('period_id', periodId)
       .eq('user_id', editSlot.userId)
       .eq('shift_date', editSlot.date)
       .eq('shift_slot', editSlot.shift);
@@ -474,7 +474,6 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
   const handleRemoveSlot = async (date: string, shift: string, userId: string) => {
     const { error } = await supabase.from('shifts')
       .delete()
-      .eq('period_id', periodId)
       .eq('user_id', userId)
       .eq('shift_date', date)
       .eq('shift_slot', shift);

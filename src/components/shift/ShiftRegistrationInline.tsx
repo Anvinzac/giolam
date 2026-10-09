@@ -88,7 +88,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
       let shiftsQuery = supabase.from("shifts")
         .select("shift_date, shift_slot")
         .eq("user_id", userId);
-      if (periodId) shiftsQuery = shiftsQuery.eq("period_id", periodId);
+      shiftsQuery = shiftsQuery.gte("shift_date", formatLocalDate(weekDates[0])).lte("shift_date", formatLocalDate(weekDates[6]));
       const { data: shiftsData } = await shiftsQuery;
 
       const reg = new Set<string>();
@@ -121,7 +121,7 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
 
       let allShiftsQuery = supabase.from("shifts")
         .select("shift_date, shift_slot, user_id");
-      if (periodId) allShiftsQuery = allShiftsQuery.eq("period_id", periodId);
+      allShiftsQuery = allShiftsQuery.gte("shift_date", formatLocalDate(weekDates[0])).lte("shift_date", formatLocalDate(weekDates[6]));
       const { data: allShifts } = await allShiftsQuery;
 
       const userIds = [...new Set((allShifts || []).map((s: any) => s.user_id))];
