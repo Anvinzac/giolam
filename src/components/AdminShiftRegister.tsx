@@ -152,11 +152,9 @@ export default function AdminShiftRegister({ periodId, periodStart, periodEnd }:
           clock_in: s.clock_in,
           clock_out: s.clock_out,
         };
-        if (s.shift_slot === 'afternoon') {
-          shiftsByDate[dateStr].afternoon.push(slot);
-        } else {
-          shiftsByDate[dateStr].morning.push(slot);
-        }
+        const list = s.shift_slot === 'afternoon' ? shiftsByDate[dateStr].afternoon : shiftsByDate[dateStr].morning;
+        // One entry per name per slot, even if duplicate accounts share a name.
+        if (!list.some(x => x.full_name === slot.full_name)) list.push(slot);
       }
 
       setDayShifts(shiftsByDate);

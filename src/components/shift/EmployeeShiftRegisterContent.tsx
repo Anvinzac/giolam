@@ -154,10 +154,13 @@ export default function EmployeeShiftRegisterContent({ userId }: Props) {
       const namesMap: Record<string, string[]> = {};
       for (const s of (allShifts || [])) {
         const k = `${s.shift_date}|${s.shift_slot}`;
-        counts[k] = (counts[k] || 0) + 1;
         const name = nameMap.get(s.user_id) || "?";
         if (!namesMap[k]) namesMap[k] = [];
-        if (!namesMap[k].includes(name)) namesMap[k].push(name);
+        // One entry per name per slot, even if duplicate accounts share a name.
+        if (!namesMap[k].includes(name)) {
+          namesMap[k].push(name);
+          counts[k] = (counts[k] || 0) + 1;
+        }
       }
       setSlotCounts(counts);
       setSlotNames(namesMap);
@@ -355,8 +358,9 @@ function ApprovedShiftTable({ weekDates, periodId, userId }: { weekDates: Date[]
         const d = s.shift_date;
         if (!byDate[d]) byDate[d] = { morning: [], afternoon: [] };
         const info = { name: nameMap.get(s.user_id) || "?", userId: s.user_id };
-        if (s.shift_slot === "afternoon") byDate[d].afternoon.push(info);
-        else byDate[d].morning.push(info);
+        const list = s.shift_slot === "afternoon" ? byDate[d].afternoon : byDate[d].morning;
+        // One entry per name per slot, even if duplicate accounts share a name.
+        if (!list.some(x => x.name === info.name)) list.push(info);
       }
       setShifts(byDate);
     };

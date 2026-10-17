@@ -138,11 +138,12 @@ export default function ShiftRegistrationInline({ userId, periodId, fullName }: 
       const names: Record<string, { name: string; userId: string }[]> = {};
       for (const s of (allShifts || [])) {
         const k = `${s.shift_date}|${s.shift_slot}`;
-        counts[k] = (counts[k] || 0) + 1;
         const name = nameMap.get(s.user_id) || "?";
         if (!names[k]) names[k] = [];
-        if (!names[k].some(n => n.userId === s.user_id)) {
+        // One entry per name per slot, even if duplicate accounts share a name.
+        if (!names[k].some(n => n.userId === s.user_id || n.name === name)) {
           names[k].push({ name, userId: s.user_id });
+          counts[k] = (counts[k] || 0) + 1;
         }
       }
       setSlotCounts(counts);
