@@ -16,47 +16,72 @@ function formatLocalYmd(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function atNoon(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(12, 0, 0, 0);
-  return d;
-}
-
 function addDays(date: Date, n: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d;
 }
 
-function newMoonDistance(date: Date): number {
-  const phase = getLunarPhase(atNoon(date));
-  return Math.min(phase, 1 - phase);
-}
-
-function fullMoonDistance(date: Date): number {
-  return Math.abs(getLunarPhase(atNoon(date)) - 0.5);
-}
-
-/** Exactly one civil day per lunation: closer than both neighbors. */
-function isLocalMinimum(date: Date, distance: (d: Date) => number): boolean {
-  const here = distance(date);
-  return here < distance(addDays(date, -1)) && here <= distance(addDays(date, 1));
-}
-
 /**
- * Shop calendar follows Vietnamese âm lịch.
- *
- * Astronomical "closest noon" can land a day late vs the shop calendar
- * (e.g. Sep 2026 new moon closest-noon is 12/9, shop wants Mùng 1 on 11/9).
- * Rule: moon day = the civil day BEFORE the closest-noon astronomical day.
- * Ngày chay is always the day before that moon day.
+ * Shop calendar follows Vietnamese âm lịch (Hồ Ngọc Đức's algorithm, UTC+7):
+ * Mùng 1 is the Vietnam civil day containing the astronomical new moon,
+ * Rằm is lunar day 15 (Mùng 1 + 14). Ngày chay is the day before each.
  */
+const VN_TIMEZONE = 7;
+
+function julianDayNumber(date: Date): number {
+  const dd = date.getDate();
+  const mm = date.getMonth() + 1;
+  const yy = date.getFullYear();
+  const a = Math.floor((14 - mm) / 12);
+  const y = yy + 4800 - a;
+  const m = mm + 12 * a - 3;
+  return dd + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+}
+
+function newMoonJulianDay(k: number): number {
+  const T = k / 1236.85;
+  const T2 = T * T;
+  const T3 = T2 * T;
+  const dr = Math.PI / 180;
+  let jd1 = 2415020.75933 + 29.53058868 * k + 0.0001178 * T2 - 0.000000155 * T3;
+  jd1 += 0.00033 * Math.sin((166.56 + 132.87 * T - 0.009173 * T2) * dr);
+  const M = 359.2242 + 29.10535608 * k - 0.0000333 * T2 - 0.00000347 * T3;
+  const Mpr = 306.0253 + 385.81691806 * k + 0.0107306 * T2 + 0.00001236 * T3;
+  const F = 21.2964 + 390.67050646 * k - 0.0016528 * T2 - 0.00000239 * T3;
+  let c1 = (0.1734 - 0.000393 * T) * Math.sin(M * dr) + 0.0021 * Math.sin(2 * dr * M);
+  c1 = c1 - 0.4068 * Math.sin(Mpr * dr) + 0.0161 * Math.sin(dr * 2 * Mpr);
+  c1 = c1 - 0.0004 * Math.sin(dr * 3 * Mpr);
+  c1 = c1 + 0.0104 * Math.sin(dr * 2 * F) - 0.0051 * Math.sin(dr * (M + Mpr));
+  c1 = c1 - 0.0074 * Math.sin(dr * (M - Mpr)) + 0.0004 * Math.sin(dr * (2 * F + M));
+  c1 = c1 - 0.0004 * Math.sin(dr * (2 * F - M)) - 0.0006 * Math.sin(dr * (2 * F + Mpr));
+  c1 = c1 + 0.001 * Math.sin(dr * (2 * F - Mpr)) + 0.0005 * Math.sin(dr * (2 * Mpr + M));
+  const deltat = -0.000278 + 0.000265 * T + 0.000262 * T2;
+  return jd1 + c1 - deltat;
+}
+
+function newMoonDay(k: number): number {
+  return Math.floor(newMoonJulianDay(k) + 0.5 + VN_TIMEZONE / 24);
+}
+
+/** Julian day number of Mùng 1 of the lunar month containing `jdn`. */
+function lunarMonthStart(jdn: number): number {
+  const k = Math.floor((jdn - 2415021.076998695) / 29.530588853);
+  for (let i = k + 1; i >= k - 1; i--) {
+    const start = newMoonDay(i);
+    if (start <= jdn) return start;
+  }
+  return newMoonDay(k - 2);
+}
+
 export function isNewMoon(date: Date): boolean {
-  return isLocalMinimum(addDays(date, 1), newMoonDistance);
+  const jdn = julianDayNumber(date);
+  return lunarMonthStart(jdn) === jdn;
 }
 
 export function isFullMoon(date: Date): boolean {
-  return isLocalMinimum(addDays(date, 1), fullMoonDistance);
+  const jdn = julianDayNumber(date);
+  return lunarMonthStart(jdn) + 14 === jdn;
 }
 
 /** Ngày chay (Rằm): always the day before the calculated full-moon day. */
