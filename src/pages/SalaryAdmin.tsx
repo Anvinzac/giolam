@@ -1600,7 +1600,11 @@ export default function SalaryAdmin() {
                 // off the extended end — so the May 25–31 page renders
                 // immediately, May 31's row is reachable, and admins can
                 // add fresh rows on those dates via the date picker too.
-                periodEnd={selectedEmployee.username === 'ttu' ? '2026-05-31' : selectedPeriod.end_date}
+                periodEnd={
+                  selectedEmployee.username === 'ttu' && selectedPeriod.start_date === '2026-04-25'
+                    ? '2026-05-31'
+                    : selectedPeriod.end_date
+                }
                 customStartDate={null}
                 customEndDate={null}
                 defaultClockIn={selectedEmployee.default_clock_in}
