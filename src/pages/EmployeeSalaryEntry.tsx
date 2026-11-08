@@ -169,7 +169,7 @@ export default function EmployeeSalaryEntry() {
 
         const { data: { user } } = await withTimeout(
           supabase.auth.getUser(),
-          10000,
+          20000,
           'Session check timed out.'
         );
         if (!mounted) return;
@@ -186,7 +186,7 @@ export default function EmployeeSalaryEntry() {
             .select('user_id, full_name, shift_type, base_salary, hourly_rate, default_clock_in, default_clock_out, department_id')
             .eq('user_id', user.id)
             .single(),
-          10000,
+          20000,
           'Profile lookup timed out.'
         );
         if (!mounted) return;
@@ -228,7 +228,7 @@ export default function EmployeeSalaryEntry() {
             .lte('start_date', today)
             .gte('end_date', today)
             .limit(1),
-          10000,
+          20000,
           'Working period lookup timed out.'
         );
 
@@ -242,7 +242,7 @@ export default function EmployeeSalaryEntry() {
               .eq('is_archived', false)
               .order('end_date', { ascending: false })
               .limit(1),
-            10000,
+            20000,
             'Fallback period lookup timed out.'
           );
           if (!mounted) return;
@@ -259,7 +259,7 @@ export default function EmployeeSalaryEntry() {
               .eq('user_id', user.id)
               .eq('period_id', chosen.id)
               .maybeSingle(),
-            10000,
+            20000,
             'Salary record lookup timed out.'
           );
           if (!mounted) return;

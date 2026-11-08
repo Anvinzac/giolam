@@ -43,7 +43,7 @@ export default function EmployeeDashboard() {
         setBootError(null);
         const { data: { user } } = await withTimeout(
           supabase.auth.getUser(),
-          10000,
+          20000,
           'Session check timed out.',
         );
         if (!isMounted) return;
@@ -56,7 +56,7 @@ export default function EmployeeDashboard() {
 
         const { data: prof } = await withTimeout(
           supabase.from('profiles').select('department_id').eq('user_id', user.id).single(),
-          10000,
+          20000,
           'Profile lookup timed out.',
         );
         if (!isMounted) return;

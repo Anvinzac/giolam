@@ -25,7 +25,7 @@ export default function Index() {
       // Fetch profile
       const { data: prof } = await withTimeout(
         supabase.from('profiles').select('*').eq('user_id', session.user.id).single(),
-        10000,
+        20000,
         'Profile lookup timed out.',
       );
       if (!isMounted) return;
@@ -38,7 +38,7 @@ export default function Index() {
       // Check admin
       const { data: roles } = await withTimeout(
         supabase.from('user_roles').select('role').eq('user_id', session.user.id),
-        10000,
+        20000,
         'Role check timed out.',
       );
       if (!isMounted) return;
@@ -59,7 +59,7 @@ export default function Index() {
         setBootError(null);
         const { data } = await withTimeout(
           supabase.auth.getSession(),
-          10000,
+          20000,
           'Session check timed out.',
         );
         await hydrateFromSession(data.session);
@@ -72,8 +72,13 @@ export default function Index() {
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      await hydrateFromSession(session);
+    // Don't await Supabase calls inside this callback: auth-js holds its lock while
+    // it runs (e.g. TOKEN_REFRESHED on a visit after the token expired), and the
+    // queries wait on that same lock, deadlocking until the boot timeouts fire.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setTimeout(() => {
+        hydrateFromSession(session).catch((error) => console.error('Failed to hydrate session:', error));
+      }, 0);
     });
 
     bootstrap();

@@ -54,7 +54,7 @@ export default function NoticeBoard() {
     try {
       setLoading(true);
       setBootError(null);
-      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 10_000, 'Session check timed out.');
+      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 20_000, 'Session check timed out.');
       if (!user) { navigate('/login'); return; }
       setUserId(user.id);
 

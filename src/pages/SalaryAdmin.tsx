@@ -749,7 +749,7 @@ export default function SalaryAdmin() {
         setBootError(null);
         const { data: { user } } = await withTimeout(
           supabase.auth.getUser(),
-          10000,
+          20000,
           'Session check timed out.',
         );
         if (!isMounted) return;
@@ -761,7 +761,7 @@ export default function SalaryAdmin() {
 
         const { data: roles } = await withTimeout(
           supabase.from('user_roles').select('role').eq('user_id', user.id),
-          10000,
+          20000,
           'Role check timed out.',
         );
         if (!isMounted) return;
@@ -775,7 +775,7 @@ export default function SalaryAdmin() {
 
         const { data: p } = await withTimeout(
           supabase.from('working_periods').select('*').eq('is_archived', false).order('start_date', { ascending: false }),
-          10000,
+          20000,
           'Working period lookup timed out.',
         );
         if (!isMounted) return;
@@ -786,12 +786,12 @@ export default function SalaryAdmin() {
         const [deptsRes, adminRolesRes] = await Promise.all([
           withTimeout(
             supabase.from('departments').select('id, name'),
-            10000,
+            20000,
             'Department lookup timed out.',
           ),
           withTimeout(
             supabase.from('user_roles').select('user_id').eq('role', 'admin'),
-            10000,
+            20000,
             'Admin role lookup timed out.',
           ),
         ]);
@@ -805,14 +805,14 @@ export default function SalaryAdmin() {
         // before giving up on them entirely.
         let profilesRes: any = await withTimeout(
           supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in, default_clock_out, include_in_shift_register'),
-          10000,
+          20000,
           'Profile lookup timed out.',
         );
         if (profilesRes?.error) {
           console.warn('Profile lookup (with settings columns) failed, retrying with salary columns only:', profilesRes.error);
           profilesRes = await withTimeout(
             supabase.from('profiles').select('user_id, username, full_name, shift_type, base_salary, hourly_rate, department_id, default_clock_in, default_clock_out'),
-            10000,
+            20000,
             'Profile lookup timed out.',
           );
         }
@@ -821,7 +821,7 @@ export default function SalaryAdmin() {
           setSalaryColumnsAvailable(false);
           profilesRes = await withTimeout(
             supabase.from('profiles').select('user_id, username, full_name, shift_type, department_id, default_clock_in, default_clock_out'),
-            10000,
+            20000,
             'Profile lookup timed out.',
           );
         } else {

@@ -23,7 +23,7 @@ export default function SalaryEmployee() {
         setBootError(null);
         const { data: { user } } = await withTimeout(
           supabase.auth.getUser(),
-          10000,
+          20000,
           'Session check timed out.',
         );
         if (!isMounted) return;

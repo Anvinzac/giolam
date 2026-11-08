@@ -156,7 +156,7 @@ export default function AdminDashboard() {
         setBootError(null);
         const { data: { user } } = await withTimeout(
           supabase.auth.getUser(),
-          10000,
+          20000,
           'Session check timed out.',
         );
         if (!isMounted) return;
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
 
         const { data: roles } = await withTimeout(
           supabase.from('user_roles').select('role').eq('user_id', user.id),
-          10000,
+          20000,
           'Role check timed out.',
         );
         if (!isMounted) return;
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
 
         const { data: pData } = await withTimeout(
           supabase.from('working_periods').select('*').eq('is_archived', false).order('start_date', { ascending: false }),
-          10000,
+          20000,
           'Working period lookup timed out.',
         );
         if (!isMounted) return;
@@ -195,7 +195,7 @@ export default function AdminDashboard() {
           const today = new Date().toISOString().split('T')[0];
           const { data: recentShifts } = await withTimeout(
             supabase.from('shifts').select('updated_at').eq('period_id', p[0].id).gte('shift_date', today),
-            10000,
+            20000,
             'Recent changes lookup timed out.',
           );
           if (!isMounted) return;
@@ -206,7 +206,7 @@ export default function AdminDashboard() {
 
         const { data: profiles } = await withTimeout(
           supabase.from('profiles').select('*'),
-          10000,
+          20000,
           'Employee lookup timed out.',
         );
         if (!isMounted) return;
